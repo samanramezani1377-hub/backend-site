@@ -57,6 +57,8 @@ Endpoint:
 POST /wp-json/woogit/v1/sites/verify
 ```
 
+این endpoint برای ایجاد Session اولیه است و Session قبلی نمی‌خواهد.
+
 Request JSON باید شامل موارد زیر باشد:
 
 ```json
@@ -90,6 +92,9 @@ Response ممکن است Session عملیاتی بدهد:
 
 ```json
 {
+  "account_id": "...",
+  "site_id": "...",
+  "session": "...",
   "scope": "billing",
   "access_enabled": false,
   "billing_required": true
@@ -110,7 +115,18 @@ X-WooGit-Session: <session-token>
 
 را ارسال کند.
 
-نکته مهم: `/sites/verify` برای ایجاد Session اولیه است و نیازمند Session قبلی نیست. همچنین endpointهای Billing بر اساس scope موردنیاز خود احراز هویت می‌شوند؛ Billing Session برای Billing است و Operational Session برای عملیات Customer.
+طبقه‌بندی فعلی endpointها:
+
+| Endpoint | Session موردنیاز |
+|---|---|
+| `POST /sites/verify` | ندارد؛ برای ایجاد Session اولیه است |
+| `GET /billing/plans` | ندارد |
+| `GET /billing/status` | هر Session معتبر Account کافی است |
+| `POST /billing/checkout` | هر Session معتبر Account کافی است |
+| `POST /billing/activate-session` | فقط Billing Session |
+| `GET /operations/{operation_id}` | فقط Operational Session |
+| `POST /sessions/revoke` | Token را دریافت می‌کند و revoke می‌کند؛ در Backend فعلی `authenticateContext` اجرا نمی‌شود |
+| `/forward` | فقط Operational Session |
 
 Session منقضی یا revoke شده نباید به‌عنوان مجوز معتبر استفاده شود.
 
@@ -175,13 +191,19 @@ X-WooGit-Consumer-Secret: cs_...
 
 ### WooCommerce
 
-Backend فعلاً این namespace را برای forward اجازه می‌دهد:
+Backend فعلاً مسیرهایی را که با این prefix منطبق هستند برای forward اجازه می‌دهد:
 
 ```text
 /wp-json/wc/v3/*
 ```
 
-بنابراین عملیات زیر باید از همین مسیر استفاده کنند:
+بنابراین در قرارداد فعلی، مسیرهای دارای ادامه بعد از `wc/v3/` مجاز هستند؛ روی مسیر bare زیر بدون `/` بعد از `v3` نباید حساب شود:
+
+```text
+/wp-json/wc/v3
+```
+
+عملیات زیر باید از همین namespace استفاده کنند:
 
 - محصولات
 - جزئیات محصول
@@ -410,6 +432,18 @@ Idempotency-Key: <unique-operation-key>
 
 Key باید برای retry همان logical operation حفظ شود و نباید با هر تلاش مجدد تغییر کند.
 
+Backend ممکن است خطاهای زیر را در این مسیر برگرداند:
+
+```text
+400 invalid_idempotency_key → کلید Idempotency نامعتبر است
+400 invalid_mutation_request → mutation شرایط لازم را ندارد
+409 idempotency_conflict → همان key با fingerprint متفاوت استفاده شده است
+202 operation_in_progress → عملیات قبلی هنوز در حال پردازش است
+500 operation_unavailable → وضعیت/عملیات از Backend قابل بازیابی نیست
+```
+
+App باید برای `idempotency_conflict` هرگز همان key را با payload یا request متفاوت reuse نکند.
+
 ---
 
 ## 14. Timeout-after-success و Reconciliation
@@ -456,10 +490,12 @@ App باید status code و error body Backend را جدی بگیرد و صرف�
 موارد مهم:
 
 ```text
+400 → request/validation/idempotency مشکل دارد
 401 → Session/authentication مشکل دارد
 403 → scope / entitlement / ownership اجازه نمی‌دهد
 404 → resource یا operation پیدا نشد
 409 → Idempotency conflict یا state conflict
+413 → request_body_too_large؛ body از سقف Backend بزرگ‌تر است
 429 → rate limit
 502 → upstream/network failure
 503 → operation persistence failure
@@ -480,11 +516,15 @@ Billing با Customer WooCommerce فرق دارد و endpointهای آن در خ
 GET /wp-json/woogit/v1/billing/plans
 ```
 
+این endpoint در Backend فعلی Session نمی‌خواهد.
+
 ### Status
 
 ```http
 GET /wp-json/woogit/v1/billing/status
 ```
+
+این endpoint به Session معتبر نیاز دارد، اما برای بررسی وضعیت Billing به Entitlement فعال نیاز ندارد.
 
 ### Checkout
 
@@ -492,11 +532,15 @@ GET /wp-json/woogit/v1/billing/status
 POST /wp-json/woogit/v1/billing/checkout
 ```
 
+این endpoint به هر Session معتبر Account نیاز دارد و هویت Account/Site را از Session می‌گیرد؛ App نباید `account_id` یا `site_id` را به‌عنوان هویت قابل اعتماد از body تعیین کند.
+
 ### Activate operational session
 
 ```http
 POST /wp-json/woogit/v1/billing/activate-session
 ```
+
+این endpoint فقط با Billing Session قابل استفاده است و پس از احراز Entitlement عملیاتی، token جدید صادر می‌کند.
 
 این endpointها مستقیماً Customer Site را proxy نمی‌کنند.
 
@@ -592,6 +636,8 @@ App
 - [ ] در timeout/unknown، operation reconciliation انجام شود.
 - [ ] `X-WP-Total` و `X-WP-TotalPages` برای pagination خوانده شوند.
 - [ ] Error handling بر اساس status/code انجام شود، نه فقط متن.
+- [ ] `413 request_body_too_large` به‌درستی مدیریت شود.
+- [ ] خطاهای Idempotency و `operation_in_progress`/`operation_unavailable` به‌درستی مدیریت شوند.
 - [ ] Session منقضی/revoked هرگز معتبر فرض نشود.
 - [ ] پس از expiry، Session جدید طبق قرارداد احراز هویت ایجاد شود و Backend مجدداً Account + Site Ownership + Entitlement را بررسی کند.
 
