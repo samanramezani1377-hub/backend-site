@@ -11,7 +11,8 @@
 - Android App = Client
 - WooGit Backend = این repository
 - WordPress/WooCommerce مشتری = منبع داده فروشگاه
-- WooGit Bridge = Integration component
+- WooGit Gateway Plugin = پلاگین مستقل روی سایت مشتری، خارج از scope فعلی
+- WooGit Main Plugin = پلاگین مستقل سایت اصلی WooGit
 - وب‌سایت/پنل تجاری WooGit = سرویس جدا در صورت وجود
 
 **خارج از هدف:** ساخت UI اپ، Compose، Navigation، Dashboard اپ، ConnectionScreen اپ، APK و CI مخصوص Android.
@@ -22,25 +23,25 @@
 
 **دلیل:** توسعه سریع محتوا و مدیریت، سیستم بالغ کاربر/نقش و تناسب مناسب برای بازاریابی، مستندات و فرایندهای پنل کنترل.
 
-**مرز:** این سامانه خارج از هسته Backend است و نباید برای پردازش هر درخواست بلادرنگ Gateway اجباری باشد.
+**مرز:** این سامانه و `WooGit Main Plugin` با `WooGit Gateway Plugin` روی سایت مشتری یکی نیستند. Gateway Plugin کامپوننت مستقلی است و فعلاً توسعه آن در scope این پروژه نیست.
 
-## ADR-002 — Gateway از پنل کنترل WordPress جدا است
+## ADR-002 — مرز Backend و Gateway Plugin
 
-**تصمیم:** یک API/Gateway کوچک و Stateless ترافیک محافظت‌شده و درخواست‌های خروجی به سایت مشتری را مدیریت کند.
+**تصمیم:** `WooGit Gateway Plugin` یک پلاگین مستقل است که روی WordPress/WooCommerce سایت مشتری نصب می‌شود. `WooGit Main Plugin` نیز پلاگین مستقلی است که روی سایت اصلی WooGit نصب می‌شود. این دو نباید با یکدیگر قاطی شوند.
 
-**دلیل:** اعمال اشتراک، Rate Limit، استفاده از اعتبارها و ترافیک بلادرنگ نباید به محیط اجرای پنل مدیریت WordPress وابسته باشد.
+**وضعیت:** در فاز فعلی روی `WooGit Gateway Plugin` کار نمی‌کنیم. طراحی جزئیات، پیاده‌سازی، refactor و migration آن به فاز مستقل بعدی موکول است.
 
-## ADR-003 — PostgreSQL ذخیره‌ساز پایدار برنامه است
+**نتیجه:** Backend فعلی نباید برای تکمیل Gateway Plugin متوقف شود و نباید منطق Gateway را در این repository بازسازی کند. هر قراردادی که در Backend به Gateway اشاره دارد صرفاً باید مرز integration را مشخص کند.
 
-**تصمیم:** PostgreSQL برای حساب‌ها، سایت‌ها، اشتراک‌ها، عملیات و داده حسابرسی استفاده شود.
+## ADR-003 — Backend V1 سبک است
 
-**دلیل:** یکپارچگی رابطه‌ای برای مرزهای مالکیت و مجوز اهمیت دارد.
+**تصمیم:** Backend V1 باید تا حد امکان سبک و نزدیک به مدل Client → Backend → Customer Site باشد. Backend مسئول Authorization، Account، Subscription، Entitlement، Site Ownership، Security و Lightweight Proxy/controlled integration است.
 
-## ADR-004 — Redis برای شتاب/صف است
+**دلیل:** هدف فعلی کمینه کردن تغییرات اپ و هزینه پردازش Backend است، بدون ایجاد Mirror دائمی WooCommerce.
 
-**تصمیم:** Redis زیرساخت قابل جایگزینی برای Cache، Rate Limit، صف و هماهنگی بلادرنگ باشد.
+## ADR-004 — Customer Site منبع حقیقت داده فروشگاه است
 
-**دلیل:** وضعیت تجاری پایدار باید از PostgreSQL قابل بازیابی باشد.
+**تصمیم:** Products، Orders، Customers، Categories، Variations و Media در Customer WordPress/WooCommerce منبع اصلی هستند و Backend نباید دیتابیس دوم WooCommerce بسازد.
 
 ## ADR-005 — Bridge به‌صورت Headless
 
@@ -50,17 +51,17 @@
 
 ## ADR-006 — بعد از راه‌اندازی تجاری، ترافیک مستقیم اپ به سایت مشتری وجود ندارد
 
-**تصمیم:** ترافیک تجاری محافظت‌شده از Gateway ووگیت عبور کند.
+**تصمیم:** ترافیک تجاری محافظت‌شده از Backend ووگیت عبور کند.
 
-**دلیل:** Gateway محل اعمال اشتراک، مجوزها، حسابرسی، مقابله با سوءاستفاده و جداسازی اعتبارها است.
+**دلیل:** Backend محل اعمال اشتراک، مجوزها، حسابرسی، مقابله با سوءاستفاده و جداسازی اعتبارها است.
 
-**استثنا:** دسترسی مستقیم فقط برای قابلیت‌های صریحاً غیرتجاری/محلی ممکن است وجود داشته باشد و نباید مسیر دور زدن مجوز ایجاد کند.
+**نکته:** این تصمیم به معنی پیاده‌سازی فعلی `WooGit Gateway Plugin` نیست. Gateway Plugin یک کامپوننت مستقل و خارج از فاز فعلی است.
 
-## ADR-007 — عملیات Typed به‌جای Proxy دلخواه
+## ADR-007 — عملیات کنترل‌شده به‌جای Proxy دلخواه
 
-**تصمیم:** عملیات Typed نسبت به Proxy عمومی URL ترجیح دارند.
+**تصمیم:** API عمومی باید مسیرها و عملیات کنترل‌شده داشته باشد و Proxy عمومی URL دلخواه مجاز نیست. پیاده‌سازی داخلی می‌تواند Lightweight Forwarding باشد.
 
-**دلیل:** Proxy دلخواه ریسک SSRF، خطای مجوز و سوءاستفاده را افزایش می‌دهد.
+**دلیل:** Proxy دلخواه ریسک SSRF، خطای مجوز و سوءاستفاده را افزایش می‌دهد، در حالی که Forwarding کنترل‌شده هزینه معماری را پایین نگه می‌دارد.
 
 ## ADR-008 — Application Password برای احراز هویت اولیه WordPress
 
@@ -91,7 +92,8 @@
 - ساخت یا بازطراحی Android App در این repository.
 - قرار دادن UI اپ یا ConnectionScreen در Backend.
 - ساخت APK یا CI مخصوص Android در این repository.
+- **پیاده‌سازی، refactor یا migration `WooGit Gateway Plugin` روی سایت مشتری در فاز فعلی.**
+- ادغام `WooGit Gateway Plugin` با `WooGit Main Plugin`.
 - ساخت پلتفرم توزیع‌شده اختصاصی پیش از اثبات نیاز واقعی.
-- ذخیره رمزهای مشتری در اپ موبایل.
 - تبدیل Bridge به افزونه اجرای عمومی کد راه دور.
 - اجازه دادن به LLM برای ارسال درخواست HTTP دلخواه.
