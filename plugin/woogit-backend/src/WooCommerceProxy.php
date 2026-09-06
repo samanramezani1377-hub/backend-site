@@ -10,7 +10,7 @@ final class WooCommerceProxy
         if(!$this->publicDestination($baseUrl))return ['ok'=>false,'reason'=>'unsafe_destination'];
         $wp=$this->request($baseUrl.'/wp-json/',$username,$applicationPassword);
         if(is_wp_error($wp))return ['ok'=>false,'reason'=>'wordpress_unreachable'];
-        $wpStatus=wp_remote_retrieve_response_code($wp);if($wpStatus<200||$wpStatus>=400)return ['ok'=>false,'reason'=>'wordpress_auth_failed'];
+        $wpStatus=wp_remote_retrieve_response_code($wp);if($wpStatus<200||$wpStatus>=300)return ['ok'=>false,'reason'=>'wordpress_auth_failed'];
         $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret);
         if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
         $wcStatus=wp_remote_retrieve_response_code($wc);if($wcStatus<200||$wcStatus>=300)return ['ok'=>false,'reason'=>'woocommerce_auth_failed'];
