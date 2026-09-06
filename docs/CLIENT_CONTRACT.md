@@ -35,11 +35,10 @@ Customer WordPress / WooCommerce
 بنابراین در کد فعلی Client:
 
 - App-to-Backend authentication وجود ندارد.
-- Access Token / Refresh Token برای Backend وجود ندارد.
-- Session متعلق به WooGit Backend وجود ندارد.
+- WooGit Session برای Backend هنوز وجود ندارد.
 - اعتبارهای WooCommerce/WordPress در Client برای اتصال مستقیم استفاده می‌شوند.
 
-این موارد **نباید به‌عنوان قابلیت موجود گزارش شوند**؛ آن‌ها بخشی از Migration Target هستند.
+این موارد **نباید به‌عنوان قابلیت موجود گزارش شوند**؛ WooGit Session بخشی از Migration Target است.
 
 ## ۳. اتصال فعلی Client
 
@@ -288,27 +287,32 @@ Dashboard
 
 صفحه دوم فقط بعد از Verification موفق فعال می‌شود.
 
-## ۷. Session و Token — قرارداد هدف، نه وضعیت فعلی
+## ۷. WooGit Session — قرارداد هدف
 
-پس از Migration، Client برای عملیات عادی نباید Credential خام WordPress/WooCommerce را حمل کند.
+پس از Onboarding، Client برای عملیات عادی یک **WooGit Session معتبر** را همراه درخواست ارسال می‌کند.
 
-معماری هدف:
+WooGit Session تنها مکانیزم احراز هویت و مجوز مصرف‌کننده در WooGit Backend است. این قرارداد از مدل جداگانه Access Token + Refresh Token استفاده نمی‌کند.
 
 ```text
-Access Token  -> کوتاه‌عمر
-Refresh Token -> چرخشی / قابل ابطال
+WooGit Session
+    → احراز هویت و مجوز Client در Backend
+
+Customer Credentials
+    → احراز دسترسی Backend نزد Customer Site
 ```
 
-Backend باید Session و Token lifecycle را مدیریت کند، از جمله:
+Backend باید برای Session حداقل این وضعیت‌ها را پشتیبانی کند:
 
-- expiry
+- معتبر / نامعتبر بودن Session
+- expiration
 - revocation
-- rotation
-- device/session tracking
-- logout
-- suspicious-session handling
+- اتصال Session به Account و در صورت نیاز Site context
+- logout / پایان Session
+- ثبت زمان آخرین استفاده در صورت نیاز عملیاتی
 
-**مهم:** تا زمانی که Client واقعاً به این قرارداد مهاجرت نکرده است، Backend نباید فرض کند Access/Refresh Token در اپ وجود دارد.
+درخواست عادی بدون WooGit Session معتبر نباید از کنترل‌های Backend عبور کند.
+
+این Session با Credentialهای سایت مشتری متفاوت است و جایگزین WordPress Application Password یا WooCommerce Consumer Credentials نیست.
 
 ## ۸. Credential Vault
 
@@ -442,8 +446,8 @@ Backend باید این قرارداد را طوری ارائه کند که با
 2. هر endpoint جدید باید مصرف‌کننده مشخص در Client داشته باشد.
 3. نام‌گذاری مدل‌های Backend نباید با مدل‌های واقعی Client بدون بررسی تطبیق فرض شود.
 4. Store ID محلی Client نباید مستقیماً site identity تلقی شود.
-5. Access/Refresh Token نباید در مستندات «فعلی» نوشته شود.
-6. Credential handling باید از direct REST به Backend Vault منتقل شود.
+5. در قرارداد هدف، احراز هویت Backend با **یک WooGit Session معتبر** انجام می‌شود و مدل جداگانه Access/Refresh Token بخشی از قرارداد نیست.
+6. Credential handling باید با تصمیم فعلی Client → Backend هماهنگ باشد؛ در Proxy عادی Customer Credentials می‌توانند همراه همان Request ارسال شوند و Vault برای هر Request اجباری نیست.
 7. رفتار فعلی direct WooCommerce باید قبل از cutover با contract test پوشش داده شود.
 8. Migration باید امکان rollback یا coexistence کنترل‌شده داشته باشد.
 9. **هیچ عملیات تجاری Backend به سایت مشتری نباید قبل از موفقیت Connection Verification اجرا شود.**
