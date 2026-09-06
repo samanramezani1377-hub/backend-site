@@ -48,9 +48,9 @@ Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 
 برای یک Account نباید Site Identity تکراری برای همان Customer Site ایجاد شود.
 
-## ۴. تنظیمات اتصال Customer Site
+## ۴. Customer Site Credentials — Request-scoped Only
 
-برای هر Site، این چهار Credential مقصد باید به‌صورت مستقل شناخته شوند:
+برای اتصال به Customer Site، Client این چهار Credential مقصد را در صورت نیاز همراه Request ارسال می‌کند:
 
 - WordPress Username
 - WordPress Application Password
@@ -59,22 +59,16 @@ Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 
 این چهار مقدار Credential مربوط به **Customer WordPress/WooCommerce** هستند، نه Credential احراز Client در WooGit.
 
-در V1 برای Proxy عادی، Client این چهار Credential را همراه Request می‌فرستد و Backend برای همان Request از آن‌ها استفاده می‌کند. بنابراین نگهداری دائمی Credential در Backend اجباری نیست.
+در V1، Backend این Credentialها را **هرگز در DB، Vault، Cache پایدار یا هیچ storage دائمی دیگری ذخیره نمی‌کند**. این Credentialها فقط برای همان Request مصرف می‌شوند.
 
-اگر در آینده نیاز به background jobs، webhooks یا عملیات بدون حضور Client ایجاد شود، می‌توان `site_credentials` را به‌صورت رمزنگاری‌شده اضافه کرد:
+در نتیجه در مدل داده V1:
 
-- id
-- site_id
-- credential_type
-- encrypted_secret
-- key_version
-- last_validated_at
-- last_used_at
-- revoked_at
-- created_at
-- updated_at
+- هیچ `site_credentials` table وجود ندارد؛
+- هیچ `encrypted_secret` برای Customer Credential وجود ندارد؛
+- هیچ Credential Vault برای Customer Credential وجود ندارد؛
+- هیچ persistent credential storage برای background job، webhook یا عملیات بدون حضور Client وجود ندارد.
 
-این جدول جزء مسیر اجباری Lightweight Proxy نیست.
+هر قابلیت آینده‌ای که به Credential پایدار نیاز داشته باشد خارج از قرارداد V1 است و نباید با فرض وجود چنین storageای طراحی شود.
 
 ## ۵. WooCommerce Settings
 
@@ -187,7 +181,8 @@ Account
   |
   +-- Sessions (WooGit Session)
   +-- Sites
-  |     +-- Connection Settings / Customer Credentials
+  |     +-- Connection Metadata (non-sensitive)
+  |     +-- Request-scoped Customer Credentials (not persisted)
   |     +-- Site Entitlements
   |
   +-- Subscriptions -> Plans -> Entitlements
