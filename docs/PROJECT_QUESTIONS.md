@@ -1,8 +1,12 @@
 # 🟨 باکس سؤالات تعیین‌تکلیف پروژه WooGit Backend
 
-> **روش کار:** این ۲۰ سؤال به‌ترتیب از کاربر پرسیده می‌شوند. بعد از هر پاسخ، پاسخ دقیق در همین سند ثبت می‌شود و وضعیت سؤال از `⬜ بی‌پاسخ` به `✅ پاسخ داده شد` تغییر می‌کند.
+> **وضعیت:** بازطراحی‌شده بر اساس معماری فعلی V1 و تصمیمات ثبت‌شده تا این مرحله.
 >
-> **قانون:** تا وقتی پاسخ یک سؤال ثبت نشده، سؤال بعدی وارد مرحله تصمیم‌گیری نمی‌شود؛ مگر اینکه برای روشن شدن همان موضوع نیاز به سؤال تکمیلی باشد.
+> این باکس فقط سؤال‌هایی را نگه می‌دارد که پاسخ آن‌ها واقعاً یک تصمیم معماری، محصولی، امنیتی یا عملیاتی باز ایجاد می‌کند. موضوعاتی که قبلاً در اسناد پروژه قطعی شده‌اند نباید دوباره به‌عنوان سؤال مطرح شوند.
+>
+> **روش کار:** سؤال‌ها به‌ترتیب بررسی می‌شوند. بعد از هر پاسخ، تصمیم دقیق در همین سند ثبت می‌شود و سؤال بعدی فعال می‌شود.
+>
+> **قانون مهم:** تا وقتی کاربر درباره یک موضوع تصمیم نگرفته، هیچ گزینه‌ای به‌عنوان تصمیم قطعی ثبت نمی‌شود.
 
 ## وضعیت کلی
 
@@ -12,205 +16,219 @@
 
 ---
 
-## سؤال 01 — مدل احراز هویت Client ↔ Backend
+## سؤال 01 — مدل احراز هویت App ↔ Backend
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** وقتی اپ Android از اتصال مستقیم به WordPress/WooCommerce به Backend مهاجرت می‌کند، دقیقاً مدل احراز هویت App ↔ Backend را چه می‌خواهیم؟ آیا همان مدل هدف `Access Token کوتاه‌عمر + Refresh Token چرخشی` را قطعی می‌کنیم، یا مدل دیگری مدنظر است؟
+**سؤال:** بعد از مهاجرت اپ از اتصال مستقیم به WordPress/WooCommerce، احراز هویت App ↔ Backend را دقیقاً چگونه می‌خواهیم؟ آیا مدل نهایی همان `Access Token کوتاه‌عمر + Refresh Token چرخشی و قابل ابطال` باشد؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 02 — هویت و مالکیت Site Identity
+## سؤال 02 — مدل اتصال و Verification سایت
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** Canonical Site Identity دقیقاً بر چه مبنایی ساخته شود و چه چیزی یک سایت را از سایت دیگر متمایز کند؟ فقط canonical domain، یا ترکیبی از domain + شناسه/اثبات WordPress/WooCommerce؟
+**سؤال:** Flow نهایی اتصال یک سایت جدید را تأیید می‌کنیم که همیشه با **Verification خواندنی** شروع شود: ابتدا WordPress reachability/authentication و سپس WooCommerce verification، و فقط بعد از موفقیت کامل Site Identity ثبت شود؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 03 — یک سایت و چند حساب کاربری
+## سؤال 03 — هویت Canonical سایت
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** آیا هر Site Identity فقط یک Account صاحب دارد، یا باید از ابتدا چند کاربر/عضو برای یک فروشگاه با Roleهای مختلف پشتیبانی شود؟
+**سؤال:** Canonical Site Identity را دقیقاً بر چه مبنایی تعریف کنیم؟ آیا یک سایت بر اساس canonical origin/domain + یک شناسه اثبات‌شده از WordPress/WooCommerce شناسایی شود تا تغییرات URL یا Store ID محلی باعث ساخت Site Identity تکراری نشود؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 04 — رفتار ورود سایت موجود
+## سؤال 04 — مالکیت و چندکاربره بودن یک Site
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** برای Site Identityای که قبلاً ثبت شده، اتصال موفق به WordPress/WooCommerce باید به‌تنهایی ورود کاربر محسوب شود، یا یک عامل دوم/Device approval/روش دیگری هم لازم است؟
+**سؤال:** در V1 هر Site فقط یک Account مالک داشته باشد، یا از ابتدا چند کاربر برای یک Site با Role/Permissionهای متفاوت لازم است؟ اگر چندکاربره است، آیا دعوت کاربر و انتقال مالکیت هم در V1 لازم است؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 05 — Trial و شروع آن
+## سؤال 05 — رفتار اتصال به Site موجود
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** Trial پانزده‌روزه دقیقاً از چه لحظه‌ای شروع شود: لحظه اولین اتصال موفق، لحظه ساخت Account، یا لحظه اولین استفاده تجاری؟ و آیا در صورت عدم تکمیل onboarding زمان Trial مصرف می‌شود؟
+**سؤال:** وقتی Verification یک Site Identity موجود موفق شد، آیا همین اثبات دسترسی به سایت برای ورود/ادامه Session کافی است، یا برای Account موجود باید عامل احراز هویت مستقل دیگری هم داشته باشیم؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 06 — Subscription و پرداخت
+## سؤال 06 — Trial و لحظه شروع آن
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** بعد از Trial، مدل فروش Subscription چیست؟ خرید دستی، درگاه پرداخت، تمدید خودکار، کد تخفیف، Invoice یا ترکیبی از این‌ها؟ مرجع پرداخت کدام سیستم خواهد بود؟
+**سؤال:** Trial دقیقاً از چه رویدادی شروع شود: Verification موفق سایت، ساخت Account، پایان onboarding، یا اولین عملیات تجاری؟ مدت Trial و رفتار آن در صورت نیمه‌کاره ماندن onboarding نیز دقیقاً چیست؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 07 — Entitlement و محدودیت قابلیت‌ها
+## سؤال 07 — Subscription و چرخه پرداخت
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** دقیقاً چه چیزهایی باید بر اساس Plan/Subscription محدود شوند؟ فقط Featureها، یا تعداد سایت، تعداد درخواست، تعداد عملیات، حجم Media، Chat و AI Credit هم باید quota داشته باشند؟
+**سؤال:** بعد از Trial، Subscription چگونه خرید و تمدید می‌شود؟ درگاه پرداخت، تمدید خودکار، Invoice، کد تخفیف و لغو اشتراک را در V1 چگونه می‌خواهیم و مرجع نهایی وضعیت پرداخت کدام سیستم است؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 08 — Credential Vault و کلید رمزنگاری
+## سؤال 08 — Entitlement و Quota
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** Credentialهای WordPress/WooCommerce را در Backend با چه مدل امنیتی می‌خواهیم نگهداری کنیم؟ یک Master Key خارجی، KMS/Secret Manager، envelope encryption با key versioning، یا ترکیب مشخص دیگری؟
+**سؤال:** Plan/Subscription دقیقاً چه محدودیت‌هایی ایجاد کند؟ Feature access، تعداد Site، تعداد request/operation، حجم Media، AI/Chat credit یا موارد دیگر؟ کدام محدودیت‌ها باید hard quota باشند و کدام صرفاً permission؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 09 — API Gateway و نوع API
+## سؤال 09 — Credential Vault و چرخه Credential
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** API عمومی Backend را REST/JSON نسخه‌بندی‌شده می‌خواهیم، یا GraphQL/رویکرد دیگری؟ آیا از ابتدا OpenAPI به‌عنوان منبع قرارداد رسمی و قابل تولید Client/Contract Test باشد؟
+**سؤال:** Credentialهای WordPress/WooCommerce در Backend دقیقاً چگونه نگهداری و مدیریت شوند؟ آیا در V1 باید rotation، revoke، re-connect، چند Credential برای یک Site و تشخیص Credential منقضی/باطل‌شده را پشتیبانی کنیم؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 10 — عملیات WooCommerce
+## سؤال 10 — API Contract و Versioning
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** در V1 Backend دقیقاً کدام عملیات WooCommerce باید پشت Gateway قرار بگیرند؟ Products، Orders، Customers، Categories، Media، Settings، Coupons، Variations و غیره را مشخص کنیم.
+**سؤال:** API رسمی Backend را REST/JSON نسخه‌بندی‌شده روی مسیر `/api/v1/...` قطعی می‌کنیم؟ آیا OpenAPI باید Source of Truth قرارداد API و مبنای Contract Test باشد؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 11 — Media و Upload
+## سؤال 11 — Authorization در سطح Account و Site
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** Upload تصویر باید مستقیماً از App به Backend انجام شود و Backend آن را به WordPress Media منتقل کند، یا Object Storage واسط هم از ابتدا داشته باشیم؟ محدودیت حجم، نوع فایل و retention چه باشد؟
+**سؤال:** آیا این قانون را به‌صورت غیرقابل‌مذاکره ثبت کنیم که هر درخواست ابتدا Session/Account را بررسی کند و سپس ثابت کند `site_id` متعلق به همان Account است و Plan/Entitlement اجازه آن operation را می‌دهد؟ همچنین در صورت حدس‌زدن `site_id` کاربر دیگر باید دسترسی رد شود.
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 12 — Idempotency و Operation Identity
+## سؤال 12 — دامنه عملیات WooCommerce در V1
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** برای CREATE و Mutationها `idempotency_key` و `operation_id` را یک مفهوم می‌خواهیم یا دو شناسه مستقل؟ عمر نگهداری idempotency record و رفتار retry دقیقاً چطور باشد؟
+**سؤال:** دقیقاً کدام عملیات را در V1 پشتیبانی کنیم؟ حداقل Products، Orders، Customers، Categories، Variations و Media مشخص شده‌اند؛ آیا Settings، Coupons، Shipping، Payments، Reports یا عملیات دیگری هم باید وارد V1 شوند؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 13 — Timeout-after-success و Reconciliation
+## سؤال 13 — Media Upload و Storage
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** اگر Backend عملیات را روی WooCommerce با موفقیت انجام دهد ولی پاسخ به App نرسد، Client باید از چه endpoint/مکانیزمی وضعیت operation را reconcile کند؟ آیا Backend باید operation ledger دائمی داشته باشد؟
+**سؤال:** در V1 تصویر از App مستقیماً به Backend برسد و Backend آن را به WordPress Media منتقل کند، یا Object Storage واسط لازم است؟ حداکثر حجم، MIME typeهای مجاز، timeout و رفتار retry/duplicate برای Upload چه باشد؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 14 — Queue / Worker / Retry
+## سؤال 14 — Idempotency و Operation Identity
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** کدام عملیات synchronous و کدام asynchronous باشند؟ برای workerها تعداد retry، backoff، timeout، concurrency و Dead Letter Queue چه سیاستی داشته باشیم؟
+**سؤال:** برای mutationها `idempotency_key` و `operation_id` را یک شناسه می‌خواهیم یا دو مفهوم مستقل؟ TTL رکورد idempotency، رفتار retry، conflict روی payload متفاوت و scope آن در سطح Account/Site/Operation دقیقاً چیست؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 15 — Webhook و Event Ingestion
+## سؤال 15 — Timeout-after-success و Reconciliation
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** Backend چه eventهایی را از WordPress/WooCommerce دریافت کند و منبع event اصلی Webhook باشد یا polling/reconciliation هم از ابتدا لازم است؟ برای duplicate/out-of-order event چه رفتاری می‌خواهیم؟
+**سؤال:** اگر Backend روی WooCommerce عملیات را موفق انجام دهد ولی پاسخ به Client نرسد، Client از چه APIای نتیجه را پیدا کند؟ آیا برای V1 یک Operation Ledger پایدار لازم است و تا چه مدت وضعیت operation نگهداری شود؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 16 — WooGit Bridge
+## سؤال 16 — Sync، Queue و عملیات Asynchronous
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** در V1 دقیقاً چه قابلیت‌هایی باید توسط WooGit Bridge انجام شوند و کدام قابلیت‌ها باید مستقیماً از Backend به WooCommerce بروند؟ همچنین مدل احراز هویت Backend ↔ Bridge را چه می‌خواهیم؟
+**سؤال:** کدام عملیات باید synchronous باشند و کدام باید وارد Queue/Worker شوند؟ برای عملیات async سیاست retry، exponential backoff، timeout، concurrency و failure نهایی چه باشد؟ آیا V1 به Dead Letter Queue نیاز دارد؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 17 — Rate Limit و Abuse Protection
+## سؤال 17 — Webhook و Event Reconciliation
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** Rate Limit را بر چه ابعادی اعمال کنیم: Account، Site، Device، IP، API Key یا ترکیبی؟ آیا برای عملیات حساس مثل Mutation محدودیت جداگانه لازم است؟
+**سؤال:** آیا Backend در V1 باید از WooCommerce/WordPress Webhook دریافت کند؟ اگر بله، دقیقاً کدام eventها مهم‌اند و برای duplicate، out-of-order، missed webhook و replay چه مدل reconciliation داشته باشیم؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 18 — Audit، Privacy و نگهداری داده
+## سؤال 18 — WooGit Bridge
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** دقیقاً چه رویدادها و عملیات‌هایی باید Audit شوند و داده‌های Account، Site، Order، Chat، Analytics و Credential metadata چه مدت نگهداری شوند؟ حذف کامل Account/Site چه اثری بر داده‌های تاریخی داشته باشد؟
+**سؤال:** WooGit Bridge دقیقاً چه مسئولیتی دارد؟ کدام قابلیت‌ها باید از Bridge عبور کنند و کدام عملیات مستقیماً از Backend به WordPress/WooCommerce انجام شوند؟ آیا Bridge در V1 الزامی است یا فقط برای قابلیت‌های خاص؟
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 19 — Observability و عملیات Production
+## سؤال 19 — Security / Rate Limit / Audit / Data Retention
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** برای Production چه سطحی از Observability قطعی است؟ Metrics، Structured Logs، Distributed Tracing، Error Tracking، Health/Readiness، Alerting و SLO/SLA کدام‌ها باید در V1 اجباری باشند؟
+**سؤال:** سیاست امنیت عملیاتی V1 دقیقاً چه باشد؟ Rate limit بر اساس Account/Site/Device/IP، محدودیت جداگانه Mutation، Audit eventهای حساس، retention داده‌ها و سیاست حذف Account/Site را مشخص کنیم. Credential و داده حساس نباید وارد log شوند.
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
 
-## سؤال 20 — مرز دقیق V1 و Definition of Production Ready
+## سؤال 20 — Production Ready و مرز نهایی V1
 
 **وضعیت:** ⬜ بی‌پاسخ
 
-**سؤال:** تعریف نهایی شما از «Backend V1 آماده Production» چیست؟ چه قابلیت‌ها، تست‌ها، امنیت‌ها، migrationها و failure scenarioهایی باید حتماً پاس شده باشند تا V1 را کامل و قابل عرضه بدانیم؟
+**سؤال:** دقیقاً چه معیارهایی باید پاس شوند تا Backend V1 را Production Ready بدانیم؟ حداقل باید درباره API contract، Connection Verification، authorization isolation، Credential security، idempotency، timeout-after-success، migration از Direct Connection، تست‌های failure، observability و rollback/cutover تصمیم نهایی بگیریم.
 
 **پاسخ:** _هنوز ثبت نشده_
 
 ---
+
+## چرا بعضی سؤال‌های قبلی تغییر کردند؟
+
+چند سؤال قبلی بیش از حد وارد جزئیات پیاده‌سازی می‌شدند یا موضوعی را که هنوز تصمیم محصولی آن مشخص نشده بود با یک راه‌حل فنی خاص قاطی می‌کردند.
+
+تغییرهای اصلی:
+
+- سؤال مستقل درباره **Master Key/KMS** حذف و به تصمیم کلی Credential Lifecycle تبدیل شد؛ انتخاب ابزار رمزنگاری بهتر است بعد از تعیین نیاز امنیتی انجام شود.
+- سؤال مستقل درباره **Observability** در Definition of Production Ready و سیاست عملیاتی ادغام شد تا باکس سؤال‌ها بیش از حد زیرساختی نشود.
+- سؤال **API Gateway** به API Contract/Versioning تبدیل شد چون معماری Gateway و مسیر `/api/v1/...` قبلاً جهت‌گیری مشخص دارند و سؤال باید روی موارد واقعاً باز تمرکز کند.
+- سؤال **Timeout-after-success** حفظ شد چون یک ریسک correctness واقعی است و صرفاً جزئیات فنی نیست.
+- سؤال جدید و صریح درباره **Connection Verification** اضافه شد، چون اکنون مشخص شده اولین outbound request به سایت مشتری باید Verification read-only باشد.
+- سؤال **Authorization در سطح Account/Site** جدا شد چون isolation بین کاربران یک الزام امنیتی بنیادی است و نباید داخل سؤال کلی API گم شود.
+- Queue و Webhook جدا نگه داشته شدند چون انتخاب آن‌ها مستقیماً روی معماری عملیات و consistency اثر می‌گذارد.
 
 ## قوانین ثبت پاسخ
 
@@ -222,3 +240,4 @@
 4. سؤال بعدی به‌عنوان `سؤال فعلی` مشخص شود.
 5. تعداد پاسخ‌ها و باقی‌مانده در بخش وضعیت کلی به‌روزرسانی شود.
 6. هیچ تصمیمی که کاربر نگرفته، به‌عنوان پاسخ قطعی ثبت نشود.
+7. اگر یک سؤال در اثر تصمیمات بعدی بی‌معنا شد، حذف یا با سؤال مهم‌تر جایگزین شود؛ اما تاریخچه تصمیم قبلی نباید جعل شود.
