@@ -58,15 +58,32 @@ WooGit Session
 
 Verification read-only است و قبل از استفاده از gateway انجام می‌شود.
 
-Verification موفق حتی وقتی Entitlement منقضی است، Account + Site را resolve کرده و Session صادر می‌کند؛ اما در این حالت Session فقط برای Account/Billing UI است و مجوز gateway ایجاد نمی‌کند. Response شامل `access_enabled=false` و `billing_required=true` خواهد بود.
+Verification موفق حتی وقتی Entitlement منقضی است، Account + Site را resolve کرده و Session صادر می‌کند؛ اما در این حالت Session فقط برای Account/Billing UI است و مجوز gateway ایجاد نمی‌کند. Response شامل `scope=billing`, `access_enabled=false` و `billing_required=true` خواهد بود.
 
 ## ۴. WooGit Session
 
-Session باید قابل اعتبارسنجی، expiration و revoke باشد و به Account و Site متصل باشد. Session منقضی‌شده معتبر نیست و locally revive نمی‌شود.
+Session یک زیرساخت واحد دارد اما دو Scope صریح دارد:
 
-Automatic re-login یک Session Creation جدید است؛ Backend در آن دوباره Account + Site Ownership + Entitlement را بررسی می‌کند.
+```text
+billing      → ورود به Account و Billing
+operational  → قابلیت‌های Customer-site / Commerce
+```
 
-Session بدون Entitlement معتبر می‌تواند برای ورود به حساب و مسیرهای Billing استفاده شود، اما هر endpoint محافظت‌شده Customer-site باید Entitlement را جداگانه enforce کند.
+Scope در DB ذخیره می‌شود و Client نمی‌تواند آن را تغییر دهد.
+
+### Billing Session
+
+Billing Session برای Account بدون Entitlement نیز قابل ایجاد است و TTL مستقل دارد. این Session برای Plans/Status/Checkout است و هرگز مجوز `/forward` یا سایر عملیات Customer-site ایجاد نمی‌کند.
+
+### Operational Session
+
+Operational Session فقط وقتی ایجاد می‌شود که Entitlement معتبر و capability موردنیاز فعال باشد. `expires_at` آن هرگز نباید بعد از `Entitlement.expires_at` باشد.
+
+Session منقضی‌شده معتبر نیست و locally revive نمی‌شود. Automatic re-login یک Session Creation جدید است و Backend باید دوباره Account + Site Ownership + Entitlement را بررسی کند.
+
+بعد از پرداخت موفق، Billing Session به Operational Session تبدیل نمی‌شود؛ Backend با endpoint اختصاصی Session جدید با Scope عملیاتی صادر می‌کند و Billing Sessionهای همان Account/Site را revoke می‌کند. این rotation مرز افزایش privilege است.
+
+در تمدید Plan، Entitlement مرجع اصلی است و Operational Sessionهای فعال می‌توانند تا `Entitlement.expires_at` جدید reconcile شوند. Session هرگز نباید بعد از Entitlement معتبر بماند.
 
 ## ۵. درخواست عادی Gateway
 
@@ -80,7 +97,7 @@ site_id از Session
 request path + query + raw body
 request-scoped Customer Credentials
  ↓
-Session / Account / Site Ownership / Entitlement / Security
+Session scope=operational / Account / Site Ownership / Entitlement / Security
  ↓
 resolve destination from registered Site Identity
  ↓
@@ -150,6 +167,7 @@ Endpoints:
 GET  /api/v1/billing/plans
 GET  /api/v1/billing/status
 POST /api/v1/billing/checkout
+POST /api/v1/billing/activate-session
 ```
 
 `billing/plans` فقط پلن‌های Subscription قابل فروش و منتشرشده WooCommerce را برمی‌گرداند؛ قیمت و مدت در App hard-code نمی‌شود.
@@ -169,10 +187,14 @@ Account + Site from immutable order metadata
         ↓
 Entitlement status=active
         ↓
+POST billing/activate-session
+        ↓
+new operational session + billing session rotation
+        ↓
 forward becomes authorized
 ```
 
-در حالت Plan منقضی یا Trial تمام‌شده، App همچنان می‌تواند وارد Account و Billing شود، اما `/forward` باید قبل از هر outbound request با `Entitlement` رد شود.
+در حالت Plan منقضی یا Trial تمام‌شده، App همچنان می‌تواند وارد Account و Billing شود، اما `/forward` باید قبل از هر outbound request با Scope و `Entitlement` رد شود.
 
 ## ۱۰. Currency / Collections / Errors
 
