@@ -1,169 +1,165 @@
-# نقشه‌راه بک‌اند WooGit
+# نقشه‌راه Backend WooGit
 
-## مرحله ۰ — زیرساخت پایه
+> مبنا: V1 سبک، هماهنگ با Android Client موجود و تصمیم‌های قفل‌شده معماری.
 
-هدف: قابل اجرا کردن معماری بدون قرار دادن ترافیک تجاری در معرض استفاده واقعی.
+## مرحله ۰ — قرارداد و زیرساخت پایه
 
-- مستندات مخزن؛
-- قرارداد محیط و پیکربندی؛
-- Schema و Migration پایگاه داده؛
-- سرویس حساب/احراز هویت؛
-- خطاهای ساختاریافته و Request ID؛
-- CI؛
-- محیط توسعه محلی Docker.
+- تثبیت API Contract؛
+- Session service برای **WooGit Session**؛
+- Account / Site Identity؛
+- Subscription / Entitlement؛
+- structured errors و Request ID؛
+- WordPress DB schema/migrations؛
+- CI و تست‌های Backend؛
+- بدون PostgreSQL/Redis/Queue مستقل اجباری.
 
-معیار پذیرش:
+### معیار پذیرش
 
-- محیط تازه طبق مراحل مستندشده بالا می‌آید؛
+- محیط تازه طبق مستندات بالا می‌آید؛
 - تست‌ها در CI اجرا می‌شوند؛
-- هیچ Secretی در مخزن وجود ندارد.
+- Secret در repository وجود ندارد؛
+- Access/Refresh Token در contract یا data model وجود ندارد؛
+- Session lifecycle قابل ایجاد، اعتبارسنجی، expiration و revoke است.
 
-## مرحله ۱ — اتصال سایت
+## مرحله ۱ — Connection Verification و Onboarding
 
-- مدل سایت؛
-- خزانه اعتبار؛
-- اعتبارسنجی اتصال WordPress؛
-- سلامت سایت؛
-- قطع اتصال امن؛
-- مدیریت نشست/توکن.
+- دریافت چهار Customer Credential از Client؛
+- WordPress reachability/authentication؛
+- WooCommerce verification؛
+- Site Identity؛
+- Existing/New Account flow؛
+- Trial eligibility؛
+- ایجاد/فعال‌سازی WooGit Session.
 
-معیار پذیرش:
+### معیار پذیرش
 
 - سایت معتبر متصل می‌شود؛
-- اعتبار نامعتبر به‌صورت صحیح رد می‌شود؛
-- اعتبار در API/لاگ ظاهر نمی‌شود؛
-- لغو اعتبار WordPress تشخیص داده می‌شود.
+- Credential نامعتبر صحیح رد می‌شود؛
+- Verification هیچ mutation آزمایشی ایجاد نمی‌کند؛
+- شکست Verification باعث موفق اعلام شدن Account/Trial/Session نمی‌شود؛
+- Credential در API/Log ظاهر نمی‌شود.
 
-## مرحله ۲ — Gateway
+## مرحله ۲ — Controlled Forwarding
 
-- عملیات Typed سایت؛
-- زنجیره مجوز؛
-- بررسی اشتراک؛
-- بررسی مالکیت سایت؛
-- محدودسازی نرخ؛
-- Timeout خروجی/Circuit Breaker.
+- endpointهای کنترل‌شده برای Products، Orders، Variations، Attributes/Terms، Media و سایر surfaceهای موردنیاز Client؛
+- Session validation؛
+- Account status؛
+- Trial/Subscription؛
+- Entitlement؛
+- Site ownership؛
+- Version/Security/Rate Limit؛
+- controlled destination resolution؛
+- minimum transformation.
 
-معیار پذیرش:
+### معیار پذیرش
 
-- حساب فعال می‌تواند به عملیات مجاز سایت دسترسی پیدا کند؛
-- حساب منقضی‌شده نمی‌تواند به WordPress مشتری برسد؛
-- حساب دیگر نمی‌تواند با حدس شناسه به سایت دسترسی پیدا کند؛
-- اپ دستکاری‌شده نمی‌تواند مجوز را دور بزند.
+- Client با WooGit Session معتبر و Customer Credentials می‌تواند operation مجاز را اجرا کند؛
+- Account منقضی‌شده یا غیرفعال به Customer Site دسترسی ندارد؛
+- `site_id` حدسی یا متعلق به Account دیگر پذیرفته نمی‌شود؛
+- URL دلخواه قابل Forward نیست؛
+- Backend داده WooCommerce را بی‌دلیل Mirror نمی‌کند.
 
-## مرحله ۳ — Idempotency و قابلیت اطمینان
+## مرحله ۳ — Idempotency و Timeout-after-success
 
-- جدول Idempotency؛
-- API وضعیت عملیات؛
-- سیاست Retry؛
-- راهبرد Reconciliation؛
-- تست‌های یکپارچه Timeout بعد از موفقیت.
+- Idempotency برای CREATE و سایر mutationهای لازم؛
+- operation identity؛
+- operation status API؛
+- request fingerprint؛
+- Retry policy؛
+- reconciliation؛
+- تست integration برای response-loss بعد از موفقیت مقصد.
 
-معیار پذیرش:
+### معیار پذیرش
 
-- همه Mutationهای CREATE Idempotent هستند؛
-- پاسخ گمشده پس از موفقیت مقصد، فقط یک منبع ایجاد می‌کند؛
-- Retry نتیجه عملیات اصلی را برمی‌گرداند.
+```text
+CREATE → Customer SUCCESS → response lost → retry
+                         ↓
+                  same operation
+                         ↓
+                 previous result
+```
 
-## مرحله ۴ — Bridge
+Retry نباید resource تکراری ایجاد کند و استفاده مجدد از یک Idempotency-Key برای Request متفاوت باید Conflict باشد.
 
-- افزونه Headless؛
-- Discovery؛
-- احراز هویت محدود Bridge؛
-- مذاکره قابلیت‌ها؛
-- Endpoint سلامت/نسخه؛
-- دریافت رویداد.
+## مرحله ۴ — Optional persistent Credential support
 
-معیار پذیرش:
+این مرحله فقط در صورت نیاز واقعی به عملیات بدون حضور Client فعال می‌شود.
 
-- افزونه بدون پیکربندی دستی فعال می‌شود؛
-- WooGit می‌تواند قابلیت‌های پشتیبانی‌شده را پیکربندی کند؛
-- نسخه‌های ناسازگار پروتکل به‌صورت امن رد می‌شوند.
+- Credential Vault رمزنگاری‌شده؛
+- key version/rotation؛
+- محدودسازی دسترسی؛
+- background jobs یا webhooks نیازمند Credential پایدار.
 
-## مرحله ۵ — صورتحساب تجاری
+### معیار پذیرش
 
-- دوره آزمایشی ۱۵ روزه؛
-- پلن‌ها؛
-- اشتراک‌ها؛
-- یکپارچه‌سازی درگاه پرداخت؛
-- تأیید Webhook؛
-- تمدید/افزایش مدت؛
-- اعمال انقضا.
+- مسیر عادی Proxy به Vault وابسته نیست؛
+- Credential خام Log نمی‌شود؛
+- عملیات background بدون Client فقط با credential storage صریح و امن اجرا می‌شود.
 
-معیار پذیرش:
+## مرحله ۵ — Billing تجاری
 
-- دوره آزمایشی توسط سرور کنترل می‌شود؛
-- مدت پولی توسط سرور کنترل می‌شود؛
-- Webhookهای پرداخت Idempotent هستند؛
-- حساب منقضی‌شده قبل از تماس خروجی با سایت مسدود می‌شود.
+- Trial ۱۵ روزه؛
+- Plans؛
+- Subscriptions؛
+- Payment integration؛
+- Payment webhook idempotency؛
+- expiration enforcement.
 
-## مرحله ۶ — چت
+### معیار پذیرش
 
-- مکالمه‌ها؛
-- پیام‌ها؛
-- نشست ابزارک؛
-- صندوق اپراتور؛
-- انتقال بلادرنگ؛
-- انتقال به انسان.
+- Trial توسط Backend کنترل می‌شود؛
+- Trial به Site Identity/دامنه وابسته است؛
+- Subscription و Entitlement توسط Backend اعمال می‌شوند؛
+- Account منقضی‌شده قبل از outbound request مسدود می‌شود.
 
-معیار پذیرش:
+## مرحله ۶ — قابلیت‌های اختیاری
 
-- ابزارک بدون اعتبار حساس در مرورگر کار می‌کند؛
-- ترافیک چت تحت مجوز اشتراک است؛
-- کلاینت سوءاستفاده‌گر Rate Limit می‌شود.
+در صورت تصویب محصولی:
 
-## مرحله ۷ — تحلیل
+- Chat؛
+- Analytics؛
+- AI؛
+- Webhooks؛
+- Background Jobs.
 
-- Schema رویدادهای Typed؛
-- دریافت؛
-- صف؛
-- تجمیع؛
-- داشبورد؛
-- کنترل نگهداری/حذف.
+هیچ‌کدام نباید بدون نیاز مشخص، مسیر اصلی Lightweight Proxy را سنگین کنند.
 
-معیار پذیرش:
+## مرحله ۷ — Gateway Plugin مستقل
 
-- دریافت رویداد محدود و اعتبارسنجی می‌شود؛
-- Event ID تکراری دوباره شمارش نمی‌شود؛
-- سیاست نگهداری اعمال می‌شود.
+`WooGit Gateway Plugin` روی Customer WordPress/WooCommerce یک پروژه/فاز مستقل است.
 
-## مرحله ۸ — درگاه AI
+**این repository در V1 فعلی آن را پیاده‌سازی، refactor یا migrate نمی‌کند.**
 
-- انتزاع ارائه‌دهنده؛
-- اعتبارهای ارائه‌دهندگان؛
-- اعتبار WooGit؛
-- BYOK؛
-- اجرای ابزارها؛
-- Ledger هزینه/مصرف؛
-- یکپارچه‌سازی چت.
+## مرحله ۸ — Scale / Hardening آینده
 
-معیار پذیرش:
+فقط در صورت اثبات نیاز:
 
-- کلید ارائه‌دهنده هرگز به WordPress مشتری/مرورگر نمی‌رسد؛
-- AI نمی‌تواند URL دلخواه فراخوانی کند؛
-- مصرف توسط سرور اندازه‌گیری می‌شود؛
-- اعتبارها توسط کلاینت قابل جعل نیستند.
+- PostgreSQL managed؛
+- Redis؛
+- Workerهای مستقل؛
+- horizontal scaling؛
+- advanced monitoring؛
+- disaster recovery؛
+- penetration testing؛
+- privacy/legal hardening.
 
-## مرحله ۹ — مقیاس و سخت‌سازی
+این موارد بخشی از زیرساخت اجباری V1 نیستند.
 
-- پایگاه داده/Redis مدیریت‌شده؛
-- مقیاس افقی API؛
-- Workerهای اختصاصی؛
-- مانیتورینگ پیشرفته؛
-- تمرین بازیابی از فاجعه؛
-- تست نفوذ/امنیت؛
-- بررسی حریم خصوصی و حقوقی.
+## Commercial V1 Gate
 
-## دروازه تجاری V1
+قبل از اعلام آمادگی تجاری، حداقل این موارد باید اثبات شوند:
 
-تا زمانی که موارد زیر اثبات نشده‌اند، پلتفرم را برای استفاده تجاری آماده اعلام نکنید:
+1. WooGit Session authentication؛
+2. Site isolation؛
+3. Account/Subscription/Entitlement enforcement؛
+4. Connection Verification؛
+5. Idempotency برای CREATEهای موردنیاز؛
+6. اثبات Timeout-after-success؛
+7. controlled proxy و SSRF protection؛
+8. Audit برای عملیات حساس؛
+9. Backup/Restore؛
+10. monitoring و operational readiness؛
+11. نبود Secretهای حساس در repository، log و response؛
+12. contract compatibility با Android Client موجود.
 
-۱. احراز هویت و جداسازی مالکیت سایت؛
-۲. ذخیره رمزنگاری‌شده اعتبارها؛
-۳. اعمال اشتراک در سمت سرور؛
-۴. Idempotency برای همه Mutationهای CREATE؛
-۵. اثبات Timeout بعد از موفقیت؛
-۶. احراز هویت و نسخه‌بندی Bridge؛
-۷. حسابرسی عملیات حساس؛
-۸. تست Backup/Restore؛
-۹. مانیتورینگ محیط عملیاتی؛
-۱۰. نبود Secretهای بحرانی در کلاینت یا مخزن.
+**Credential Vault برای Commercial V1 شرط عمومی و اجباری نیست**؛ فقط قابلیت‌هایی که واقعاً به credential پایدار نیاز دارند باید آن را فعال کنند.
