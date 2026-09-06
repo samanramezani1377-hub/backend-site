@@ -314,17 +314,31 @@ Backend باید برای Session حداقل این وضعیت‌ها را پش�
 
 این Session با Credentialهای سایت مشتری متفاوت است و جایگزین WordPress Application Password یا WooCommerce Consumer Credentials نیست.
 
-## ۸. Credential Vault
+## ۸. عدم نگهداری Customer Credential در Backend
 
-Backend پس از verification موفق، در صورت نیاز Credential سایت را در Vault امن نگهداری می‌کند.
+در V1، Backend **هیچ Customer Credentialای را در DB، Vault، Cache پایدار یا هر storage دائمی نگهداری نمی‌کند**.
 
-قواعد:
+الگوی اجباری:
 
-- Credential خام در responseهای عادی برنگردد.
-- Credential در log ثبت نشود.
-- دسترسی Gateway به Credential حداقلی باشد.
-- نسخه کلید رمزنگاری قابل audit و rotation باشد.
-- تغییر/rotation/revocation Credential قابل ردیابی باشد.
+```text
+Client
+  → WooGit Session + site_id + Customer Credentials
+  → Backend
+  → Customer WordPress / WooCommerce
+```
+
+Credentialهای Customer فقط برای همان Request مصرف می‌شوند و پس از پایان پردازش نباید به‌عنوان Credential پایدار نگهداری یا برای Request یا Site دیگری reuse شوند.
+
+Backend نباید:
+
+- Customer Credential را در DB ذخیره کند؛
+- برای Customer Credential، Vault یا secret storage پایدار داشته باشد؛
+- Customer Credential را در Cache پایدار نگهداری کند؛
+- Customer Credential را در Log/Telemetry/Crash Report/Audit ذخیره کند؛
+- Customer Credential را در Error/Response برگرداند؛
+- Customer Credential را برای Request یا Site دیگری reuse کند.
+
+هر قابلیت آینده‌ای که به Credential پایدار نیاز داشته باشد خارج از این قرارداد V1 است و نمی‌تواند با فرض وجود Credential Storage در Backend طراحی شود.
 
 ## ۹. عملیات Client که باید در Migration پوشش داده شوند
 
@@ -447,7 +461,7 @@ Backend باید این قرارداد را طوری ارائه کند که با
 3. نام‌گذاری مدل‌های Backend نباید با مدل‌های واقعی Client بدون بررسی تطبیق فرض شود.
 4. Store ID محلی Client نباید مستقیماً site identity تلقی شود.
 5. در قرارداد هدف، احراز هویت Backend با **یک WooGit Session معتبر** انجام می‌شود و مدل جداگانه Access/Refresh Token بخشی از قرارداد نیست.
-6. Credential handling باید با تصمیم فعلی Client → Backend هماهنگ باشد؛ در Proxy عادی Customer Credentials می‌توانند همراه همان Request ارسال شوند و Vault برای هر Request اجباری نیست.
+6. **Customer Credentials در V1 فقط request-scoped هستند و Backend نباید آن‌ها را در DB، Vault، Cache پایدار یا هر storage دائمی نگهداری کند.**
 7. رفتار فعلی direct WooCommerce باید قبل از cutover با contract test پوشش داده شود.
 8. Migration باید امکان rollback یا coexistence کنترل‌شده داشته باشد.
 9. **هیچ عملیات تجاری Backend به سایت مشتری نباید قبل از موفقیت Connection Verification اجرا شود.**
