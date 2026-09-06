@@ -1,0 +1,1 @@
+Implementation note: In-app announcements use an opaque numeric `display_type`. Backend must not encode presentation semantics; the app is responsible for mapping numeric display types to its own UI components. Suggested convention: 1=full banner, 2=top expanding notice, but this is an app-side convention rather than a backend rule.
