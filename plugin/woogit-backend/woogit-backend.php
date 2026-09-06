@@ -2,14 +2,14 @@
 /**
  * Plugin Name: WooGit Backend
  * Description: WooGit V1 secure transparent gateway/proxy.
- * Version: 0.3.2
+ * Version: 0.3.3
  * Requires at least: 6.4
  * Requires PHP: 8.1
  */
 
 defined('ABSPATH') || exit;
 
-define('WOOGIT_BACKEND_VERSION','0.3.2');
+define('WOOGIT_BACKEND_VERSION','0.3.3');
 define('WOOGIT_BACKEND_FILE',__FILE__);
 define('WOOGIT_BACKEND_DIR',plugin_dir_path(__FILE__));
 
@@ -17,7 +17,8 @@ foreach(['Database','AccountService','SiteService','EntitlementService','Session
 
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{
-    if((string)get_option('woogit_backend_db_version','') !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install();
+    $from=(string)get_option('woogit_backend_db_version','');
+    if($from !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install($from);
     (new \WooGit\Backend\BillingService())->registerHooks();
 });
 add_action('init',static function():void{
@@ -31,9 +32,6 @@ add_action('woogit_backend_cleanup',static function():void{
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_sessions WHERE expires_at < %s",$now));
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_idempotency WHERE updated_at < %s AND state IN ('succeeded','failed')",$old7));
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_operations WHERE expires_at IS NOT NULL AND expires_at < %s AND status IN ('succeeded','failed')",$now));
-
-    // Rate-limit rows are windowed; cleanup by window_start instead of
-    // updated_at so the hot-path no longer needs to rewrite updated_at.
     $rateLimitTable=$wpdb->prefix.'woogit_rate_limits';
     $wpdb->query($wpdb->prepare("DELETE FROM {$rateLimitTable} WHERE window_start < %s LIMIT 1000",$old2));
 });
