@@ -74,7 +74,7 @@ final class Database
         $hasUnique=false;$hasPlain=false;
         foreach($indexes as $index){if(($index['Key_name']??'')==='account_id'){if((int)($index['Non_unique']??1)===0)$hasUnique=true;else$hasPlain=true;}}
         if($hasUnique)return true;
-        if($hasPlain&&!$wpdb->query("ALTER TABLE {$table} DROP INDEX account_id"))return false;
+        if($hasPlain&&false===$wpdb->query("ALTER TABLE {$table} DROP INDEX account_id"))return false;
         return false!==$wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY account_id (account_id)");
     }
 }
