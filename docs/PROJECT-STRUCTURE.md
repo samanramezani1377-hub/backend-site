@@ -1,6 +1,6 @@
-# Proposed Repository Structure
+# ساختار پیشنهادی مخزن
 
-The repository should evolve toward this structure as implementation begins:
+با شروع پیاده‌سازی، مخزن باید به‌تدریج به ساختار زیر نزدیک شود:
 
 ```text
 backend-site/
@@ -39,76 +39,76 @@ backend-site/
     └── workflows/
 ```
 
-## Domain boundaries
+## مرزهای دامنه
 
 ### Accounts
 
-Identity, sessions, account lifecycle and device/session management.
+هویت، نشست‌ها، چرخه عمر حساب و مدیریت دستگاه/نشست.
 
 ### Sites
 
-Site ownership, connection state, health and credential references.
+مالکیت سایت، وضعیت اتصال، سلامت و مراجع اعتبارها.
 
 ### Subscriptions
 
-Plans, subscriptions, entitlements and expiration.
+پلن‌ها، اشتراک‌ها، مجوزها و انقضا.
 
 ### Gateway
 
-Authorization pipeline and typed outbound operations.
+زنجیره مجوز و عملیات خروجی Typed.
 
 ### Bridge
 
-Provisioning, capability negotiation and Bridge protocol.
+Provisioning، مذاکره قابلیت‌ها و پروتکل Bridge.
 
 ### Chat
 
-Conversations, messages, operator assignment and realtime sessions.
+مکالمه‌ها، پیام‌ها، تخصیص اپراتور و نشست‌های بلادرنگ.
 
 ### Analytics
 
-Event validation, ingestion and aggregation.
+اعتبارسنجی رویداد، دریافت و تجمیع.
 
 ### AI
 
-Provider abstraction, usage metering, credits and tools.
+انتزاع ارائه‌دهنده، اندازه‌گیری مصرف، اعتبارها و ابزارها.
 
-## Testing layers
+## لایه‌های تست
 
 ### Unit
 
-Pure authorization, entitlement, idempotency and domain logic.
+منطق خالص مجوز، Entitlement، Idempotency و منطق دامنه.
 
 ### Feature
 
-API request/response contracts and authentication.
+قراردادهای درخواست/پاسخ API و احراز هویت.
 
 ### Integration
 
-Real PostgreSQL/Redis and a controlled WordPress test instance.
+PostgreSQL/Redis واقعی و یک نمونه کنترل‌شده WordPress برای تست.
 
 ### Security
 
-- cross-account access attempts;
-- expired subscription bypass;
-- forged site IDs;
-- replayed Bridge requests;
-- oversized payloads;
-- arbitrary proxy/SSRF attempts;
-- credential leakage checks.
+- تلاش برای دسترسی بین حساب‌ها؛
+- دور زدن اشتراک منقضی‌شده؛
+- Site ID جعلی؛
+- Replay درخواست‌های Bridge؛
+- Payload بیش از حد بزرگ؛
+- تلاش Proxy دلخواه/SSRF؛
+- بررسی نشت اعتبارها.
 
 ### Reliability
 
-Explicit tests for:
+تست‌های صریح برای:
 
-- timeout after remote success;
-- duplicated request;
-- lost webhook response;
-- worker retry;
-- customer WordPress downtime;
-- Redis restart;
-- API process restart.
+- Timeout بعد از موفقیت مقصد؛
+- درخواست تکراری؛
+- پاسخ گمشده Webhook؛
+- Retry پردازشگر؛
+- از دسترس خارج شدن WordPress مشتری؛
+- Restart شدن Redis؛
+- Restart شدن فرایند API.
 
-## Implementation rule
+## قانون پیاده‌سازی
 
-Do not create empty placeholder modules merely to make the tree look complete. A directory should be introduced when its first real implementation or test exists.
+صرفاً برای کامل به‌نظر رسیدن درخت پروژه، ماژول‌های Placeholder خالی نسازید. یک پوشه زمانی اضافه شود که اولین پیاده‌سازی واقعی یا تست واقعی آن وجود داشته باشد.
