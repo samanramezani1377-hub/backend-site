@@ -111,9 +111,24 @@ Idempotency-Key: <stable-client-operation-key>
 
 Fingerprint شامل method + path + query + hash بدنه خام request است. Retry با همان Key و همان Request نباید عملیات دوم ایجاد کند. استفاده از همان Key برای Request متفاوت باید Conflict باشد.
 
-در صورت timeout پس از ارسال request، Backend نباید موفقیت یا شکست عملیات Customer site را جعل کند؛ operation به وضعیت `unknown` می‌رود و App می‌تواند با `operation_id` وضعیت را بررسی کند.
+وضعیت authoritative هر کلید یکی از این موارد است:
+
+```text
+pending   → عملیات در حال اجراست
+succeeded → پاسخ موفق upstream ثبت شده است
+failed    → پاسخ ناموفق upstream ثبت شده است
+unknown   → request ارسال شده ولی نتیجه نهایی upstream اثبات نشده است
+```
+
+در صورت timeout پس از ارسال request، Backend نباید موفقیت یا شکست عملیات Customer site را جعل کند؛ operation و idempotency record به `unknown` می‌روند و همان `operation_id` حفظ می‌شود.
+
+**Retry یک mutation با همان Key هرگز نباید صرفاً به دلیل timeout دوباره به upstream forward شود.** این کار برای CREATE می‌تواند duplicate resource بسازد.
+
+تا زمانی که یک reconciliation اختصاصی و قابل‌اعتماد برای همان resource وجود نداشته باشد، `unknown` یک وضعیت indeterminate است و Backend generic آن را خودکار به success/failure تبدیل یا mutation را دوباره اجرا نمی‌کند. Client باید `operation_id` را برای مشاهده state استفاده کند و برای عملیات ناشناخته از retry کور خودداری کند.
 
 `GET /api/v1/operations/{operation_id}` فقط برای بازیابی state عملیات gateway است و API محصول/سفارش محسوب نمی‌شود.
+
+Idempotency recordهای `pending` و `unknown` نباید توسط retention job حذف شوند؛ حذف آن‌ها می‌تواند همان mutation را پس از گذشت زمان دوباره قابل‌اجرا کند. فقط stateهای نهایی `succeeded` و `failed` مشمول retention عادی هستند.
 
 ## ۸. Sites / Subscription
 
