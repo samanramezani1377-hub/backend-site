@@ -4,56 +4,66 @@
 >
 > این repository فقط Backend اپ Android موجود WooGit را می‌سازد. اپ در repository مستقل قرار دارد و در این سند به‌عنوان Client خارجی در نظر گرفته می‌شود.
 >
-> **تفکیک مهم:** `WooGit Gateway Plugin` و `WooGit Main Plugin` دو محصول/کامپوننت کاملاً جدا هستند و نباید با یکدیگر قاطی شوند.
+> **تفکیک قطعی:** `WooGit Main Plugin` و `WooGit Gateway Plugin` دو کامپوننت کاملاً جدا هستند.
 >
-> - **WooGit Gateway Plugin:** پلاگینی که روی WordPress/WooCommerce سایت مشتری نصب می‌شود و در آینده بخشی از مسیر اتصال Backend به سایت مشتری خواهد بود. توسعه آن در وضعیت فعلی این پروژه انجام نمی‌شود.
-> - **WooGit Main Plugin:** پلاگین مربوط به خود سایت اصلی WooGit/WordPress ووگیت است و از Gateway Plugin مشتری مستقل است.
+> - **WooGit Main Plugin:** پلاگین نصب‌شده روی WordPress اصلی خود WooGit و مغز Backend فعلی این پروژه است.
+> - **WooGit Gateway Plugin:** پلاگین مستقل نصب‌شده روی WordPress/WooCommerce سایت مشتری. این کامپوننت فعلاً خارج از scope توسعه است و نباید با Main Plugin یا Backend فعلی یکی فرض شود.
 
 ## ۱. تصمیم اصلی
 
-Backend V1 باید سبک باشد و بین اپ موجود و Customer WordPress/WooCommerce قرار بگیرد. هدف، بازسازی WooCommerce یا Mirror دائمی داده‌ها نیست.
+Backend V1 سبک است و روی WordPress اصلی WooGit و `WooGit Main Plugin` اجرا می‌شود. Backend بین اپ موجود و Customer WordPress/WooCommerce قرار می‌گیرد. هدف، بازسازی WooCommerce یا Mirror دائمی داده‌ها نیست.
 
-در وضعیت فعلی **تمرکز توسعه روی Backend است و روی `WooGit Gateway Plugin` کار نمی‌کنیم.** Gateway فقط به‌عنوان یک کامپوننت مستقل و آینده در قرارداد/معماری شناخته می‌شود تا بعداً طراحی و پیاده‌سازی آن جداگانه انجام شود.
+در V1 فعلی **فقط `WooGit Main Plugin` و Backend آن توسعه داده می‌شوند.** `WooGit Gateway Plugin` فعلاً ساخته، refactor یا migrate نمی‌شود و Backend نباید منتظر آن بماند.
 
-مدل مفهومی مسیر نهایی:
+مدل فعلی V1:
 
 ```text
 Android App
    ↓
 WooGit Backend
-   ↓
-[در آینده، در صورت نیاز] WooGit Gateway Plugin روی سایت مشتری
-   ↓
-Customer WordPress / WooCommerce
+   │
+   └── WooGit Main Plugin
+          │
+          ↓
+   Customer WordPress / WooCommerce
 ```
 
-در V1 فعلی، Backend نباید منتظر پیاده‌سازی Gateway Plugin بماند و نباید کد Gateway را در این repository بازسازی کند.
+`WooGit Gateway Plugin` یک کامپوننت آینده و مستقل است و در مسیر اجباری V1 قرار ندارد:
+
+```text
+Customer WordPress / WooCommerce
+   └── (Future) WooGit Gateway Plugin
+```
 
 Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 
 ## ۲. تفکیک دو WooGit Plugin
 
-### WooGit Gateway Plugin — سایت مشتری
-
-این پلاگین برای نصب روی WordPress/WooCommerce مشتری طراحی می‌شود و با پلاگین اصلی سایت WooGit یکی نیست.
-
-```text
-Customer WordPress/WooCommerce
-        └── WooGit Gateway Plugin
-```
-
-این کامپوننت در وضعیت فعلی **خارج از محدوده اجرای پروژه** است. هیچ پیاده‌سازی، refactor یا migration مربوط به Gateway Plugin در این مرحله انجام نمی‌شود.
-
 ### WooGit Main Plugin — سایت اصلی WooGit
 
-این پلاگین مربوط به WordPress سایت اصلی WooGit است و از Gateway Plugin مشتری مستقل است.
+این همان Plugin مورد استفاده در پروژه فعلی است و روی WordPress اصلی WooGit نصب می‌شود.
 
 ```text
 WooGit Main Website / WordPress
         └── WooGit Main Plugin
 ```
 
-هر اشاره به `WooGit Plugin` در اسناد باید با توجه به این تفکیک مشخص کند منظور کدام‌یک است.
+مسئولیت‌های آن شامل Backend API، Authentication/Session، Account، Trial، Subscription، Entitlement، Site Identity، Version Gate، Security، Idempotency، Admin و Lightweight Proxy/controlled integration است.
+
+**هرجا در اسناد فعلی پروژه منظور Backend Plugin است، منظور `WooGit Main Plugin` است مگر اینکه صراحتاً نام دیگری ذکر شود.**
+
+### WooGit Gateway Plugin — سایت مشتری
+
+این پلاگین کاملاً مستقل است و برای نصب روی WordPress/WooCommerce مشتری در نظر گرفته می‌شود.
+
+```text
+Customer WordPress/WooCommerce
+        └── WooGit Gateway Plugin
+```
+
+این کامپوننت در V1 فعلی **خارج از scope توسعه** است. هیچ پیاده‌سازی، refactor یا migration مربوط به آن در این repository انجام نمی‌شود.
+
+**نکته مهم:** عبارت `Lightweight Proxy` یا `Gateway/Proxy` در Backend به معنی `WooGit Gateway Plugin` نیست؛ منظور integration/proxy logic داخل `WooGit Main Plugin` است.
 
 ## ۳. وضعیت فعلی Client
 
@@ -66,7 +76,7 @@ WooGit Main Website / WordPress
 
 در وضعیت فعلی، Backend Session وجود ندارد؛ اضافه شدن Backend باید با حداقل تغییر در Client انجام شود.
 
-## ۴. توپولوژی هدف
+## ۴. توپولوژی هدف V1
 
 ```text
 ┌──────────────────────┐
@@ -79,6 +89,7 @@ WooGit Main Website / WordPress
            ▼
 ┌────────────────────────────┐
 │       WooGit Backend       │
+│    WooGit Main Plugin      │
 │                            │
 │ Authorization / Account    │
 │ Subscription / Entitlement │
@@ -92,15 +103,21 @@ WooGit Main Website / WordPress
 ┌────────────────────────────┐
 │ Customer WordPress         │
 │ + WooCommerce              │
-│ + (Future) Gateway Plugin  │
 └────────────────────────────┘
+```
 
-مستقل از این مسیر:
+مستقل از این مسیر، همان سایت اصلی WooGit محل اجرای Main Plugin است:
 
-┌────────────────────────────┐
-│ WooGit Main Website        │
-│ + WooGit Main Plugin       │
-└────────────────────────────┘
+```text
+WooGit Main Website / WordPress
+        └── WooGit Main Plugin
+```
+
+و Gateway Plugin مشتری یک کامپوننت جدا و آینده است:
+
+```text
+Customer WordPress/WooCommerce
+        └── (Future) WooGit Gateway Plugin
 ```
 
 ## ۵. دو نوع Credential
@@ -129,7 +146,7 @@ App
  ↓
 WooGit Session + site_id + Customer Credentials
  ↓
-Backend
+WooGit Main Plugin / Backend
  ├─ Session validation
  ├─ Account active / not closed
  ├─ Trial / Subscription valid
@@ -147,7 +164,7 @@ Same response / minimum transformation
 App
 ```
 
-وجود Gateway Plugin در آینده نباید به معنی ساخت یک Proxy عمومی یا URL دلخواه باشد. مقصد Customer Site باید از Site Identity و قرارداد کنترل‌شده تعیین شود.
+وجود `WooGit Gateway Plugin` در آینده نباید به معنی ساخت یک Proxy عمومی یا URL دلخواه باشد. مقصد Customer Site باید از Site Identity و قرارداد کنترل‌شده تعیین شود.
 
 Backend نباید برای هر درخواست داده‌های WooCommerce را Mirror، بازسازی یا بی‌دلیل تبدیل کند.
 
@@ -216,7 +233,7 @@ Backend فقط در حد داده عملیاتی موردنیاز خودش state
 
 ## ۱۱. عملیات و Media
 
-API بیرونی می‌تواند برای امنیت و قرارداد پایدار مسیرهای شناخته‌شده/Typed داشته باشد؛ اما پیاده‌سازی داخلی Lightweight Proxy است.
+API بیرونی می‌تواند برای امنیت و قرارداد پایدار مسیرهای شناخته‌شده/Typed داشته باشد؛ اما پیاده‌سازی داخلی در `WooGit Main Plugin` Lightweight Proxy است.
 
 برای مثال:
 
@@ -226,7 +243,7 @@ POST /api/v1/gateway/sites/{site_id}/orders/get
 POST /api/v1/gateway/sites/{site_id}/media/upload
 ```
 
-این مسیرهای API به معنی پیاده‌سازی `WooGit Gateway Plugin` در این مرحله نیستند؛ آن پلاگین یک کامپوننت مستقل است که در فاز جداگانه طراحی خواهد شد.
+وجود segment یا نام `gateway` در مسیر API به معنی `WooGit Gateway Plugin` نیست؛ این فقط نام integration surface در Backend است. `WooGit Gateway Plugin` مشتری یک کامپوننت مستقل و خارج از scope فعلی است.
 
 Media نیز تا حد امکان مستقیماً در Customer WordPress نگهداری می‌شود.
 
@@ -259,14 +276,16 @@ Customer Credentials
     = Customer Site authentication
 
 WooGit Backend
-    = Account + Subscription + Entitlement + Site ownership
-      + Security + Lightweight Proxy
-
-WooGit Gateway Plugin
-    = کامپوننت مستقل روی سایت مشتری؛ فعلاً خارج از scope توسعه
+    = WordPress + WooGit Main Plugin
+      + Account + Subscription + Entitlement
+      + Site ownership + Security
+      + Lightweight Proxy/controlled integration
 
 WooGit Main Plugin
-    = پلاگین مستقل سایت اصلی WooGit؛ با Gateway Plugin یکی نیست
+    = پلاگین Backend روی سایت اصلی WooGit
+
+WooGit Gateway Plugin
+    = پلاگین مستقل روی سایت مشتری؛ فعلاً خارج از scope توسعه
 
 Customer WordPress/WooCommerce
     = Source of truth for store data
