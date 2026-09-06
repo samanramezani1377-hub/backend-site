@@ -13,7 +13,7 @@ final class Database
         $prefix=$wpdb->prefix.'woogit_';
 
         dbDelta("CREATE TABLE {$prefix}accounts (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,email VARCHAR(190) NULL,web_password_hash VARCHAR(255) NULL,status VARCHAR(32) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),KEY status (status)) {$charset};");
-        dbDelta("CREATE TABLE {$prefix}sites (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,canonical_url TEXT NOT NULL,host VARCHAR(190) NOT NULL,status VARCHAR(32) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY host (host),KEY account_id (account_id),KEY status (status)) {$charset};");
+        dbDelta("CREATE TABLE {$prefix}sites (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,canonical_url TEXT NOT NULL,host VARCHAR(190) NOT NULL,status VARCHAR(32) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY host (host),UNIQUE KEY account_id (account_id),KEY status (status)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}sessions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,scope VARCHAR(20) NULL,token_hash CHAR(64) NOT NULL,expires_at DATETIME NOT NULL,revoked_at DATETIME NULL,created_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY token_hash (token_hash),KEY account_site (account_id,site_id),KEY account_site_scope (account_id,site_id,scope),KEY expires_at (expires_at)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}web_sessions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,token_hash CHAR(64) NOT NULL,expires_at DATETIME NOT NULL,revoked_at DATETIME NULL,created_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY token_hash (token_hash),KEY account_site (account_id,site_id),KEY expires_at (expires_at)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}entitlements (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,status VARCHAR(32) NOT NULL,starts_at DATETIME NOT NULL,expires_at DATETIME NULL,capabilities LONGTEXT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY (id),UNIQUE KEY account_site (account_id,site_id),KEY status (status),KEY expires_at (expires_at)) {$charset};");
@@ -27,6 +27,10 @@ final class Database
         }
         if(version_compare($fromVersion ?: '0.0.0','0.3.5','<') && !self::migrateWebAuth($prefix)){
             error_log('[WooGit Backend] Database migration to web authentication failed; database version was not advanced.');
+            return;
+        }
+        if(version_compare($fromVersion ?: '0.0.0','0.3.6','<') && !self::migrateAccountSiteUniqueness($prefix)){
+            error_log('[WooGit Backend] Database migration to one-account-one-site failed; database version was not advanced.');
             return;
         }
         if(false===get_option('woogit_backend_version_policy',false))add_option('woogit_backend_version_policy',['latest_version'=>WOOGIT_BACKEND_VERSION,'recommended_version'=>WOOGIT_BACKEND_VERSION,'minimum_supported_version'=>'0.0.0','deprecated_versions'=>[]], '', false);
@@ -58,5 +62,19 @@ final class Database
             if(false===$result)return false;
         }
         return true;
+    }
+
+    private static function migrateAccountSiteUniqueness(string $prefix): bool
+    {
+        global $wpdb;
+        $table=$prefix.'sites';
+        $duplicate=(int)$wpdb->get_var("SELECT COUNT(*) FROM (SELECT account_id FROM {$table} GROUP BY account_id HAVING COUNT(*) > 1) duplicates");
+        if($duplicate>0){error_log('[WooGit Backend] Cannot enforce one-account-one-site: duplicate Account/Site relationships exist.');return false;}
+        $indexes=$wpdb->get_results("SHOW INDEX FROM {$table}",ARRAY_A);
+        $hasUnique=false;$hasPlain=false;
+        foreach($indexes as $index){if(($index['Key_name']??'')==='account_id'){if((int)($index['Non_unique']??1)===0)$hasUnique=true;else$hasPlain=true;}}
+        if($hasUnique)return true;
+        if($hasPlain&&!$wpdb->query("ALTER TABLE {$table} DROP INDEX account_id"))return false;
+        return false!==$wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY account_id (account_id)");
     }
 }
