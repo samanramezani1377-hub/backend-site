@@ -1,131 +1,130 @@
-# WooGit System Architecture
+# معماری سیستم WooGit
 
-## 1. High-level topology
+## ۱. توپولوژی سطح بالا
 
 ```text
-                         Internet
+                         اینترنت
                             |
              +--------------+--------------+
              |                             |
-        WooGit Website                WooGit App
-        WordPress CMS                     |
-             |                            |
-       Control Plane UI            HTTPS / short token
-             |                            |
-             +-------------+--------------+
+        وب‌سایت WooGit                 اپ WooGit
+        سامانه WordPress                  |
+             |                       HTTPS / توکن کوتاه‌عمر
+       پنل کنترل / مدیریت                  |
+             |                             |
+             +-------------+---------------+
                            |
-                    WooGit API/Gateway
+                    API / درگاه WooGit
                            |
        +-------------------+-------------------+
        |          |          |         |        |
-      Auth     Entitle    Sites/Vault  Chat    AI Gateway
+    احراز هویت  مجوزها   سایت/خزانه   چت     درگاه AI
        |          |          |         |        |
        +----------+----------+---------+--------+
                            |
-                      Redis / Queue
+                    Redis / صف
                            |
-                      PostgreSQL
+                       PostgreSQL
                            |
+                    HTTPS خروجی
                            |
-                    outbound HTTPS
-                           |
-                  Customer WordPress
+                  WordPress مشتری
                            |
                     WooGit Bridge
 ```
 
-## 2. Control plane vs data plane
+## ۲. پنل کنترل در برابر لایه داده
 
-### Control plane
+### پنل کنترل
 
-WordPress is allowed to manage:
+WordPress می‌تواند این موارد را مدیریت کند:
 
-- WooGit accounts;
-- plan definitions;
-- subscriptions;
-- entitlements;
-- customer/site records;
-- operational configuration;
-- support/admin views;
-- public website content.
+- حساب‌های WooGit؛
+- تعریف پلن‌ها؛
+- اشتراک‌ها؛
+- مجوزها؛
+- رکوردهای مشتری و سایت؛
+- تنظیمات عملیاتی؛
+- نماهای پشتیبانی و مدیریت؛
+- محتوای عمومی وب‌سایت.
 
-### Data plane
+### لایه داده
 
-The Gateway handles:
+درگاه مسئول این موارد است:
 
-- authenticated mobile requests;
-- entitlement checks;
-- site credential resolution;
-- outbound calls to customer WordPress;
-- response normalization;
-- rate limits;
-- idempotency;
-- chat traffic;
-- realtime traffic;
-- webhook/event ingestion.
+- درخواست‌های احراز‌شده موبایل؛
+- بررسی مجوز؛
+- بازیابی اطلاعات اتصال سایت؛
+- درخواست‌های خروجی به WordPress مشتری؛
+- استانداردسازی پاسخ؛
+- محدودسازی نرخ؛
+- Idempotency؛
+- ترافیک چت؛
+- ترافیک بلادرنگ؛
+- دریافت Webhook و رویداد.
 
-This separation prevents the WordPress admin UI from becoming a required hop for every API request.
+این جداسازی باعث می‌شود پنل مدیریت WordPress برای هر درخواست API به‌عنوان یک واسط اجباری عمل نکند.
 
-## 3. Why WordPress is still central
+## ۳. چرا WordPress همچنان مرکزی است؟
 
-The commercial site can be WordPress because WordPress already provides users, roles/capabilities, content management, REST APIs and a mature plugin ecosystem. It can also serve as the operator control plane through a WooGit management plugin.
+سایت تجاری می‌تواند WordPress باشد چون WordPress سیستم کاربران، نقش‌ها/قابلیت‌ها، مدیریت محتوا، REST API و اکوسیستم بالغ افزونه‌ها را در اختیار دارد. همچنین می‌تواند از طریق افزونه مدیریت WooGit نقش پنل کنترل اپراتورها را داشته باشد.
 
-The decision is not “WordPress vs backend”. It is:
-
-```text
-WordPress = CMS + Control Plane
-Gateway    = Execution Plane
-```
-
-## 4. Connection flow
+تصمیم «WordPress یا بک‌اند» نیست؛ تصمیم این است:
 
 ```text
-1. App collects domain + WordPress application credential.
-2. App sends it once to WooGit API over TLS.
-3. Backend canonicalizes the URL and creates a site connection operation.
-4. Backend validates authentication and required capabilities against WordPress.
-5. Backend stores the credential encrypted.
-6. Backend returns connection success and non-sensitive site metadata.
-7. App receives a WooGit session/access token, not the site credential.
+WordPress = CMS + پنل کنترل
+Gateway    = لایه اجرا
 ```
 
-The backend should never log the credential, Authorization header, raw request body containing the credential, or a full customer response that might contain secrets.
+## ۴. جریان اتصال
 
-## 5. Normal request flow
+```text
+۱. اپ دامنه + اعتبار برنامه‌ای WordPress را می‌گیرد.
+۲. اپ آن را یک‌بار از طریق TLS به API ووگیت می‌فرستد.
+۳. بک‌اند URL را استاندارد و یک عملیات اتصال سایت ایجاد می‌کند.
+۴. بک‌اند احراز هویت و قابلیت‌های لازم را روی WordPress بررسی می‌کند.
+۵. بک‌اند اعتبار را رمزنگاری‌شده ذخیره می‌کند.
+۶. بک‌اند فقط موفقیت اتصال و فراداده غیرحساس را برمی‌گرداند.
+۷. اپ توکن نشست/دسترسی WooGit می‌گیرد، نه اعتبار سایت.
+```
+
+بک‌اند نباید اعتبار سایت، هدر Authorization، بدنه خام درخواست شامل اعتبار یا پاسخ کامل مشتری را که ممکن است شامل اطلاعات محرمانه باشد در لاگ ثبت کند.
+
+## ۵. جریان عادی درخواست
 
 ```text
 App
- -> access token
+ -> توکن دسترسی
  -> Gateway
- -> authenticate account/session
- -> check subscription
- -> check site entitlement
- -> check capability
- -> resolve encrypted credential
- -> call customer WordPress
- -> sanitize response
- -> return response to App
+ -> احراز حساب/نشست
+ -> بررسی اشتراک
+ -> بررسی مجوز سایت
+ -> بررسی قابلیت
+ -> بازیابی اعتبار رمزنگاری‌شده
+ -> تماس با WordPress مشتری
+ -> پاک‌سازی پاسخ
+ -> App
 ```
 
-If any authorization step fails, the customer WordPress endpoint is not contacted.
+اگر هر مرحله مجوز شکست بخورد، به WordPress مشتری هیچ درخواستی ارسال نمی‌شود.
 
-## 6. Expired account flow
+## ۶. جریان حساب منقضی‌شده
 
 ```text
 App -> Gateway
           |
-          +-- account active? NO
+          +-- حساب فعال است؟ خیر
           |
-          +-- return 402/403-style business error
+          +-- خطای تجاری 402/403
           |
-          X no outbound request
+          X بدون درخواست خروجی
 ```
 
-The exact HTTP status contract should be finalized during implementation, but the invariant is that the remote site is never contacted after the server has determined that the request is not entitled.
+کد دقیق HTTP باید در مرحله پیاده‌سازی نهایی شود؛ اما اصل ثابت این است که پس از تشخیص عدم مجوز، سایت مشتری هرگز مورد درخواست قرار نگیرد.
 
-## 7. Bridge discovery
+## ۷. کشف Bridge
 
-After installation/activation the Bridge should expose a small discovery endpoint returning:
+پس از نصب و فعال‌سازی، Bridge باید یک نقطه کشف کوچک داشته باشد که این موارد را برگرداند:
 
 ```json
 {
@@ -138,49 +137,49 @@ After installation/activation the Bridge should expose a small discovery endpoin
 }
 ```
 
-No secret should be returned in discovery.
+هیچ راز یا اعتبار محرمانه‌ای نباید در پاسخ کشف قرار گیرد.
 
-## 8. Chat architecture
-
-```text
-Browser
-  -> Bridge-injected widget
-  -> Gateway Chat API
-  -> conversation store
-  -> AI router OR human inbox
-  -> response stream
-  -> widget
-```
-
-For order-aware AI, the AI tool layer calls WooGit's authorized site service rather than allowing the model to invent order state.
-
-## 9. Analytics architecture
+## ۸. معماری چت
 
 ```text
-Browser / WP hooks
-  -> lightweight event collector
-  -> Gateway ingestion
-  -> queue
-  -> analytics worker
-  -> PostgreSQL/analytics storage
+مرورگر
+  -> ابزارک تزریق‌شده توسط Bridge
+  -> API چت Gateway
+  -> ذخیره مکالمه
+  -> مسیریاب AI یا صف اپراتور انسانی
+  -> جریان پاسخ
+  -> ابزارک
 ```
 
-The customer's WordPress database should not become the primary event warehouse.
+برای AI آگاه از سفارش، لایه ابزار AI باید از سرویس مجاز سایت در WooGit داده بگیرد و نباید اجازه دهد مدل وضعیت سفارش را حدس بزند.
 
-## 10. Scaling path
+## ۹. معماری تحلیل
+
+```text
+مرورگر / Hookهای WordPress
+  -> جمع‌آوری سبک رویداد
+  -> دریافت در Gateway
+  -> صف
+  -> پردازشگر تحلیل
+  -> PostgreSQL / ذخیره تحلیل
+```
+
+پایگاه داده WordPress مشتری نباید انبار اصلی رویدادها باشد.
+
+## ۱۰. مسیر مقیاس‌پذیری
 
 ### MVP
 
-One VPS can host:
+یک VPS می‌تواند این موارد را میزبانی کند:
 
-- WordPress control plane;
-- API service;
-- PostgreSQL;
+- پنل کنترل WordPress؛
+- سرویس API؛
+- PostgreSQL؛
 - Redis.
 
-### Growth
+### رشد
 
-Split API instances behind a load balancer and move PostgreSQL/Redis to managed services where useful.
+نمونه‌های API پشت Load Balancer افزایش می‌یابند و در صورت نیاز PostgreSQL و Redis به سرویس‌های مدیریت‌شده منتقل می‌شوند.
 
 ```text
 Load Balancer
@@ -193,27 +192,27 @@ Load Balancer
    Workers
 ```
 
-### High volume
+### حجم بالا
 
-Separate ingestion, chat/realtime, gateway and workers. Introduce dedicated analytics storage only when measured load justifies it.
+دریافت رویداد، چت/بلادرنگ، درگاه و پردازشگرها از هم جدا می‌شوند و فقط در صورت توجیه بار واقعی، ذخیره‌سازی اختصاصی تحلیل اضافه می‌شود.
 
-## 11. Failure boundaries
+## ۱۱. مرزهای خرابی
 
-Customer site unavailable:
+اگر سایت مشتری در دسترس نباشد:
 
-- do not mark the WooGit account invalid;
-- record site health separately;
-- retry only idempotent operations or operations with safe reconciliation;
-- surface a clear site connectivity error.
+- حساب WooGit را نامعتبر نکنید؛
+- سلامت سایت را جداگانه ثبت کنید؛
+- فقط عملیات Idempotent یا عملیات دارای تطبیق امن را مجدداً تلاش کنید؛
+- خطای اتصال سایت را واضح نمایش دهید.
 
-WooGit API unavailable:
+اگر API ووگیت در دسترس نباشد:
 
-- app cannot bypass the gateway;
-- local UI can show cached non-sensitive state;
-- no direct customer-site fallback is allowed for commercial-gateway traffic.
+- اپ نباید بتواند درگاه را دور بزند؛
+- رابط محلی می‌تواند داده کش‌شده و غیرحساس را نشان دهد؛
+- برای ترافیک تجاری نباید مسیر مستقیم جایگزین به سایت مشتری وجود داشته باشد.
 
-Credential revoked at WordPress:
+اگر اعتبار در WordPress لغو شود:
 
-- mark site credential invalid;
-- require reconnection/rotation;
-- do not repeatedly hammer the site.
+- اعتبار سایت را نامعتبر کنید؛
+- اتصال مجدد/چرخش اعتبار را لازم کنید؛
+- از ارسال مکرر درخواست به سایت جلوگیری کنید.
