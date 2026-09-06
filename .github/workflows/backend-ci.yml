@@ -55,3 +55,22 @@ jobs:
           grep -Eq 'markUnknown' "$operations"
           grep -Eq "'proxy'" "$controller"
           grep -Eq 'ALLOWED_MEDIA_PATH' "$policy"
+      - name: Build installable WordPress plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(awk -F': ' '/^ \* Version: / {print $2; exit}' plugin/woogit-backend/woogit-backend.php)
+          test -n "$VERSION"
+          rm -rf dist
+          mkdir -p dist
+          zip -qr "dist/woogit-backend-${VERSION}.zip" plugin/woogit-backend
+          unzip -t "dist/woogit-backend-${VERSION}.zip"
+          unzip -l "dist/woogit-backend-${VERSION}.zip" | grep -Eq 'plugin/woogit-backend/woogit-backend\.php$'
+          echo "Built dist/woogit-backend-${VERSION}.zip"
+      - name: Upload installable plugin ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: woogit-backend-plugin
+          path: dist/woogit-backend-*.zip
+          if-no-files-found: error
+          retention-days: 30
