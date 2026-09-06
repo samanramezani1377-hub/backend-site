@@ -26,10 +26,16 @@ final class IdempotencyService
         if(!hash_equals((string)$row['request_fingerprint'],$fingerprint))return ['state'=>'conflict'];
         $state=(string)$row['state'];
         if($state==='pending'){
-            $operation=$wpdb->get_row($wpdb->prepare("SELECT status FROM {$wpdb->prefix}woogit_operations WHERE operation_id=%s AND account_id=%d AND site_id=%d LIMIT 1",(string)$row['operation_id'],$accountId,$siteId),ARRAY_A);
+            $operation=$wpdb->get_row($wpdb->prepare("SELECT status,upstream_status,response_body FROM {$wpdb->prefix}woogit_operations WHERE operation_id=%s AND account_id=%d AND site_id=%d LIMIT 1",(string)$row['operation_id'],$accountId,$siteId),ARRAY_A);
             if(!$operation || (string)$operation['status']==='unknown'){
                 $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state='unknown',updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",current_time('mysql',true),$accountId,$siteId,$key));
                 $state='unknown';
+            }elseif(in_array((string)$operation['status'],['succeeded','failed'],true)){
+                $operationBody=(string)$operation['response_body'];
+                $operationStatus=(int)$operation['upstream_status'];
+                $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",(string)$operation['status'],$operationStatus,$operationBody,current_time('mysql',true),$accountId,$siteId,$key));
+                $state=(string)$operation['status'];
+                $row['status_code']=$operationStatus;$row['response_body']=$operationBody;
             }
         }
         if($state==='pending')return ['state'=>'pending','operation_id'=>(string)$row['operation_id']];
