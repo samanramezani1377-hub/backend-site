@@ -10,6 +10,7 @@ final class BillingService
     private const PRODUCT_META = '_woogit_plan_product_id';
     private const VARIATION_META = '_woogit_plan_variation_id';
     private const PLAN_KEY_META = '_woogit_plan_key';
+    private const CHECKOUT_IDEMPOTENCY_META = '_woogit_checkout_idempotency_key';
     private const PLAN_ENABLED_META = '_woogit_plan_enabled';
 
     public function registerHooks(): void
@@ -96,9 +97,13 @@ final class BillingService
         return $plans;
     }
 
-    public function createCheckout(int $accountId, int $siteId, int $productId, int $variationId = 0): array
+    public function createCheckout(int $accountId, int $siteId, int $productId, int $variationId = 0, string $idempotencyKey = ''): array
     {
         if (!function_exists('wc_get_product') || !function_exists('wc_create_order')) return ['ok' => false, 'code' => 'billing_unavailable'];
+        if ($idempotencyKey !== '') {
+            $existing = $this->findCheckoutByIdempotencyKey($accountId, $siteId, $idempotencyKey);
+            if ($existing['ok']) return $existing;
+        }
         $product = wc_get_product($productId);
         if (!$product || !$product->exists() || $product->get_status() !== 'publish' || !$product->is_purchasable()) return ['ok' => false, 'code' => 'plan_not_found'];
         $type = (string)$product->get_type();
@@ -126,10 +131,30 @@ final class BillingService
         $order->update_meta_data(self::PRODUCT_META, $productId);
         $order->update_meta_data(self::VARIATION_META, $variationId);
         $order->update_meta_data(self::PLAN_KEY_META, $this->planKey($product));
+        if ($idempotencyKey !== '') $order->update_meta_data(self::CHECKOUT_IDEMPOTENCY_META, hash('sha256', $idempotencyKey));
         $order->set_created_via('woogit');
         $order->calculate_totals();
         $order->save();
 
+        return ['ok' => true, 'order_id' => (int)$order->get_id(), 'payment_url' => (string)$order->get_checkout_payment_url(true), 'status' => (string)$order->get_status()];
+    }
+
+    public function findCheckoutByIdempotencyKey(int $accountId, int $siteId, string $idempotencyKey): array
+    {
+        if ($idempotencyKey === '' || !function_exists('wc_get_orders')) return ['ok' => false];
+        $orders = wc_get_orders([
+            'limit' => 1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'return' => 'objects',
+            'meta_query' => [
+                ['key' => self::ACCOUNT_META, 'value' => (string)$accountId, 'compare' => '='],
+                ['key' => self::SITE_META, 'value' => (string)$siteId, 'compare' => '='],
+                ['key' => self::CHECKOUT_IDEMPOTENCY_META, 'value' => hash('sha256', $idempotencyKey), 'compare' => '='],
+            ],
+        ]);
+        if (empty($orders)) return ['ok' => false];
+        $order = $orders[0];
         return ['ok' => true, 'order_id' => (int)$order->get_id(), 'payment_url' => (string)$order->get_checkout_payment_url(true), 'status' => (string)$order->get_status()];
     }
 
