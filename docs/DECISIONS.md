@@ -1,78 +1,78 @@
-# WooGit Architecture Decisions
+# تصمیم‌های معماری WooGit
 
-## ADR-001 — WordPress is the commercial/control plane
+## ADR-001 — WordPress پنل تجاری/کنترل است
 
-**Decision:** Use WordPress for the public WooGit website and internal management UI.
+**تصمیم:** از WordPress برای وب‌سایت عمومی WooGit و رابط مدیریت داخلی استفاده شود.
 
-**Reason:** Fast content/admin development, mature user/role system, and a good fit for marketing/docs/control-plane workflows.
+**دلیل:** توسعه سریع محتوا و مدیریت، سیستم بالغ کاربر/نقش و تناسب مناسب برای بازاریابی، مستندات و فرایندهای پنل کنترل.
 
-**Boundary:** WordPress is not required to process every realtime gateway request.
+**مرز:** WordPress نباید برای پردازش هر درخواست بلادرنگ Gateway اجباری باشد.
 
-## ADR-002 — Gateway is separate from the WordPress control plane
+## ADR-002 — Gateway از پنل کنترل WordPress جدا است
 
-**Decision:** A small stateless API/Gateway handles protected traffic and outbound customer-site calls.
+**تصمیم:** یک API/Gateway کوچک و Stateless ترافیک محافظت‌شده و درخواست‌های خروجی به سایت مشتری را مدیریت کند.
 
-**Reason:** Subscription enforcement, rate limiting, credential use and realtime traffic should not depend on the WordPress admin runtime.
+**دلیل:** اعمال اشتراک، Rate Limit، استفاده از اعتبارها و ترافیک بلادرنگ نباید به محیط اجرای پنل مدیریت WordPress وابسته باشد.
 
-## ADR-003 — PostgreSQL is the durable application store
+## ADR-003 — PostgreSQL ذخیره‌ساز پایدار برنامه است
 
-**Decision:** Use PostgreSQL for accounts, sites, subscriptions, operations and audit data.
+**تصمیم:** PostgreSQL برای حساب‌ها، سایت‌ها، اشتراک‌ها، عملیات و داده حسابرسی استفاده شود.
 
-**Reason:** Relational integrity is valuable for ownership and entitlement boundaries.
+**دلیل:** یکپارچگی رابطه‌ای برای مرزهای مالکیت و مجوز اهمیت دارد.
 
-## ADR-004 — Redis is acceleration/queue state
+## ADR-004 — Redis برای شتاب/صف است
 
-**Decision:** Redis is disposable infrastructure for cache, rate limiting, queues and realtime coordination.
+**تصمیم:** Redis زیرساخت قابل جایگزینی برای Cache، Rate Limit، صف و هماهنگی بلادرنگ باشد.
 
-**Reason:** Durable business state must remain recoverable from PostgreSQL.
+**دلیل:** وضعیت تجاری پایدار باید از PostgreSQL قابل بازیابی باشد.
 
-## ADR-005 — Headless Bridge
+## ADR-005 — Bridge به‌صورت Headless
 
-**Decision:** WooGit Bridge has no required configuration UI in WordPress.
+**تصمیم:** WooGit Bridge صفحه تنظیمات اجباری در WordPress نداشته باشد.
 
-**Reason:** WooGit should provide a single UX and centralized subscription/capability control.
+**دلیل:** WooGit باید یک تجربه کاربری واحد و کنترل مرکزی اشتراک/قابلیت ارائه دهد.
 
-## ADR-006 — No direct app-to-customer-site traffic after commercial onboarding
+## ADR-006 — بعد از راه‌اندازی تجاری، ترافیک مستقیم اپ به سایت مشتری وجود ندارد
 
-**Decision:** Protected commercial traffic goes through WooGit Gateway.
+**تصمیم:** ترافیک تجاری محافظت‌شده از Gateway ووگیت عبور کند.
 
-**Reason:** This is the enforcement point for subscription, entitlements, audit, abuse prevention and credential isolation.
+**دلیل:** Gateway محل اعمال اشتراک، مجوزها، حسابرسی، مقابله با سوءاستفاده و جداسازی اعتبارها است.
 
-**Exception:** Direct access may exist only for explicitly non-commercial/local functionality and must not expose a bypass around entitlement enforcement.
+**استثنا:** دسترسی مستقیم فقط برای قابلیت‌های صریحاً غیرتجاری/محلی ممکن است وجود داشته باشد و نباید مسیر دور زدن مجوز ایجاد کند.
 
-## ADR-007 — Typed gateway operations over arbitrary proxying
+## ADR-007 — عملیات Typed به‌جای Proxy دلخواه
 
-**Decision:** Prefer typed operations to a generic URL proxy.
+**تصمیم:** عملیات Typed نسبت به Proxy عمومی URL ترجیح دارند.
 
-**Reason:** Arbitrary proxying increases SSRF, authorization and abuse risk.
+**دلیل:** Proxy دلخواه ریسک SSRF، خطای مجوز و سوءاستفاده را افزایش می‌دهد.
 
-## ADR-008 — Application Passwords for initial WordPress API authentication
+## ADR-008 — Application Password برای احراز هویت اولیه WordPress
 
-**Decision:** Prefer WordPress Application Passwords for remote programmatic access.
+**تصمیم:** برای دسترسی برنامه‌ای راه دور، Application Passwordهای WordPress ترجیح داده شوند.
 
-**Reason:** WordPress documents them as revocable per-application credentials for API use.
+**دلیل:** WordPress آن‌ها را به‌عنوان اعتبارهای قابل لغو و اختصاصی برای هر برنامه و استفاده API مستند کرده است.
 
-## ADR-009 — AI stays behind WooGit
+## ADR-009 — AI پشت WooGit باقی می‌ماند
 
-**Decision:** AI provider keys and model routing live in WooGit infrastructure.
+**تصمیم:** کلید ارائه‌دهندگان AI و مسیریابی مدل در زیرساخت WooGit قرار داشته باشد.
 
-**Reason:** Prevent provider secrets from reaching the customer site/browser and allow provider changes without Bridge updates.
+**دلیل:** جلوگیری از رسیدن اسرار ارائه‌دهنده به سایت/مرورگر مشتری و امکان تغییر ارائه‌دهنده بدون به‌روزرسانی Bridge.
 
-## ADR-010 — Client is not an authority
+## ADR-010 — کلاینت مرجع مجوز نیست
 
-**Decision:** Trial, subscription, entitlements, credits and site ownership are server-authoritative.
+**تصمیم:** دوره آزمایشی، اشتراک، مجوزها، اعتبارها و مالکیت سایت در سمت سرور مرجع نهایی باشند.
 
-**Reason:** APKs can be modified; server-side enforcement is required for a commercial SaaS.
+**دلیل:** APK قابل تغییر است و SaaS تجاری به اعمال مجوز سمت سرور نیاز دارد.
 
-## ADR-011 — Idempotency is a platform primitive
+## ADR-011 — Idempotency یک قابلیت پایه پلتفرم است
 
-**Decision:** Every CREATE-style mutation has an idempotency contract.
+**تصمیم:** هر Mutation از نوع CREATE دارای قرارداد Idempotency باشد.
 
-**Reason:** Network timeouts can occur after remote success. The system must prove safe retry behavior before commercial release.
+**دلیل:** Timeout شبکه می‌تواند بعد از موفقیت مقصد رخ دهد. پیش از عرضه تجاری باید رفتار Retry امن اثبات شود.
 
-## Non-goals
+## موارد خارج از هدف
 
-- Building a custom distributed platform before measured need.
-- Storing customer passwords in the mobile app.
-- Turning the Bridge into a general-purpose remote execution plugin.
-- Allowing an LLM to issue arbitrary HTTP requests.
+- ساخت پلتفرم توزیع‌شده اختصاصی پیش از اثبات نیاز واقعی.
+- ذخیره رمزهای مشتری در اپ موبایل.
+- تبدیل Bridge به افزونه اجرای عمومی کد راه دور.
+- اجازه دادن به LLM برای ارسال درخواست HTTP دلخواه.
