@@ -7,7 +7,6 @@ final class RestController
 {
     private SessionService $sessions; private AccountService $accounts; private SiteService $sites; private EntitlementService $entitlements; private IdempotencyService $idempotency; private OperationService $operations; private ProxyPolicy $policy; private WooCommerceProxy $proxy;
     public function __construct(){ $this->sessions=new SessionService();$this->accounts=new AccountService();$this->sites=new SiteService();$this->entitlements=new EntitlementService();$this->idempotency=new IdempotencyService();$this->operations=new OperationService();$this->policy=new ProxyPolicy();$this->proxy=new WooCommerceProxy(); }
-
     public function register(): void
     {
         register_rest_route('woogit/v1','/sites/verify',['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'verifySite']]);
@@ -15,7 +14,6 @@ final class RestController
         register_rest_route('woogit/v1','/operations/(?P<operation_id>[A-Za-z0-9_-]+)',['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'getOperation']]);
         register_rest_route('woogit/v1','/forward',['methods'=>['GET','POST','PUT','PATCH','DELETE'],'permission_callback'=>'__return_true','callback'=>[$this,'forward']]);
     }
-
     public function verifySite(\WP_REST_Request $request): \WP_REST_Response
     {
         $input=$request->get_json_params();$input=is_array($input)?$input:[];$url=trim((string)($input['url']??''));$email=sanitize_email((string)($input['email']??''));
@@ -30,10 +28,8 @@ final class RestController
         $token=$this->sessions->issue((int)$account['id'],(int)$site['id']);if(!$token)return new \WP_REST_Response(['code'=>'session_creation_failed'],500);
         return new \WP_REST_Response(['account_id'=>(int)$account['id'],'site_id'=>(int)$site['id'],'session'=>$token,'expires_in'=>86400],200);
     }
-
     public function revokeSession(\WP_REST_Request $request): \WP_REST_Response
     { return new \WP_REST_Response(['revoked'=>$this->sessions->revoke((string)$request->get_header('X-WooGit-Session'))],200); }
-
     public function getOperation(\WP_REST_Request $request): \WP_REST_Response
     {
         $session=$this->authenticateContext($request);if($session instanceof \WP_REST_Response)return $session;
@@ -41,7 +37,6 @@ final class RestController
         if(!$operation)return new \WP_REST_Response(['code'=>'operation_not_found'],404);
         return new \WP_REST_Response(['operation_id'=>$operation['operation_id'],'status'=>$operation['status'],'path'=>$operation['operation_path'],'method'=>$operation['method'],'upstream_status'=>$operation['upstream_status'],'response'=>$operation['response_body'],'created_at'=>$operation['created_at'],'updated_at'=>$operation['updated_at'],'expires_at'=>$operation['expires_at']],200);
     }
-
     public function forward(\WP_REST_Request $request): \WP_REST_Response
     {
         $session=$this->authenticateContext($request);if($session instanceof \WP_REST_Response)return $session;
@@ -52,7 +47,7 @@ final class RestController
         $query=$request->get_query_params();unset($query['path']);$rawBody=(string)$request->get_body();$contentType=(string)$request->get_header('content-type');
         $fingerprint=$this->idempotency->fingerprint($method,$path,$query,$rawBody);$operationId='';
         if($key!==''){
-            $candidate=$this->operations->create((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint,$path,$path,$method);
+            $candidate=$this->operations->create((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint,'proxy',$path,$method);
             if($candidate===null){$existing=$this->idempotency->lookup((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint);if($existing['state']==='conflict')return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);if($existing['state']==='completed')return new \WP_REST_Response($existing['body'],$existing['status']);if($existing['state']==='pending')return new \WP_REST_Response(['code'=>'operation_in_progress','operation_id'=>$existing['operation_id']],202);return new \WP_REST_Response(['code'=>'operation_unavailable'],500);}
             $operationId=$candidate['operation_id'];$claim=$this->idempotency->claim((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint,$operationId);
             if($claim['state']!=='claimed'){
@@ -68,7 +63,6 @@ final class RestController
         }
         $response=new \WP_REST_Response($responseBody,$status);foreach($result['headers'] as $header=>$value)$response->header($header,$value);return $response;
     }
-
     private function authenticateContext(\WP_REST_Request $request): array|\WP_REST_Response
     {
         $session=$this->sessions->authenticate((string)$request->get_header('X-WooGit-Session'));if($session===null)return new \WP_REST_Response(['code'=>'invalid_session'],401);
@@ -77,7 +71,6 @@ final class RestController
         if(!$this->entitlements->isAllowed((int)$session['account_id'],(int)$session['site_id'],'commerce'))return new \WP_REST_Response(['code'=>'not_entitled'],403);
         $session['site']=$site;return $session;
     }
-
     private function credentials(\WP_REST_Request $request): ?array
     {
         $headers=['X-WooGit-Wordpress-Username'=>'wordpress_username','X-WooGit-Wordpress-Application-Password'=>'wordpress_application_password','X-WooGit-Consumer-Key'=>'consumer_key','X-WooGit-Consumer-Secret'=>'consumer_secret'];$result=[];
