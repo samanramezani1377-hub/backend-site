@@ -12,7 +12,7 @@ Account
     └── canonical_url / host
 ```
 
-The database now enforces the one-account-one-site relationship.
+The database enforces the one-account-one-site relationship.
 
 ## Two independent authentication paths
 
@@ -26,7 +26,7 @@ The app connects to the customer's WordPress/WooCommerce site using the site cre
 - Consumer Key
 - Consumer Secret
 
-These credentials are used to verify and forward requests. They are not WooGit web-account credentials and are not stored in the WooGit Account record.
+These credentials are site credentials, not WooGit web-account credentials. They are used to verify and forward requests and are not stored in the WooGit Account record.
 
 ### WooGit web-site path
 
@@ -61,7 +61,7 @@ The app can then submit:
 
 with a web password and confirmation. A contact email may be supplied in the same request, but it never changes Account identity.
 
-The server enforces this state independently of the app UI. Once configured, the setup endpoint refuses to replace the password; password-change/recovery flows are separate operations.
+The server enforces this state independently of the app UI. Once configured, the setup endpoint refuses to replace the password.
 
 ## Web login
 
@@ -82,11 +82,18 @@ Successful login returns a separate web session token. Web sessions are stored i
 
 The web session is intentionally separate from the app API session (`X-WooGit-Session`). It must not be used as a proxy credential.
 
-## Web session endpoints
+## Web session and account management
+
+All endpoints below except `/web/login` require `X-WooGit-Web-Session`:
 
 - `POST /web/login` — create a web session.
 - `GET /web/me` — return the authenticated Account/Site context.
 - `POST /web/logout` — revoke the current web session.
+- `POST /web/account/contact-email` — update optional contact email.
+- `POST /web/account/password` — change the web password; current password is required.
+- `GET /web/billing/history?page=1&per_page=20` — return the WooGit orders belonging to this Account/Site, with status, amount, currency, date, and plan key.
+
+The web site can therefore manage the customer's account and display payment history without receiving or reusing the app's WordPress credentials.
 
 Web login is rate limited by both client IP and normalized Site host. Authentication failures use a generic `invalid_web_credentials` response so the API does not disclose whether a Site or Account exists.
 
@@ -99,4 +106,5 @@ Web login is rate limited by both client IP and normalized Site host. Authentica
 - Web sessions and app API sessions are separate credential classes.
 - Expired/revoked web sessions are rejected.
 - Web session records are cleaned up by the scheduled backend cleanup task.
+- Password changes require the existing web password and an authenticated web session.
 - Password recovery is intentionally not implemented through email because email is contact metadata, not an authentication identifier. A recovery protocol must be designed explicitly before being added.
