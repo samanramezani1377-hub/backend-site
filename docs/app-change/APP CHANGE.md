@@ -1,6 +1,6 @@
 # APP CHANGE — قرارداد تطبیق اپ با WooGit Backend
 
-> هدف این سند: این فایل قرارداد اجرایی بین WooGit Android App و `backend-site` است. هر تغییری در لایه شبکه، Repository، Session، Store Connection یا عملیات WooCommerce در App باید با این سند تطبیق داده شود.
+> هدف این سند: قرارداد اجرایی بین WooGit Android App و `backend-site` است. هر تغییری در لایه شبکه، Repository، Session، Store Connection یا عملیات WooCommerce در App باید با این سند تطبیق داده شود.
 
 ## 1. اصل معماری
 
@@ -25,7 +25,7 @@ WooGit Backend
 App
 ```
 
-تنها استثنای ارتباط App با Customer، نباید وجود داشته باشد؛ حتی GETهای ساده محصولات، سفارش‌ها یا تصاویر نیز باید از Backend عبور کنند.
+هیچ ارتباط مستقیمی بین App و Customer Site نباید وجود داشته باشد؛ حتی GETهای ساده محصولات، سفارش‌ها یا تصاویر نیز باید از Backend عبور کنند.
 
 ---
 
@@ -43,9 +43,9 @@ App باید دو مفهوم جدا داشته باشد:
 
 ### Customer Site URL
 
-آدرس سایت مشتری فقط به‌عنوان هویت Site در Backend نگهداری می‌شود و App نباید آن را به‌عنوان مقصد مستقیم API استفاده کند.
+آدرس سایت مشتری فقط به‌عنوان هویت Site در Backend استفاده می‌شود و App نباید آن را به‌عنوان مقصد مستقیم API استفاده کند.
 
-هر request عملیاتی به Customer باید به Backend ارسال شود و `path` مقصد Customer به‌صورت داده request در `/forward` قرار گیرد.
+هر request عملیاتی به Customer باید به Backend ارسال شود و `path` مقصد Customer به‌عنوان داده request در `/forward` قرار گیرد.
 
 ---
 
@@ -57,7 +57,7 @@ Endpoint:
 POST /wp-json/woogit/v1/sites/verify
 ```
 
-Request باید شامل موارد زیر باشد:
+Request JSON باید شامل موارد زیر باشد:
 
 ```json
 {
@@ -73,7 +73,7 @@ Request باید شامل موارد زیر باشد:
 
 Backend در این مرحله Customer را verify می‌کند، Account/Site را resolve می‌کند و بر اساس Entitlement یک Session صادر می‌کند.
 
-Response ممکن است یکی از این scopeها را داشته باشد:
+Response ممکن است Session عملیاتی بدهد:
 
 ```json
 {
@@ -86,7 +86,7 @@ Response ممکن است یکی از این scopeها را داشته باشد:
 }
 ```
 
-یا:
+یا Billing Session بدهد:
 
 ```json
 {
@@ -102,13 +102,15 @@ Response ممکن است یکی از این scopeها را داشته باشد:
 
 ## 4. Session Contract
 
-برای تمام endpointهای operational، App باید:
+برای endpointهایی که نیازمند Session هستند، App باید:
 
 ```http
 X-WooGit-Session: <session-token>
 ```
 
 را ارسال کند.
+
+نکته مهم: `/sites/verify` برای ایجاد Session اولیه است و نیازمند Session قبلی نیست. همچنین endpointهای Billing بر اساس scope موردنیاز خود احراز هویت می‌شوند؛ Billing Session برای Billing است و Operational Session برای عملیات Customer.
 
 Session منقضی یا revoke شده نباید به‌عنوان مجوز معتبر استفاده شود.
 
@@ -128,26 +130,44 @@ POST /wp-json/woogit/v1/billing/activate-session
 
 ---
 
-## 5. مسیر واحد عملیات Customer
+## 5. مسیر واحد عملیات Customer — قرارداد Wire-Level
 
 تمام عملیات Customer از endpoint زیر عبور می‌کنند:
 
 ```http
-GET|POST|PUT|PATCH|DELETE /wp-json/woogit/v1/forward
+GET    /wp-json/woogit/v1/forward?path=...
+POST   /wp-json/woogit/v1/forward?path=...
+PUT    /wp-json/woogit/v1/forward?path=...
+PATCH  /wp-json/woogit/v1/forward?path=...
+DELETE /wp-json/woogit/v1/forward?path=...
 ```
 
-Request باید شامل حداقل این مفهوم‌ها باشد:
+**نکته بسیار مهم:** متد HTTP از خود request (`GET` / `POST` / `PUT` / `PATCH` / `DELETE`) تعیین می‌شود. Backend هیچ فیلد JSON به نام `method` را برای تعیین متد قبول نمی‌کند.
 
-```text
-path
-method
-query/body در صورت نیاز
-X-WooGit-Session
-Customer credential headers
-Idempotency-Key برای mutationها
+`path` یک query parameter در Backend است. سایر query parameterها نیز به‌صورت query واقعی HTTP ارسال می‌شوند و Backend بعد از حذف `path`، باقی query را به Customer forward می‌کند.
+
+در نتیجه App نباید چنین قراردادی را به‌عنوان wire contract فرض کند:
+
+```json
+{
+  "path": "/wp-json/wc/v3/products",
+  "method": "GET",
+  "query": {"page": 1}
+}
 ```
 
-Backend خودش Customer Site URL را از Site identity resolve می‌کند. App نباید مقصد نهایی Customer را در URL request جایگزین Backend کند.
+نمونه صحیح wire-level:
+
+```http
+GET /wp-json/woogit/v1/forward?path=%2Fwp-json%2Fwc%2Fv3%2Fproducts&page=1&per_page=20&search=phone
+X-WooGit-Session: <session-token>
+X-WooGit-Consumer-Key: ck_...
+X-WooGit-Consumer-Secret: cs_...
+```
+
+در این مثال Backend مقدار `path` را مصرف می‌کند و فقط `page`, `per_page` و `search` را به Customer forward می‌کند.
+
+برای `POST`, `PUT` و `PATCH`، payload واقعی Customer در body همان HTTP request قرار می‌گیرد؛ `path` و query داخل body JSON قرار نمی‌گیرند مگر اینکه API Customer خودش چنین فیلدی را بخواهد.
 
 ---
 
@@ -196,8 +216,16 @@ Backend فعلاً این namespace را برای forward اجازه می‌ده
 
 ### لیست محصولات
 
+Customer path:
+
 ```text
 GET /wp-json/wc/v3/products
+```
+
+Wire request از App به Backend:
+
+```http
+GET /wp-json/woogit/v1/forward?path=%2Fwp-json%2Fwc%2Fv3%2Fproducts
 ```
 
 ### محصول
@@ -282,17 +310,30 @@ X-WooGit-Consumer-Key: ...
 X-WooGit-Consumer-Secret: ...
 ```
 
-Backend بر اساس path تشخیص می‌دهد که درخواست Media است یا WooCommerce.
+Backend بر اساس Customer path تشخیص می‌دهد که درخواست Media است یا WooCommerce و credential مناسب را برای Customer می‌سازد.
 
 ---
 
 ## 10. Query Parameters
 
-Query مربوط به Customer باید داخل request به `/forward` ارسال شود؛ App نباید query را به URL Backend به‌صورت دلخواهی بچسباند مگر اینکه Client networking contract آن را صریحاً تعریف کرده باشد.
+Query مربوط به Customer باید به‌صورت query parameter واقعی در request به `/forward` ارسال شود.
 
-`path` نباید داخل query به Customer منتقل شود. Backend خودش `path` را از query جدا کرده و فقط query واقعی Customer را forward می‌کند.
+`path` نیز query parameter مخصوص Backend است و نباید به Customer منتقل شود. Backend خودش `path` را از query جدا کرده و فقط query واقعی Customer را forward می‌کند.
 
-نمونه مفهومی:
+**نمونه صحیح:**
+
+```http
+GET /wp-json/woogit/v1/forward?path=%2Fwp-json%2Fwc%2Fv3%2Fproducts&page=1&per_page=20&search=phone
+```
+
+در این request:
+
+```text
+Backend path parameter: path=/wp-json/wc/v3/products
+Customer query: page=1&per_page=20&search=phone
+```
+
+بنابراین JSON زیر صرفاً می‌تواند یک مدل داخلی UI/Repository باشد، نه wire contract با Backend:
 
 ```json
 {
@@ -318,24 +359,31 @@ Query مربوط به Customer باید داخل request به `/forward` ارس�
 Content-Type: application/json
 ```
 
-Backend body را با سقف فعلی درخواست کنترل می‌کند. App نباید payloadهای غیرضروری یا credentialها را داخل body قرار دهد.
+Backend body را با سقف فعلی درخواست کنترل می‌کند: سقف معمول 5 MiB و برای مسیرهای WordPress Media تا 10 MiB است.
+
+App نباید payloadهای غیرضروری یا credentialها را داخل body قرار دهد.
 
 برای Media upload باید قرارداد multipart/form-data موجود در Client networking layer رعایت شود و body خام request خراب یا JSON-encode نشود.
 
+برای `DELETE`، Backend در proxy فعلی body را به Customer forward نمی‌کند؛ بنابراین App نباید برای DELETE روی ارسال body حساب کند.
+
 ---
 
-## 12. Pagination
+## 12. Pagination و Response Headers
 
 برای collectionهایی مانند products و orders، App باید pagination را از response Backend بخواند.
 
-Backend headerهای pagination لازم WooCommerce/WordPress را عبور می‌دهد، از جمله:
+Backend headerهای منتخب لازم را عبور می‌دهد، از جمله:
 
 ```text
 X-WP-Total
 X-WP-TotalPages
+Content-Type
 ```
 
 App نباید تعداد کل صفحات را حدس بزند.
+
+Backend عمداً headerهایی مانند upstream `Location` را به App عبور نمی‌دهد.
 
 ---
 
@@ -360,9 +408,11 @@ Idempotency-Key: <unique-operation-key>
 
 اگر request به علت timeout پاسخ نگرفت، App نباید همان عملیات را با key جدید دوباره اجرا کند؛ ابتدا باید operation قبلی را reconcile کند.
 
+Key باید برای retry همان logical operation حفظ شود و نباید با هر تلاش مجدد تغییر کند.
+
 ---
 
-## 14. Timeout-after-success
+## 14. Timeout-after-success و Reconciliation
 
 این سناریو حیاتی است:
 
@@ -390,9 +440,12 @@ App → Backend → Customer
 
 ```http
 GET /wp-json/woogit/v1/operations/{operation_id}
+X-WooGit-Session: <session-token>
 ```
 
 این endpoint Backend-side است و خودش مستقیماً به Customer request نمی‌فرستد.
+
+در mutationای که با `504 upstream_timeout` یا وضعیت unknown مواجه شده، retry با `Idempotency-Key` جدید ممنوع است.
 
 ---
 
@@ -408,7 +461,9 @@ App باید status code و error body Backend را جدی بگیرد و صرف�
 404 → resource یا operation پیدا نشد
 409 → Idempotency conflict یا state conflict
 429 → rate limit
-502/504 → upstream/timeout
+502 → upstream/network failure
+503 → operation persistence failure
+504 → upstream timeout؛ برای mutation ممکن است عملیات در Customer انجام شده باشد
 ```
 
 در `504` مربوط به mutation، امکان انجام‌شدن عملیات وجود دارد؛ بنابراین retry با Idempotency-Key جدید ممنوع است.
@@ -417,7 +472,7 @@ App باید status code و error body Backend را جدی بگیرد و صرف�
 
 ## 16. Billing Flow
 
-Billing با Customer WooCommerce فرق دارد و در Backend انجام می‌شود.
+Billing با Customer WooCommerce فرق دارد و endpointهای آن در خود Backend اجرا می‌شوند.
 
 ### Plans
 
@@ -443,204 +498,107 @@ POST /wp-json/woogit/v1/billing/checkout
 POST /wp-json/woogit/v1/billing/activate-session
 ```
 
-این endpointها به‌صورت مستقیم Customer Site را Proxy نمی‌کنند.
+این endpointها مستقیماً Customer Site را proxy نمی‌کنند.
 
-بعد از پرداخت موفق، Backend از وضعیت WooCommerce/WooCommerce Subscriptions برای فعال‌سازی Entitlement استفاده می‌کند.
+پرداخت توسط WooCommerce/WooCommerce Subscriptions در Backend معتبر شناخته می‌شود؛ App نباید صرفاً با اعلام موفقیت پرداخت، Entitlement یا Session را محلی فعال کند.
+
+پس از پرداخت موفق، App باید وضعیت Billing را refresh کند و در صورت نیاز `activate-session` را صدا بزند تا token عملیاتی جدید دریافت شود.
 
 ---
 
-## 17. Session Revoke
+## 17. تفکیک Credentialها
 
-برای logout/disconnect session:
+Credentialهای Customer دو دسته‌اند:
 
-```http
-POST /wp-json/woogit/v1/sessions/revoke
+### WordPress
+
+```text
+X-WooGit-Wordpress-Username
+X-WooGit-Wordpress-Application-Password
 ```
 
-پس از revoke، App نباید token را دوباره استفاده کند.
+فقط برای:
+
+```text
+/wp-json/wp/v2/media
+/wp-json/wp/v2/media/*
+```
+
+### WooCommerce
+
+```text
+X-WooGit-Consumer-Key
+X-WooGit-Consumer-Secret
+```
+
+برای:
+
+```text
+/wp-json/wc/v3/*
+```
+
+Backend این credentialها را request-scoped مصرف می‌کند و آن‌ها را به‌عنوان credentialهای دائمی Session ذخیره نمی‌کند.
+
+App نیز نباید credentialها را در log، analytics، crash report یا operation payload ذخیره کند.
 
 ---
 
-## 18. Disconnect با Customer Site فرق دارد
+## 18. Store Connection در App
 
-Disconnect در App نباید به معنی حذف Account یا حذف Site در Backend تلقی شود.
+اتصال Store در App نباید با request مستقیم به Customer انجام شود.
 
-App باید local credential/reference خود را نیز پاک کند و session lifecycle را مطابق Backend contract مدیریت کند.
-
----
-
-## 19. ممنوعیت Direct Customer Calls
-
-در App این الگوها ممنوع هستند:
+هر چیزی مشابه این الگو باید حذف/جایگزین شود:
 
 ```kotlin
-httpClient.get("$customerUrl/wp-json/wc/v3/products")
-httpClient.get("$customerUrl/wp-json/wc/v3/orders")
-httpClient.post("$customerUrl/wp-json/wp/v2/media")
+httpClient.get("$customerUrl/wp-json/wc/v3/...")
 ```
-
-همچنین ممنوع است که repositoryهای Product/Order/Image مستقیماً `customerUrl` را مقصد HTTP قرار دهند.
 
 الگوی صحیح:
 
 ```text
-ProductRepository
-      ↓
-BackendClient
-      ↓
-POST/GET /wp-json/woogit/v1/forward
-      ↓
-Backend
-      ↓
-Customer
+App
+  ↓
+POST /wp-json/woogit/v1/sites/verify
+  ↓
+Backend verifies Customer credentials
+  ↓
+Backend resolves Account + Site
+  ↓
+Backend issues billing/operational Session
+  ↓
+App
 ```
 
----
-
-## 20. Credential Security
-
-Credentialهای Customer نباید:
-
-- داخل URL باشند
-- داخل query parameter باشند
-- داخل log چاپ شوند
-- داخل analytics/crash report ذخیره شوند
-- داخل response App برگردانده شوند
-- در مدل Session قرار گیرند
-
-App باید credentialها را فقط از Secure Credential Store بخواند و در زمان request به Backend ارسال کند.
-
-Credentialها request-scoped هستند.
+پس از اتصال نیز تمام Products / Orders / Media / WooCommerce operations باید از `/forward` عبور کنند.
 
 ---
 
-## 21. StoreRepository / Connection
+## 19. Checklist پیاده‌سازی App
 
-Connection اولیه نباید برای عملیات معمول Customer به direct HTTP تبدیل شود.
-
-اگر App برای health check یا connection verification از Customer endpoint استفاده می‌کند، باید این رفتار با قرارداد جدید Backend یکسان‌سازی شود.
-
-**نکته مهم فعلی برای App:** در کد فعلی App، `StoreRepositoryImpl.connect()` مستقیماً به Customer می‌رود و `GET /wp-json/wc/v3/system_status` را صدا می‌زند. این رفتار با معماری Backend Proxy منطبق نیست و باید در App اصلاح شود تا verification از `/woogit/v1/sites/verify` انجام شود. این مورد عمداً در این سند به‌عنوان تغییر لازم ثبت شده است.
-
----
-
-## 22. Mapping عملیاتی App
-
-| قابلیت App | Customer Path | Method | Backend Route | Credential | Idempotency |
-|---|---|---|---|---|---|
-| Products list | `/wp-json/wc/v3/products` | GET | `/woogit/v1/forward` | WC | No |
-| Product detail | `/wp-json/wc/v3/products/{id}` | GET | `/woogit/v1/forward` | WC | No |
-| Create product | `/wp-json/wc/v3/products` | POST | `/woogit/v1/forward` | WC | Yes |
-| Update product | `/wp-json/wc/v3/products/{id}` | PUT | `/woogit/v1/forward` | WC | Yes |
-| Delete product | `/wp-json/wc/v3/products/{id}` | DELETE | `/woogit/v1/forward` | WC | Yes |
-| Product categories | `/wp-json/wc/v3/products/categories` | GET/POST/etc. | `/woogit/v1/forward` | WC | mutation: Yes |
-| Orders list | `/wp-json/wc/v3/orders` | GET | `/woogit/v1/forward` | WC | No |
-| Order detail | `/wp-json/wc/v3/orders/{id}` | GET | `/woogit/v1/forward` | WC | No |
-| Update order | `/wp-json/wc/v3/orders/{id}` | PUT | `/woogit/v1/forward` | WC | Yes |
-| Media list/detail | `/wp-json/wp/v2/media*` | GET | `/woogit/v1/forward` | WP | No |
-| Media upload | `/wp-json/wp/v2/media` | POST | `/woogit/v1/forward` | WP | Yes |
-| Billing plans | Backend-only | GET | `/woogit/v1/billing/plans` | Session not necessarily operational | No |
-| Billing status | Backend-only | GET | `/woogit/v1/billing/status` | Session | No |
-| Checkout | Backend-only | POST | `/woogit/v1/billing/checkout` | Billing Session | N/A |
-| Activate session | Backend-only | POST | `/woogit/v1/billing/activate-session` | Billing Session | N/A |
-| Revoke session | Backend-only | POST | `/woogit/v1/sessions/revoke` | Session | N/A |
-| Operation status | Backend-only | GET | `/woogit/v1/operations/{id}` | Operational Session | No |
+- [ ] هیچ request مستقیمی به Customer URL در App وجود نداشته باشد.
+- [ ] Store Connection فقط از `/sites/verify` استفاده کند.
+- [ ] Backend Base URL و Customer Site URL در لایه شبکه از هم تفکیک شوند.
+- [ ] برای `/forward` متد HTTP واقعی request استفاده شود و `method` به‌عنوان فیلد JSON ارسال نشود.
+- [ ] `path` به‌عنوان query parameter `/forward` ارسال شود.
+- [ ] Queryهای Customer به‌صورت query parameter واقعی ارسال شوند.
+- [ ] Body واقعی Customer برای POST/PUT/PATCH حفظ شود.
+- [ ] Media upload به‌صورت multipart/form-data خراب نشود.
+- [ ] Credentialهای WordPress فقط برای Media و credentialهای WooCommerce فقط برای `wc/v3` استفاده شوند.
+- [ ] `X-WooGit-Session` در endpointهای نیازمند Session ارسال شود.
+- [ ] Billing Session برای Customer operation استفاده نشود.
+- [ ] بعد از پرداخت، Billing Session mutate نشود؛ token جدید از `activate-session` گرفته شود.
+- [ ] Mutationها همیشه `Idempotency-Key` داشته باشند.
+- [ ] Retry همان logical mutation با همان Idempotency-Key انجام شود.
+- [ ] در timeout/unknown، operation reconciliation انجام شود.
+- [ ] `X-WP-Total` و `X-WP-TotalPages` برای pagination خوانده شوند.
+- [ ] Error handling بر اساس status/code انجام شود، نه فقط متن.
+- [ ] Session منقضی/revoked هرگز معتبر فرض نشود.
+- [ ] پس از expiry، Session جدید طبق قرارداد احراز هویت ایجاد شود و Backend مجدداً Account + Site Ownership + Entitlement را بررسی کند.
 
 ---
 
-## 23. Network Layer Requirements
+## 20. نکته امنیتی نهایی
 
-تمام repositoryهای operational باید از یک abstraction مشترک استفاده کنند؛ ترجیحاً چیزی در سطح:
+App نباید Session منقضی‌شده را به‌عنوان مجوز معتبر نگه دارد یا صرفاً با داشتن token قبلی، دسترسی operational را ادامه دهد. اطلاعات لازم برای ایجاد Session جدید باید طبق قرارداد احراز هویت موجود ارسال شود و Backend در ایجاد Session جدید دوباره همه کنترل‌های لازم شامل Account، Site Ownership و در مسیر operational، Entitlement را بررسی کند.
 
-```text
-BackendClient
-   └── forward(...)
-```
-
-نه اینکه هر repository خودش header/session/URL را بسازد.
-
-این abstraction باید مسئول موارد زیر باشد:
-
-1. Backend base URL
-2. Session header
-3. Customer credential headers
-4. Forward path
-5. HTTP method
-6. Query
-7. Body
-8. Content-Type
-9. Idempotency-Key
-10. Response parsing
-11. 401/403/429/502/504 handling
-12. operation reconciliation
-
----
-
-## 24. Definition of Done برای App Change
-
-تطبیق App با Backend فقط زمانی کامل محسوب می‌شود که:
-
-- [ ] هیچ Product API مستقیماً به Customer URL نرود.
-- [ ] هیچ Order API مستقیماً به Customer URL نرود.
-- [ ] هیچ Image/Media API مستقیماً به Customer URL نرود.
-- [ ] Category/Customer/Inventory و سایر WooCommerce APIها نیز از `/forward` عبور کنند.
-- [ ] Connection verification از `/sites/verify` استفاده کند.
-- [ ] Session در همه operational requestها ارسال شود.
-- [ ] Session expired/revoked دوباره استفاده نشود.
-- [ ] Billing Session برای Customer operations استفاده نشود.
-- [ ] بعد از پرداخت، Operational Session جدید از `activate-session` گرفته شود.
-- [ ] تمام mutationها Idempotency-Key داشته باشند.
-- [ ] retry بعد از timeout با همان Idempotency-Key انجام شود.
-- [ ] timeout-after-success به‌عنوان failure قطعی نمایش داده نشود.
-- [ ] operation reconciliation پیاده باشد.
-- [ ] pagination headers از Backend مصرف شود.
-- [ ] Customer credentials در URL/query/log ذخیره نشوند.
-- [ ] Media با WordPress credentials ارسال شود.
-- [ ] WooCommerce API با WC credentials ارسال شود.
-- [ ] هیچ direct call به `$customerUrl/wp-json/...` در لایه operational باقی نماند.
-
----
-
-## 25. وضعیت فعلی تطبیق
-
-### Backend
-
-ساختار Proxy، Session، Site ownership، Entitlement، Idempotency و Operation tracking برای این قرارداد در Backend وجود دارد.
-
-### App
-
-بررسی فعلی نشان داده است که لایه Store Connection هنوز یک direct call به Customer دارد:
-
-```text
-StoreRepositoryImpl.connect()
-    → GET {customer}/wp-json/wc/v3/system_status
-```
-
-این مورد باید به verification Backend منتقل شود.
-
-همچنین تمام repositoryهای Product/Order/Image و سایر repositoryهای operational باید با این سند تطبیق داده شوند تا هیچ direct Customer HTTP call باقی نماند.
-
----
-
-## 26. قانون تغییرات آینده
-
-هر endpoint جدید Customer قبل از اضافه‌شدن به App باید:
-
-1. در `ProxyPolicy` Backend مجاز شده باشد.
-2. credential type آن مشخص باشد.
-3. method و idempotency requirement آن مشخص باشد.
-4. در این سند ثبت شود.
-5. در App از `BackendClient.forward()` استفاده کند.
-6. direct Customer URL در App نداشته باشد.
-
-هر تغییری که این مسیر را دور بزند، تغییر معماری محسوب می‌شود و نباید صرفاً در یک repository یا UI layer پیاده شود.
-
----
-
-## 27. خلاصه یک‌خطی قرارداد
-
-```text
-App → WooGit Backend → Customer WooCommerce → WooGit Backend → App
-```
-
-و **هیچ عملیات Customer نباید مسیر Backend را دور بزند.**
+این سند قرارداد App ↔ Backend است؛ هر implementation جدید در App باید قبل از merge با آن تطبیق داده شود.
