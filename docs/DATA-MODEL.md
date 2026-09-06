@@ -1,12 +1,12 @@
-# WooGit Data Model
+# مدل داده WooGit
 
-The schema below is logical. Exact SQL types, indexes and partitioning are implementation details.
+طرح زیر منطقی است. نوع دقیق SQL، ایندکس‌ها و Partitioning جزئیات پیاده‌سازی هستند.
 
-## 1. accounts
+## ۱. accounts
 
-Represents the WooGit customer account.
+حساب مشتری WooGit را نشان می‌دهد.
 
-Fields:
+فیلدها:
 
 - id (UUID)
 - email
@@ -15,7 +15,7 @@ Fields:
 - created_at
 - updated_at
 
-## 2. account_sessions
+## ۲. account_sessions
 
 - id
 - account_id
@@ -26,28 +26,28 @@ Fields:
 - last_seen_at
 - created_at
 
-Never store raw refresh tokens.
+Refresh Token خام هرگز ذخیره نشود.
 
-## 3. sites
+## ۳. sites
 
-Represents one customer WordPress site.
+یک سایت WordPress مشتری را نشان می‌دهد.
 
 - id (UUID)
 - account_id
 - canonical_url
 - display_name
-- wordpress_version (optional)
-- woocommerce_version (optional)
-- bridge_version (optional)
+- wordpress_version (اختیاری)
+- woocommerce_version (اختیاری)
+- bridge_version (اختیاری)
 - bridge_status
 - connection_status
 - last_health_check_at
 - created_at
 - updated_at
 
-Unique constraint: `(account_id, canonical_url)`.
+محدودیت یکتا: `(account_id, canonical_url)`.
 
-## 4. site_credentials
+## ۴. site_credentials
 
 - id
 - site_id
@@ -60,9 +60,9 @@ Unique constraint: `(account_id, canonical_url)`.
 - created_at
 - updated_at
 
-The encrypted secret is never returned through the API.
+Secret رمزنگاری‌شده هرگز از طریق API برگردانده نمی‌شود.
 
-## 5. plans
+## ۵. plans
 
 - id
 - code
@@ -75,14 +75,14 @@ The encrypted secret is never returned through the API.
 - created_at
 - updated_at
 
-## 6. plan_entitlements
+## ۶. plan_entitlements
 
 - plan_id
 - capability
 - limit_value (nullable)
 - configuration_json (nullable)
 
-Examples:
+نمونه:
 
 ```text
 chat.enabled = true
@@ -91,7 +91,7 @@ sites.max = 3
 ai.credits = 1000000
 ```
 
-## 7. subscriptions
+## ۷. subscriptions
 
 - id
 - account_id
@@ -100,16 +100,16 @@ ai.credits = 1000000
 - starts_at
 - expires_at
 - trial_ends_at
-- auto_renew (optional)
-- provider_reference (optional)
+- auto_renew (اختیاری)
+- provider_reference (اختیاری)
 - created_at
 - updated_at
 
-The backend uses this table as the authority for entitlement decisions.
+بک‌اند از این جدول به‌عنوان مرجع اصلی تصمیم‌گیری درباره مجوز استفاده می‌کند.
 
-## 8. site_entitlements
+## ۸. site_entitlements
 
-Optional per-site overrides:
+برای Overrideهای اختصاصی هر سایت:
 
 - id
 - account_id
@@ -119,9 +119,9 @@ Optional per-site overrides:
 - limit_value
 - expires_at
 
-Useful when one account has multiple sites with different capabilities.
+وقتی یک حساب چند سایت با قابلیت‌های متفاوت دارد مفید است.
 
-## 9. idempotency_operations
+## ۹. idempotency_operations
 
 - id
 - account_id
@@ -131,13 +131,13 @@ Useful when one account has multiple sites with different capabilities.
 - request_hash
 - state
 - remote_reference
-- result_json (sanitized)
+- result_json (پاک‌سازی‌شده)
 - created_at
 - updated_at
 
-Unique constraint should cover the scope required by the API contract, normally account/site + idempotency key.
+محدودیت یکتا باید دامنه لازم برای قرارداد API را پوشش دهد؛ معمولاً account/site + idempotency key.
 
-## 10. bridge_registrations
+## ۱۰. bridge_registrations
 
 - id
 - site_id
@@ -150,21 +150,21 @@ Unique constraint should cover the scope required by the API contract, normally 
 - created_at
 - rotated_at
 
-Store only a hash of a bearer token when practical; the plaintext token is shown/handled only during provisioning.
+در صورت امکان فقط Hash توکن Bearer ذخیره شود؛ توکن متنی فقط هنگام Provisioning نمایش/استفاده شود.
 
-## 11. chat_conversations
+## ۱۱. chat_conversations
 
 - id
 - account_id
 - site_id
-- visitor_reference (privacy-minimized)
+- visitor_reference (حداقل‌سازی‌شده از نظر حریم خصوصی)
 - customer_reference (nullable)
 - state: open / waiting / human / ai / closed
 - assigned_operator_id (nullable)
 - created_at
 - updated_at
 
-## 12. chat_messages
+## ۱۲. chat_messages
 
 - id
 - conversation_id
@@ -173,9 +173,9 @@ Store only a hash of a bearer token when practical; the plaintext token is shown
 - model/provider metadata (nullable)
 - created_at
 
-Retention must be configurable.
+مدت نگهداری باید قابل تنظیم باشد.
 
-## 13. analytics_events
+## ۱۳. analytics_events
 
 - id
 - account_id
@@ -187,11 +187,11 @@ Retention must be configurable.
 - occurred_at
 - received_at
 
-High-volume installations may require partitioning or a dedicated analytics store later.
+نصب‌های پرترافیک ممکن است بعداً به Partitioning یا انبار تحلیل اختصاصی نیاز داشته باشند.
 
-## 14. ai_accounts / ai_credits
+## ۱۴. ai_accounts / ai_credits
 
-Suggested separation:
+تفکیک پیشنهادی:
 
 `ai_accounts`
 
@@ -215,9 +215,9 @@ Suggested separation:
 - request_reference
 - created_at
 
-Use a ledger rather than mutating only a single balance field so consumption can be audited and reconciled.
+به‌جای تغییر فقط یک فیلد موجودی، از Ledger استفاده کنید تا مصرف قابل حسابرسی و تطبیق باشد.
 
-## 15. audit_events
+## ۱۵. audit_events
 
 - id
 - account_id
@@ -230,9 +230,9 @@ Use a ledger rather than mutating only a single balance field so consumption can
 - metadata_json
 - created_at
 
-Never put raw credentials into audit metadata.
+هیچ اعتبار خامی را داخل متادیتای حسابرسی قرار ندهید.
 
-## 16. Relationship overview
+## ۱۶. نمای روابط
 
 ```text
 Account
