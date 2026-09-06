@@ -21,14 +21,17 @@
 
 Application Password باید Credential برنامه‌ای WordPress باشد، نه رمز اصلی ورود به `wp-admin`.
 
+این Credentialها در Backend به‌عنوان دادهٔ پایدار Site Identity ذخیره نمی‌شوند و فقط در Scope همان Request مصرف می‌شوند.
+
 ```text
 Account
   └── Site Identity
-       ├── WordPress URL
-       ├── WordPress Username
-       ├── WordPress Application Password
-       ├── WooCommerce Consumer Key
-       └── WooCommerce Consumer Secret
+       └── Connection Metadata
+            ├── WordPress URL
+            └── سایر metadata غیرحساس
+
+Customer Credentials
+  └── Request-scoped only
 ```
 
 ## ۳. تنظیمات خود WooCommerce
@@ -179,17 +182,28 @@ WooGit Session
 
 Trial برابر ۱۵ روز است و به Site Identity/دامنه تعلق دارد.
 
-## ۹. نگهداری Credential در Backend
+## ۹. عدم نگهداری Customer Credential در Backend
 
-Credential Vault برای Proxy عادی اجباری نیست.
+در V1، Backend **هیچ Customer Credentialای را در DB، Vault، Cache پایدار یا هر storage دائمی نگهداری نمی‌کند**.
 
-در V1:
+الگوی اجباری:
 
 ```text
-Client → Session + 4 Customer Credentials → Backend → Customer Site
+Client → WooGit Session + 4 Customer Credentials → Backend → Customer Site
 ```
 
-Backend می‌تواند Credentialهای ارسالی را فقط برای همان Request مصرف کند. اگر در آینده background jobs، webhooks یا عملیات بدون حضور Client نیاز به Credential پایدار داشته باشند، نگهداری رمزنگاری‌شده باید به‌عنوان یک قابلیت جداگانه تصمیم‌گیری شود.
+Credentialهای Customer فقط برای همان Request مصرف می‌شوند و نباید به‌عنوان Credential پایدار نگهداری یا برای Request یا Site دیگری reuse شوند.
+
+Backend نباید:
+
+- Customer Credential را در DB ذخیره کند؛
+- برای Customer Credential، Vault یا secret storage پایدار داشته باشد؛
+- Customer Credential را در Cache پایدار نگهداری کند؛
+- Customer Credential را در Log، Analytics، Crash Report یا Audit Metadata ثبت کند؛
+- Customer Credential را در Error/Response برگرداند؛
+- Customer Credential را برای Request یا Site دیگری reuse کند.
+
+هر قابلیت آینده‌ای که به Credential پایدار نیاز داشته باشد خارج از این قرارداد V1 است و نمی‌تواند با فرض وجود Credential Storage در Backend طراحی شود.
 
 ## ۱۰. قوانین امنیتی
 
@@ -200,7 +214,8 @@ Backend باید:
 - آن‌ها را در Error/Response برنگرداند؛
 - آن‌ها را به Account یا Site دیگر افشا نکند؛
 - فقط برای Customer Site مجاز استفاده کند؛
-- از `site_id` برای اعمال Site Isolation استفاده کند.
+- از `site_id` برای اعمال Site Isolation استفاده کند؛
+- پس از پایان Request، هیچ storage پایدار حاوی Customer Credential ایجاد نکند.
 
 ## ۱۱. اصل نهایی
 
@@ -217,6 +232,8 @@ WooGit Session
 
 Customer Credentials
     → احراز Backend نزد Customer WordPress/WooCommerce
+    → Request-scoped only
+    → Never persisted by Backend
 
 WooCommerce Settings
     → متعلق به Customer Site
