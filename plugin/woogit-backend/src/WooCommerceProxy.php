@@ -18,21 +18,28 @@ final class WooCommerceProxy
         return ['ok'=>true];
     }
 
-    public function forward(string $baseUrl,string $path,string $method,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret,array $query,?array $body): array
+    /** Forward the App request without decoding or reshaping the upstream response. */
+    public function forward(string $baseUrl,string $path,string $method,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret,array $query,string $rawBody,string $contentType): array
     {
+        $query['consumer_key']=$consumerKey;
+        $query['consumer_secret']=$consumerSecret;
         $url=$baseUrl.$path;
         if($query!==[])$url=add_query_arg($query,$url);
-        $headers=['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','Content-Type'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION];
+
+        $headers=['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION];
+        if($contentType!=='')$headers['Content-Type']=$contentType;
         $args=['method'=>strtoupper($method),'timeout'=>20,'redirection'=>0,'headers'=>$headers,'data_format'=>'body'];
-        if($body!==null&&in_array(strtoupper($method),['POST','PUT','PATCH'],true))$args['body']=wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        if($rawBody!=='' && in_array(strtoupper($method),['POST','PUT','PATCH'],true))$args['body']=$rawBody;
+
         $response=wp_safe_remote_request($url,$args);
         if(is_wp_error($response)){
             $message=strtolower((string)$response->get_error_message());
             $timeout=str_contains($message,'timed out')||str_contains($message,'timeout')||str_contains($message,'operation timed out');
-            return ['status'=>$timeout?504:502,'body'=>['code'=>$timeout?'upstream_timeout':'upstream_unreachable'],'timeout'=>$timeout];
+            return ['status'=>$timeout?504:502,'body'=>'','headers'=>[],'timeout'=>$timeout];
         }
-        $status=wp_remote_retrieve_response_code($response);$raw=wp_remote_retrieve_body($response);$decoded=json_decode($raw,true);
-        return ['status'=>$status,'body'=>json_last_error()===JSON_ERROR_NONE?$decoded:['raw'=>$raw],'timeout'=>false];
+        $responseHeaders=[];
+        foreach(['content-type','x-wp-total','x-wp-totalpages','location'] as $name){$value=wp_remote_retrieve_header($response,$name);if($value!=='')$responseHeaders[$name]=$value;}
+        return ['status'=>wp_remote_retrieve_response_code($response),'body'=>wp_remote_retrieve_body($response),'headers'=>$responseHeaders,'timeout'=>false];
     }
 
     private function request(string $url,string $username,string $applicationPassword)
