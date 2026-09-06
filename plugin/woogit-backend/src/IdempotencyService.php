@@ -49,12 +49,12 @@ final class IdempotencyService
     public function markUnknown(int $accountId,int $siteId,string $key): bool
     {
         global $wpdb;
-        return false !== $wpdb->update($wpdb->prefix.'woogit_idempotency',['state'=>'unknown','updated_at'=>current_time('mysql',true)],['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%s','%s'],['%d','%d','%s']);
+        return false !== $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state='unknown',updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",current_time('mysql',true),$accountId,$siteId,$key));
     }
 
     public function complete(int $accountId,int $siteId,string $key,int $status,array $body): bool
     {
         global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';
-        return false !== $wpdb->update($wpdb->prefix.'woogit_idempotency',['state'=>$state,'status_code'=>$status,'response_body'=>wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'updated_at'=>current_time('mysql',true)],['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%s','%d','%s','%s'],['%d','%d','%s']);
+        return false !== $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",$state,$status,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),$accountId,$siteId,$key));
     }
 }
