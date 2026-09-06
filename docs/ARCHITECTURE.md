@@ -3,28 +3,59 @@
 > وضعیت: **V1 Architecture — Locked**
 >
 > این repository فقط Backend اپ Android موجود WooGit را می‌سازد. اپ در repository مستقل قرار دارد و در این سند به‌عنوان Client خارجی در نظر گرفته می‌شود.
+>
+> **تفکیک مهم:** `WooGit Gateway Plugin` و `WooGit Main Plugin` دو محصول/کامپوننت کاملاً جدا هستند و نباید با یکدیگر قاطی شوند.
+>
+> - **WooGit Gateway Plugin:** پلاگینی که روی WordPress/WooCommerce سایت مشتری نصب می‌شود و در آینده بخشی از مسیر اتصال Backend به سایت مشتری خواهد بود. توسعه آن در وضعیت فعلی این پروژه انجام نمی‌شود.
+> - **WooGit Main Plugin:** پلاگین مربوط به خود سایت اصلی WooGit/WordPress ووگیت است و از Gateway Plugin مشتری مستقل است.
 
 ## ۱. تصمیم اصلی
 
 Backend V1 باید سبک باشد و بین اپ موجود و Customer WordPress/WooCommerce قرار بگیرد. هدف، بازسازی WooCommerce یا Mirror دائمی داده‌ها نیست.
 
-مدل انتخاب‌شده:
+در وضعیت فعلی **تمرکز توسعه روی Backend است و روی `WooGit Gateway Plugin` کار نمی‌کنیم.** Gateway فقط به‌عنوان یک کامپوننت مستقل و آینده در قرارداد/معماری شناخته می‌شود تا بعداً طراحی و پیاده‌سازی آن جداگانه انجام شود.
+
+مدل مفهومی مسیر نهایی:
 
 ```text
 Android App
    ↓
-WordPress REST / WooGit Plugin
+WooGit Backend
    ↓
-Authorization + Account Check
+[در آینده، در صورت نیاز] WooGit Gateway Plugin روی سایت مشتری
    ↓
-Lightweight Proxy
-   ↓
-Customer WordPress/WooCommerce
+Customer WordPress / WooCommerce
 ```
+
+در V1 فعلی، Backend نباید منتظر پیاده‌سازی Gateway Plugin بماند و نباید کد Gateway را در این repository بازسازی کند.
 
 Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 
-## ۲. وضعیت فعلی Client
+## ۲. تفکیک دو WooGit Plugin
+
+### WooGit Gateway Plugin — سایت مشتری
+
+این پلاگین برای نصب روی WordPress/WooCommerce مشتری طراحی می‌شود و با پلاگین اصلی سایت WooGit یکی نیست.
+
+```text
+Customer WordPress/WooCommerce
+        └── WooGit Gateway Plugin
+```
+
+این کامپوننت در وضعیت فعلی **خارج از محدوده اجرای پروژه** است. هیچ پیاده‌سازی، refactor یا migration مربوط به Gateway Plugin در این مرحله انجام نمی‌شود.
+
+### WooGit Main Plugin — سایت اصلی WooGit
+
+این پلاگین مربوط به WordPress سایت اصلی WooGit است و از Gateway Plugin مشتری مستقل است.
+
+```text
+WooGit Main Website / WordPress
+        └── WooGit Main Plugin
+```
+
+هر اشاره به `WooGit Plugin` در اسناد باید با توجه به این تفکیک مشخص کند منظور کدام‌یک است.
+
+## ۳. وضعیت فعلی Client
 
 اپ فعلی مستقیماً با Customer Site کار می‌کند و همین چهار Credential را دارد:
 
@@ -35,7 +66,7 @@ Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 
 در وضعیت فعلی، Backend Session وجود ندارد؛ اضافه شدن Backend باید با حداقل تغییر در Client انجام شود.
 
-## ۳. توپولوژی هدف
+## ۴. توپولوژی هدف
 
 ```text
 ┌──────────────────────┐
@@ -48,7 +79,6 @@ Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
            ▼
 ┌────────────────────────────┐
 │       WooGit Backend       │
-│    WordPress + Plugin      │
 │                            │
 │ Authorization / Account    │
 │ Subscription / Entitlement │
@@ -56,16 +86,24 @@ Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 │ Version / Security         │
 │ Lightweight Proxy          │
 └────────────┬───────────────┘
-             │ HTTPS
-             │ Customer Credentials
+             │
+             │ Customer credentials / controlled integration
              ▼
 ┌────────────────────────────┐
 │ Customer WordPress         │
 │ + WooCommerce              │
+│ + (Future) Gateway Plugin  │
+└────────────────────────────┘
+
+مستقل از این مسیر:
+
+┌────────────────────────────┐
+│ WooGit Main Website        │
+│ + WooGit Main Plugin       │
 └────────────────────────────┘
 ```
 
-## ۴. دو نوع Credential
+## ۵. دو نوع Credential
 
 در درخواست عادی دو دسته اعتبار هم‌زمان وجود دارد:
 
@@ -84,7 +122,7 @@ Customer Credentialها ممکن است در Client موجود باشند؛ ای
 
 Backend نباید این Credentialها را Log کند، به Account/Site دیگری افشا کند یا بی‌دلیل در Response برگرداند.
 
-## ۵. جریان درخواست عادی
+## ۶. جریان درخواست عادی
 
 ```text
 App
@@ -100,7 +138,7 @@ Backend
  ├─ Version / Rate Limit / Security
  └─ Idempotency where required
  ↓
-Lightweight Proxy
+Lightweight Proxy / controlled integration
  ↓
 Customer WordPress/WooCommerce
  ↓
@@ -109,9 +147,11 @@ Same response / minimum transformation
 App
 ```
 
+وجود Gateway Plugin در آینده نباید به معنی ساخت یک Proxy عمومی یا URL دلخواه باشد. مقصد Customer Site باید از Site Identity و قرارداد کنترل‌شده تعیین شود.
+
 Backend نباید برای هر درخواست داده‌های WooCommerce را Mirror، بازسازی یا بی‌دلیل تبدیل کند.
 
-## ۶. Bootstrap / Verification اولیه
+## ۷. Bootstrap / Verification اولیه
 
 در اولین اتصال ممکن است هنوز WooGit Session کامل وجود نداشته باشد. بنابراین Verification اولیه یک Flow جداست:
 
@@ -128,18 +168,18 @@ Account / Trial lifecycle
  ↓
 WooGit Session
  ↓
-Normal Proxy requests
+Normal requests
 ```
 
 در صورت شکست Verification، اتصال موفق یا Account/Trial موفق نباید ثبت/اعلام شود.
 
-## ۷. Site Identity و مقصد Proxy
+## ۸. Site Identity و مقصد Customer
 
 Client می‌تواند `site_id` را در قرارداد ارسال کند، اما Backend باید مالکیت آن را خودش احراز کند.
 
 Store ID محلی فعلی App که از Domain Hash ساخته می‌شود، نباید مستقیماً Backend `site_id` فرض شود.
 
-مقصد Proxy باید از Site Identity ثبت‌شده resolve شود:
+مقصد Customer باید از Site Identity ثبت‌شده resolve شود:
 
 ```text
 site_id
@@ -155,7 +195,7 @@ URL دلخواه Client نباید به Proxy عمومی تبدیل شود:
 /proxy?url=https://anything.com   ❌
 ```
 
-## ۸. Subscription و Account Check
+## ۹. Subscription و Account Check
 
 هر Request عادی پیش از Forward باید حداقل این موارد را بررسی کند:
 
@@ -168,13 +208,13 @@ URL دلخواه Client نباید به Proxy عمومی تبدیل شود:
 
 در صورت شکست هر مورد، Request نباید به Customer Site ارسال شود.
 
-## ۹. عدم Mirror
+## ۱۰. عدم Mirror
 
 Products، Orders، Customers، Categories، Variations و Media همچنان در Customer Site منبع اصلی خود را دارند.
 
 Backend فقط در حد داده عملیاتی موردنیاز خودش state نگه می‌دارد و نباید یک دیتابیس دوم WooCommerce بسازد.
 
-## ۱۰. عملیات و Media
+## ۱۱. عملیات و Media
 
 API بیرونی می‌تواند برای امنیت و قرارداد پایدار مسیرهای شناخته‌شده/Typed داشته باشد؛ اما پیاده‌سازی داخلی Lightweight Proxy است.
 
@@ -186,9 +226,11 @@ POST /api/v1/gateway/sites/{site_id}/orders/get
 POST /api/v1/gateway/sites/{site_id}/media/upload
 ```
 
+این مسیرهای API به معنی پیاده‌سازی `WooGit Gateway Plugin` در این مرحله نیستند؛ آن پلاگین یک کامپوننت مستقل است که در فاز جداگانه طراحی خواهد شد.
+
 Media نیز تا حد امکان مستقیماً در Customer WordPress نگهداری می‌شود.
 
-## ۱۱. Idempotency و Timeout-after-success
+## ۱۲. Idempotency و Timeout-after-success
 
 Proxy سبک بودن، نیاز به Idempotency را حذف نمی‌کند.
 
@@ -203,11 +245,11 @@ Backend → previous result / reconciliation
 
 همه CREATE mutationهای موردنیاز باید به‌صورت idempotent مدیریت شوند تا Timeout به ایجاد منبع تکراری منجر نشود.
 
-## ۱۲. Currency
+## ۱۳. Currency
 
 Backend نباید واحد پول را فرض یا بازنویسی کند. Currency و context مالی موردنیاز Client باید از Customer WooCommerce عبور داده شود.
 
-## ۱۳. اصل کلی V1
+## ۱۴. اصل کلی V1
 
 ```text
 WooGit Session
@@ -216,9 +258,15 @@ WooGit Session
 Customer Credentials
     = Customer Site authentication
 
-Backend
+WooGit Backend
     = Account + Subscription + Entitlement + Site ownership
       + Security + Lightweight Proxy
+
+WooGit Gateway Plugin
+    = کامپوننت مستقل روی سایت مشتری؛ فعلاً خارج از scope توسعه
+
+WooGit Main Plugin
+    = پلاگین مستقل سایت اصلی WooGit؛ با Gateway Plugin یکی نیست
 
 Customer WordPress/WooCommerce
     = Source of truth for store data
