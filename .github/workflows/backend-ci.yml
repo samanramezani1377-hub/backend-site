@@ -1,0 +1,33 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: PHP syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          find plugin/woogit-backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Proxy security invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          proxy='plugin/woogit-backend/src/WooCommerceProxy.php'
+          controller='plugin/woogit-backend/src/RestController.php'
+          policy='plugin/woogit-backend/src/ProxyPolicy.php'
+          ! grep -Eq "consumer_(key|secret).*query|query.*consumer_(key|secret)" "$proxy"
+          grep -Eq "Idempotency-Key" "$controller"
+          grep -Eq "wp_safe_remote_request" "$proxy"
+          grep -Eq "https" "$policy"
