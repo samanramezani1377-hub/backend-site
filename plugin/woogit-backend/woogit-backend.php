@@ -24,11 +24,18 @@ add_action('init',static function():void{
     if(!wp_next_scheduled('woogit_backend_cleanup')) wp_schedule_event(time()+300,'daily','woogit_backend_cleanup');
 });
 add_action('woogit_backend_cleanup',static function():void{
-    global $wpdb;$now=current_time('mysql',true);$old7=gmdate('Y-m-d H:i:s',time()-7*DAY_IN_SECONDS);$old2=gmdate('Y-m-d H:i:s',time()-2*DAY_IN_SECONDS);
+    global $wpdb;
+    $now=current_time('mysql',true);
+    $old7=gmdate('Y-m-d H:i:s',time()-7*DAY_IN_SECONDS);
+    $old2=gmdate('Y-m-d H:i:s',time()-2*DAY_IN_SECONDS);
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_sessions WHERE expires_at < %s",$now));
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_idempotency WHERE updated_at < %s AND state IN ('succeeded','failed')",$old7));
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_operations WHERE expires_at IS NOT NULL AND expires_at < %s AND status IN ('succeeded','failed')",$now));
-    $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_rate_limits WHERE updated_at < %s",$old2));
+
+    // Rate-limit rows are windowed; cleanup by window_start instead of
+    // updated_at so the hot-path no longer needs to rewrite updated_at.
+    $rateLimitTable=$wpdb->prefix.'woogit_rate_limits';
+    $wpdb->query($wpdb->prepare("DELETE FROM {$rateLimitTable} WHERE window_start < %s LIMIT 1000",$old2));
 });
 add_action('rest_api_init',static function():void{
     (new WooGit\\Backend\\RestController())->register();
