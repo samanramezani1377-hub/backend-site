@@ -104,6 +104,20 @@
 
 **دلیل:** Timeout شبکه می‌تواند بعد از موفقیت مقصد رخ دهد. پیش از عرضه تجاری باید رفتار Retry امن اثبات شود.
 
+## ADR-013 — Credential Vault در V1 اختیاری و غیرالزامی است
+
+**تصمیم:** `Credential Vault` بخشی از قابلیت‌های بالقوه `WooGit Main Plugin` است، اما در V1 برای عملیات عادی اجباری نیست. در مدل فعلی، Client می‌تواند اعتبارهای سایت مشتری را همراه درخواست ارسال کند و Main Plugin پس از احراز Session، Account، Site Ownership، Entitlement و سایر کنترل‌های لازم، درخواست کنترل‌شده را به سایت مشتری Forward کند.
+
+**نتیجه:**
+
+- هیچ Lookup اجباری به Vault برای هر Request عادی وجود ندارد.
+- Backend نباید صرفاً برای Proxy سبک، credentialهای Client را در دیتابیس ذخیره کند.
+- Credential Vault فقط در صورت نیاز واقعی، مثلاً برای قابلیت‌های آینده‌ای که به اجرای Background Job/Webhook یا دسترسی بدون حضور Client نیاز دارند، می‌تواند فعال شود.
+- اضافه شدن Vault اجباری یا تغییر مدل ذخیره‌سازی Credentialها نیازمند تصمیم معماری جدید است.
+- Credentialها همچنان Secret محسوب می‌شوند و نباید در Log، Error Response، Audit عمومی یا Telemetry افشا شوند.
+
+**دلیل:** این تصمیم با هدف V1 سبک و کمینه کردن تغییرات Client و هزینه پردازش Backend هم‌راستا است. WordPress نیز Application Password را برای احراز هویت برنامه‌ای و به‌صورت قابل لغو پشتیبانی می‌کند. urlWordPress REST API Authenticationhttps://developer.wordpress.org/rest-api/using-the-rest-api/authentication/
+
 ## موارد خارج از هدف
 
 - ساخت یا بازطراحی Android App در این repository.
