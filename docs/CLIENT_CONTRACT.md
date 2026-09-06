@@ -78,72 +78,215 @@ store-{hash(canonicalized-url)}
 
 Backend باید Site Identity مستقل و authoritative خود را داشته باشد و در Migration یک mapping صریح بین Client Store ID و Backend Site Identity ایجاد شود.
 
-## ۵. توپولوژی هدف
+## ۵. اصل جدید و اجباری: اولین درخواست Backend به سایت مشتری
 
-پس از ورود Backend به مسیر ارتباطی، معماری هدف چنین است:
+**اولین درخواست واقعی Backend به هر سایت مشتری باید یک درخواست Verification/Connection باشد، نه درخواست Products، Orders یا سایر عملیات تجاری.**
 
-```text
-WooGit Android
-      │
-      │ WooGit API
-      ▼
-WooGit Backend
-      │
-      │ authenticated outbound request
-      ▼
-Customer WordPress / WooCommerce
-```
+هدف این مرحله این است که Backend ابتدا ثابت کند:
 
-در این مرحله Backend مسئول نگهداری Credential سایت و اجرای عملیات مجاز است.
+1. سایت مشتری از نظر شبکه و HTTPS قابل دسترسی است؛
+2. WordPress REST API در دسترس است؛
+3. Credential مربوط به WordPress معتبر است؛
+4. WordPress هویت/دسترسی ارائه‌شده را می‌پذیرد؛
+5. سپس WooCommerce قابل دسترسی و احراز هویت است؛
+6. پس از موفقیت کامل، Site Identity می‌تواند ایجاد یا به سایت موجود متصل شود.
 
-## ۶. Flow اتصال هدف
+### ۵.۱ ترتیب Verification
 
-### ۶.۱ اتصال ناموفق
+Flow استاندارد اتصال:
 
 ```text
 Client credentials
-    -> Backend
-    -> verify WordPress/WooCommerce
-    -> failure
-    -> safe error
+       ↓
+WooGit Backend
+       ↓
+[1] WordPress reachability
+       ↓
+[2] WordPress authentication
+       ↓
+[3] WordPress identity/access verification
+       ↓
+[4] WooCommerce authentication/availability
+       ↓
+[5] Site Identity verification/creation
+       ↓
+[6] Session / onboarding continuation
+       ↓
+Products / Orders / Customers / Media
 ```
 
-در failure:
+**هیچ عملیات تجاری نباید قبل از موفقیت Verification Flow اجرا شود.**
 
-- Account ساخته نمی‌شود.
-- Trial ساخته نمی‌شود.
-- Session ساخته نمی‌شود.
+### ۵.۲ Verification مربوط به WordPress
+
+برای Credentialهای WordPress، Backend باید ابتدا یک درخواست read-only به WordPress REST API ارسال کند. در صورت استفاده از WordPress Application Password، این Credential باید از طریق HTTPS به REST API ارائه شود.
+
+نمونه مفهومی:
+
+```http
+GET https://customer-site.example/wp-json/wp/v2/users/me
+Authorization: Basic <username:application-password>
+```
+
+موفقیت این درخواست نشان می‌دهد که در سطح WordPress:
+
+```text
+WordPress reachable       ✓
+HTTPS                     ✓
+Credentials valid         ✓
+WordPress authentication  ✓
+```
+
+این مرحله باید **قبل از هر درخواست تجاری WooCommerce** انجام شود.
+
+### ۵.۳ Verification مربوط به WooCommerce
+
+پس از موفقیت WordPress verification، Backend باید دسترسی WooCommerce را جداگانه بررسی کند.
+
+نمونه:
+
+```http
+GET https://customer-site.example/wp-json/wc/v3/system_status
+```
+
+موفقیت این مرحله نشان می‌دهد که:
+
+```text
+WooCommerce reachable       ✓
+WooCommerce authenticated    ✓
+WooCommerce API usable       ✓
+```
+
+این درخواست همان endpointی است که Client فعلی نیز برای اعتبارسنجی اتصال مستقیم استفاده می‌کند و باید در Migration Contract با رفتار واقعی Client تطبیق داده شود.
+
+### ۵.۴ Verification نباید mutation باشد
+
+Connection Verification باید تا حد امکان read-only باشد.
+
+Verification نباید برای اثبات اتصال، محصول/سفارش/رسانه‌ای ایجاد یا تغییر دهد.
+
+بنابراین این موارد در Verification ممنوع‌اند:
+
+- CREATE product
+- CREATE order
+- CREATE media صرفاً برای تست
+- UPDATE product
+- DELETE هر resource
+
+### ۵.۵ خطاها باید مرحله مشخص داشته باشند
+
+Backend نباید تمام خطاهای اتصال را به یک خطای مبهم تبدیل کند.
+
+حداقل stageهای منطقی:
+
+```text
+network
+https
+wordpress
+wordpress_auth
+woocommerce
+woocommerce_auth
+site_identity
+```
+
+نمونه خطای WordPress:
+
+```json
+{
+  "code": "WORDPRESS_CONNECTION_FAILED",
+  "stage": "wordpress",
+  "message": "اتصال به سایت وردپرس برقرار نشد.",
+  "retryable": true
+}
+```
+
+نمونه خطای Authentication:
+
+```json
+{
+  "code": "WORDPRESS_AUTH_FAILED",
+  "stage": "wordpress_auth",
+  "message": "اطلاعات احراز هویت وردپرس معتبر نیست.",
+  "retryable": false
+}
+```
+
+نمونه خطای WooCommerce:
+
+```json
+{
+  "code": "WOOCOMMERCE_CONNECTION_FAILED",
+  "stage": "woocommerce",
+  "message": "اتصال به WooCommerce برقرار نشد.",
+  "retryable": true
+}
+```
+
+پیام عمومی نباید Secret، Application Password، Consumer Secret، stack trace یا جزئیات حساس زیرساخت را افشا کند.
+
+## ۶. نتیجه Verification و Onboarding
+
+### ۶.۱ Verification ناموفق
+
+```text
+Client credentials
+    ↓
+Backend Verification
+    ↓
+FAIL
+```
+
+در این حالت:
+
+- Account جدید صرفاً به خاطر این تلاش اتصال ساخته نمی‌شود.
+- Trial فعال نمی‌شود.
+- Session نهایی ساخته نمی‌شود.
 - Dashboard unlock نمی‌شود.
-- Secret یا جزئیات داخلی زیرساخت در error response افشا نمی‌شود.
+- Site Identity به‌عنوان اتصال موفق ثبت نمی‌شود.
 
 ### ۶.۲ Site Identity موجود
 
 ```text
 Client credentials
-    -> Backend verification
-    -> existing Site Identity
-    -> existing site account
-    -> WooGit session
-    -> Dashboard
+    ↓
+WordPress verification
+    ↓
+WooCommerce verification
+    ↓
+existing Site Identity
+    ↓
+existing site account
+    ↓
+WooGit session
+    ↓
+Dashboard
 ```
-
-اتصال موفق به همان سایت، اثبات دسترسی به Site Identity است. Email/Google login نباید به‌عنوان پیش‌شرط login عادی این flow اضافه شود.
 
 ### ۶.۳ Site Identity جدید
 
 ```text
 Client credentials
-    -> Backend verification
-    -> new Site Identity
-    -> second in-app page
-    -> email + first name + last name
-    -> account creation
-    -> trial eligibility check
-    -> WooGit session
-    -> Dashboard
+    ↓
+WordPress verification
+    ↓
+WooCommerce verification
+    ↓
+new Site Identity
+    ↓
+second in-app page
+    ↓
+email + first name + last name
+    ↓
+account creation
+    ↓
+trial eligibility check
+    ↓
+WooGit session
+    ↓
+Dashboard
 ```
 
-صفحه دوم فقط بعد از verification موفق فعال می‌شود.
+صفحه دوم فقط بعد از Verification موفق فعال می‌شود.
 
 ## ۷. Session و Token — قرارداد هدف، نه وضعیت فعلی
 
@@ -303,6 +446,8 @@ Backend باید این قرارداد را طوری ارائه کند که با
 6. Credential handling باید از direct REST به Backend Vault منتقل شود.
 7. رفتار فعلی direct WooCommerce باید قبل از cutover با contract test پوشش داده شود.
 8. Migration باید امکان rollback یا coexistence کنترل‌شده داشته باشد.
+9. **هیچ عملیات تجاری Backend به سایت مشتری نباید قبل از موفقیت Connection Verification اجرا شود.**
+10. **اولین outbound request برای اتصال هر Site Identity جدید باید Verification read-only باشد.**
 
 ## ۱۷. Definition of Done برای Client Contract
 
@@ -322,5 +467,4 @@ Backend باید این قرارداد را طوری ارائه کند که با
 - reconciliation strategy
 - rate-limit behavior
 - required entitlement
-
-تا آن زمان این سند **Baseline معماری و مهاجرت** است، نه ادعای کامل بودن API.
+- **connection verification stage و success/failure semantics**
