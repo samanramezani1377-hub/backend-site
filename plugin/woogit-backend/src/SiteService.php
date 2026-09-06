@@ -9,6 +9,7 @@ final class SiteService
     {
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_sites';
+        $host = strtolower(rtrim(trim($host), '.'));
         $row = $wpdb->get_row($wpdb->prepare("SELECT id,account_id,canonical_url,host,status FROM {$table} WHERE host = %s LIMIT 1", $host), ARRAY_A);
         return $row ?: null;
     }
@@ -25,14 +26,17 @@ final class SiteService
     {
         $parts = wp_parse_url($canonicalUrl);
         if (!$parts || empty($parts['host'])) return null;
-        $host = strtolower($parts['host']);
+        $host = strtolower(rtrim((string)$parts['host'], '.'));
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_sites';
         $existing = $this->findByHost($host);
         if ($existing) return ((int)$existing['account_id'] === $accountId && $existing['status'] === 'active') ? $existing : null;
         $now = current_time('mysql', true);
-        $ok = $wpdb->insert($table, ['account_id'=>$accountId,'canonical_url'=>rtrim($canonicalUrl,'/'),'host'=>$host,'status'=>'active','created_at'=>$now,'updated_at'=>$now], ['%d','%s','%s','%s','%s','%s']);
-        if (!$ok) return null;
-        return ['id'=>(int)$wpdb->insert_id,'account_id'=>$accountId,'canonical_url'=>rtrim($canonicalUrl,'/'),'host'=>$host,'status'=>'active'];
+        $canonical = rtrim($canonicalUrl,'/');
+        $ok = $wpdb->insert($table, ['account_id'=>$accountId,'canonical_url'=>$canonical,'host'=>$host,'status'=>'active','created_at'=>$now,'updated_at'=>$now], ['%d','%s','%s','%s','%s','%s']);
+        if ($ok) return ['id'=>(int)$wpdb->insert_id,'account_id'=>$accountId,'canonical_url'=>$canonical,'host'=>$host,'status'=>'active'];
+        // A concurrent verifier may have won the unique host race. Never create a second owner.
+        $existing = $this->findByHost($host);
+        return ($existing && (int)$existing['account_id'] === $accountId && $existing['status'] === 'active') ? $existing : null;
     }
 }
