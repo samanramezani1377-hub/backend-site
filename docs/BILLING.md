@@ -171,3 +171,51 @@ Customer WooCommerce
 ```
 
 این WooCommerce مربوط به **فروش خود سرویس WooGit روی WordPress اصلی WooGit** است و با WooCommerce سایت مشتری یکی نیست.
+
+## ۱۴. پیاده‌سازی V1 در اپ
+
+پس از Verification موفق، حتی اگر Trial تمام شده یا Plan فعال وجود نداشته باشد، Backend برای Account + Site یک Session صادر می‌کند. این Session برای ورود به حساب و Billing قابل استفاده است، اما مجوز ارسال درخواست به Customer Site ندارد.
+
+```text
+Verify Customer Site
+        ↓
+Account + Site
+        ↓
+Session
+        ├── Billing / Account: مجاز
+        └── Customer Gateway: فقط با Entitlement معتبر
+```
+
+در نتیجه App می‌تواند کاربر را وارد حساب کند و صفحه پرداخت را نمایش دهد، بدون اینکه در حالت بدون Plan بتواند Product/Order/Customer API را از طریق `/forward` اجرا کند.
+
+### ۱۴.۱ پلن‌ها
+
+`GET /api/v1/billing/plans` پلن‌های Subscription منتشرشده و قابل خرید WooCommerce را برمی‌گرداند. App قیمت، ارز یا مدت را hard-code نمی‌کند.
+
+### ۱۴.۲ ایجاد پرداخت
+
+`POST /api/v1/billing/checkout` فقط با Session معتبر انجام می‌شود. `account_id` و `site_id` از Session استخراج می‌شوند و Client حق انتخاب حساب دیگری را ندارد. Backend یک Order روی WooCommerce اصلی WooGit ایجاد می‌کند و آن را با Account/Site مرتبط می‌کند.
+
+پاسخ شامل `payment_url` است و App کاربر را به صفحه پرداخت همان Order هدایت می‌کند.
+
+### ۱۴.۳ تأیید پرداخت و فعال‌سازی
+
+پرداخت از سمت App تأیید نمی‌شود. پس از پرداخت موفق، WooCommerce و WooCommerce Subscriptions رویدادهای سروری خود را اجرا می‌کنند. WooGit Backend از همان رویدادهای سروری، Account/Site موجود در metadata سفارش را resolve کرده و Entitlement را به `active` تبدیل می‌کند.
+
+```text
+App
+ ↓
+Billing Checkout
+ ↓
+WooCommerce Order
+ ↓
+Payment Gateway
+ ↓
+WooCommerce / Subscriptions server-side event
+ ↓
+WooGit Entitlement = active
+ ↓
+/forward مجاز می‌شود
+```
+
+Renewal نیز از مسیر Subscription به Backend همگام می‌شود. لغو اشتراک دسترسی را زودتر از سیاست انقضای واقعی قطع نمی‌کند؛ پس از پایان entitlement، `/forward` دوباره مسدود می‌شود.
