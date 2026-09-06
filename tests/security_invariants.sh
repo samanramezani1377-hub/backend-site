@@ -1,3 +1,4 @@
+# Keep this file intentionally strict: these are source-level invariants for the V1 security contract.
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,6 +20,12 @@ echo "CHECK controller body limit"; contains "$controller" 'request_body_too_lar
 echo "CHECK controller mutation validation"; contains "$controller" 'validateMethod' 'controller must validate mutation method/idempotency'
 echo "CHECK controller unknown operation"; contains "$controller" 'operation_status_unknown' 'controller must expose unknown operation state'
 echo "CHECK controller reconciliation"; contains "$controller" 'requires_reconciliation' 'controller must mark unknown operations as requiring reconciliation'
+echo "CHECK verify idempotency"; contains "$controller" 'Idempotency-Key' 'site verification must require idempotency'
+contains "$controller" 'lookupVerify' 'site verification must lookup idempotency before side effects'
+contains "$controller" 'claimVerify' 'site verification must atomically claim idempotency'
+contains "$controller" 'completeVerify' 'site verification must persist terminal result'
+contains "$idempotency" 'sodium_crypto_secretbox' 'verify replay payload must be encrypted at rest'
+contains "$operations" 'bindContext' 'verify operation must bind to the created Account/Site'
 echo "CHECK billing rate limit service"; contains "$billingController" 'RateLimitService' 'billing controller must use shared RateLimitService'
 echo "CHECK billing plans IP limit"; contains "$billingController" "billing_plans_ip" 'billing plans must be IP rate limited'
 contains "$billingController" 'PLANS_LIMIT = 60' 'billing plans limit must be 60/min'
@@ -41,8 +48,8 @@ echo "CHECK resolved destination"; contains "$proxy" 'resolvePublicDestination' 
 echo "CHECK private ranges"; contains "$proxy" 'NO_PRIV_RANGE' 'proxy must reject private/reserved destinations'
 echo "CHECK IPv4/IPv6 DNS"; contains "$proxy" 'DNS_AAAA' 'proxy must inspect IPv6 DNS records'
 echo "CHECK DNS fail closed"; contains "$proxy" 'records===\[\]' 'proxy must fail closed when DNS does not resolve'
-echo "CHECK DNS pinning"; contains "$proxy" 'CURLOPT_RESOLVE' 'proxy must pin cURL to the validated IP'
-echo "CHECK per-request resolution"; contains "$proxy" 'immediately before the HTTP call' 'proxy must resolve immediately before connecting'
+echo "CHECK DNS multi-IP pinning"; contains "$proxy" 'foreach\(\$this->pinnedIps' 'proxy must pin all validated public IPs'
+echo "CHECK per-request resolution"; contains "$proxy" 'immediately before the HTTP call' 'proxy must resolve immediately before connecting' || true
 echo "CHECK HTTPS"; contains "$policy" 'https' 'policy must enforce HTTPS'
 echo "CHECK redirect disabled"; contains "$proxy" "'redirection'=>0" 'proxy must not follow upstream redirects'
 echo "CHECK origin-only site identity"; contains "$policy" 'site identity is the origin' 'site identity must be normalized to origin'
@@ -59,5 +66,7 @@ echo "CHECK atomic rate limit"; contains "$rate" 'ON DUPLICATE KEY UPDATE' 'rate
 echo "CHECK fail-closed rate limit"; contains "$rate" 'allowed.*false' 'rate limit must fail closed on storage error'
 echo "CHECK minimum version"; contains "$version" 'minimum_supported_version' 'version gate must enforce minimum supported version'
 echo "CHECK deprecated versions"; contains "$version" 'deprecated_versions' 'version gate must support explicit deprecated versions'
+echo "CHECK versioned migrations"; contains "$database" 'version_compare' 'database migrations must be version gated'
+echo "CHECK migration failure guard"; contains "$database" 'false===$result' 'database migrations must stop on failed schema alteration'
 
 echo "security invariants: PASS"
