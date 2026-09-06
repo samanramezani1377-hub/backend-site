@@ -8,27 +8,33 @@
 
 این مخزن نباید اپ را دوباره بسازد، معماری داخلی آن را بازطراحی کند یا مسئولیت‌های UI/UX آن را بر عهده بگیرد.
 
+## ۲. تفکیک کامپوننت‌های WooGit
+
+دو پلاگین با نام WooGit در معماری وجود دارند و **کاملاً مستقل هستند**:
+
+### WooGit Gateway Plugin
+
+پلاگینی است که روی **WordPress/WooCommerce سایت مشتری** نصب می‌شود.
+
 ```text
-┌──────────────────────┐
-│  WooGit Android App  │  ← پروژه مستقل، از قبل ساخته شده
-│  وضعیت فعلی: مستقل  │
-└──────────┬───────────┘
-           │
-           │ پس از آماده شدن Backend
-           │ HTTPS / API
-           ▼
-┌──────────────────────┐
-│   WooGit Backend     │  ← این پروژه
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Customer WordPress   │
-│ / WooCommerce        │
-└──────────────────────┘
+Customer WordPress/WooCommerce
+        └── WooGit Gateway Plugin
 ```
 
-## ۲. مسئولیت این مخزن
+این کامپوننت در این مرحله **موضوع توسعه نیست**. فعلاً فقط در معماری به‌عنوان یک کامپوننت مستقل شناخته می‌شود و طراحی/پیاده‌سازی/Refactor آن به فاز جداگانه موکول است.
+
+### WooGit Main Plugin
+
+پلاگین مربوط به **سایت اصلی WooGit/WordPress ووگیت** است.
+
+```text
+WooGit Main Website / WordPress
+        └── WooGit Main Plugin
+```
+
+این پلاگین با `WooGit Gateway Plugin` سایت مشتری یکی نیست و نباید در مستندات یا پیاده‌سازی با آن ادغام شود.
+
+## ۳. مسئولیت این مخزن
 
 Backend باید سرویس‌های زیر را برای اپ موجود فراهم کند:
 
@@ -37,13 +43,10 @@ Backend باید سرویس‌های زیر را برای اپ موجود فرا
 - Account lifecycle
 - Subscription / Trial
 - Entitlement و Feature authorization
-- Credential Vault
-- API Gateway
-- عملیات Typed برای WooCommerce
+- Secure credential handling
+- API Gateway / controlled proxy
+- عملیات کنترل‌شده برای WooCommerce
 - WordPress/WooCommerce integration
-- WooGit Bridge integration
-- Webhook / Event ingestion
-- Queue / Job / Retry
 - Idempotency
 - Timeout-after-success safety
 - Rate limiting و Abuse protection
@@ -51,7 +54,9 @@ Backend باید سرویس‌های زیر را برای اپ موجود فرا
 - Observability و Operations
 - قابلیت‌های اختیاری Chat / AI / Analytics در صورت قرار گرفتن در قرارداد محصول
 
-## ۳. چیزهایی که خارج از مسئولیت این مخزن هستند
+**`WooGit Gateway Plugin` جزو کار فعلی این مخزن نیست.** Backend نباید برای تکمیل آن منتظر بماند و نباید سورس یا منطق آن را در این repository بازسازی کند.
+
+## ۴. چیزهایی که خارج از مسئولیت این مخزن هستند
 
 - ساخت یا بازطراحی اپ Android
 - UI/UX اپ
@@ -61,8 +66,10 @@ Backend باید سرویس‌های زیر را برای اپ موجود فرا
 - منطق محلی اپ به‌عنوان مرجع مجوز
 - بسته‌بندی APK
 - CI مخصوص Android، مگر برای تست قرارداد API Backend
+- **پیاده‌سازی یا بازطراحی WooGit Gateway Plugin روی سایت مشتری در فاز فعلی**
+- ادغام WooGit Gateway Plugin با WooGit Main Plugin
 
-## ۴. قرارداد با اپ موجود
+## ۵. قرارداد با اپ موجود
 
 Backend باید با رفتار فعلی اپ به‌عنوان یک Client واقعی سازگار شود.
 
@@ -85,18 +92,19 @@ Backend ابتدا اتصال واقعی WordPress/WooCommerce را بررسی �
 
 در تمام حالت‌ها Backend مرجع نهایی مجوز و وضعیت تجاری است.
 
-## ۵. وابستگی‌های خارجی
+## ۶. وابستگی‌های خارجی
 
 این پروژه می‌تواند به اجزای دیگری وابسته باشد، اما آن‌ها را مالک نمی‌شود:
 
 - Android App موجود WooGit: Client فعلی مستقل و Client آینده Backend
 - WordPress/WooCommerce مشتری: منبع داده فروشگاه
-- WooGit Bridge: Integration component
+- **WooGit Gateway Plugin: کامپوننت مستقل روی سایت مشتری، خارج از scope فعلی**
+- WooGit Main Plugin: پلاگین مستقل سایت اصلی WooGit
 - WooGit commercial website/control panel: سامانه جداگانه در صورت وجود
 
 وجود این اجزا در معماری به معنی قرار گرفتن سورس آن‌ها در این repository نیست.
 
-## ۶. قانون جلوگیری از Scope Drift
+## ۷. قانون جلوگیری از Scope Drift
 
 هر قابلیت جدید باید ابتدا مشخص کند:
 
@@ -112,10 +120,12 @@ Backend    پروژه/سرویس مربوطه
 
 اگر قابلیت متعلق به Android App باشد، نباید در این repository پیاده‌سازی شود.
 
-اگر قابلیت متعلق به سایت تجاری یا پنل مدیریت باشد، باید به‌عنوان یک سرویس/پروژه جدا در نظر گرفته شود و Backend فقط API یا integration موردنیاز را فراهم کند.
+اگر قابلیت متعلق به `WooGit Gateway Plugin` روی سایت مشتری باشد، در فاز فعلی نباید در این repository پیاده‌سازی یا بازطراحی شود و باید به پروژه/فاز مستقل Gateway منتقل شود.
 
-## ۷. اصل نهایی
+اگر قابلیت متعلق به `WooGit Main Plugin` یا سایت تجاری/پنل مدیریت باشد، باید با همان کامپوننت مستقل خودش مدیریت شود و Backend فقط API یا integration موردنیاز را فراهم کند.
 
-**WooGit Backend یک سرویس برای اپ موجود است، نه پروژه‌ای برای ساخت خود اپ. اپ در حال حاضر مستقل از Backend است و پس از آماده شدن Backend، به آن متصل خواهد شد.**
+## ۸. اصل نهایی
+
+**WooGit Backend یک سرویس برای اپ موجود است. `WooGit Gateway Plugin` یک پلاگین مستقل برای سایت مشتری است و فعلاً روی آن کار نمی‌کنیم. `WooGit Main Plugin` نیز پلاگین مستقل سایت اصلی WooGit است. این سه کامپوننت نباید با یکدیگر قاطی شوند.**
 
 هر تصمیم معماری، دیتامدل، API، امنیت، Queue، Subscription و Integration باید با این مرز سنجیده شود.
