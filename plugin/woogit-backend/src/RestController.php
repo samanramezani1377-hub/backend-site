@@ -18,11 +18,26 @@ final class RestController
     {
         $input=$request->get_json_params();$input=is_array($input)?$input:[];$url=trim((string)($input['url']??''));$email=sanitize_email((string)($input['email']??''));
         foreach(['wordpress_username','wordpress_application_password','consumer_key','consumer_secret'] as $key) if(!isset($input[$key])||!is_string($input[$key])||$input[$key]==='') return new \WP_REST_Response(['code'=>'missing_customer_credentials'],400);
-        $base=$this->policy->resolveSiteUrl($url);if($base===null||!is_email($email))return new \WP_REST_Response(['code'=>'invalid_site_or_email'],400);
+        $base=$this->policy->resolveSiteUrl($url);if($base===null||($email!==''&&!is_email($email)))return new \WP_REST_Response(['code'=>'invalid_site_or_email'],400);
         $verification=$this->proxy->verify($base,$input['wordpress_username'],$input['wordpress_application_password'],$input['consumer_key'],$input['consumer_secret']);
         if(!$verification['ok'])return new \WP_REST_Response(['code'=>'site_verification_failed','reason'=>$verification['reason']],502);
-        $account=$this->accounts->findOrCreate($email);if(!$account)return new \WP_REST_Response(['code'=>'account_unavailable'],500);
-        $site=$this->sites->findOrCreate((int)$account['id'],$base);if(!$site)return new \WP_REST_Response(['code'=>'site_ownership_conflict'],409);
+
+        // Successful WP + WooCommerce verification establishes control of THIS Site only.
+        // Email is contact metadata; it is never used to resolve Account identity.
+        $existingSite=$this->sites->findByHost((string)wp_parse_url($base,PHP_URL_HOST));
+        if($existingSite){
+            if($existingSite['status']!=='active')return new \WP_REST_Response(['code'=>'site_unavailable'],409);
+            $account=$this->accounts->get((int)$existingSite['account_id']);
+            if(!$account)return new \WP_REST_Response(['code'=>'account_unavailable'],409);
+            if($email!=='' && !$this->accounts->updateContactEmail((int)$account['id'],$email))return new \WP_REST_Response(['code'=>'contact_email_unavailable'],500);
+            $site=$existingSite;
+        }else{
+            // New Account creation is allowed only after the destination Site has been fully verified.
+            $account=$this->accounts->create($email);
+            if(!$account)return new \WP_REST_Response(['code'=>'account_creation_failed'],500);
+            $site=$this->sites->findOrCreate((int)$account['id'],$base);
+            if(!$site){return new \WP_REST_Response(['code'=>'site_creation_failed'],500);}
+        }
         if(!$this->entitlements->grantTrial((int)$account['id'],(int)$site['id']))return new \WP_REST_Response(['code'=>'entitlement_unavailable'],500);
         if(!$this->entitlements->isAllowed((int)$account['id'],(int)$site['id'],'commerce'))return new \WP_REST_Response(['code'=>'not_entitled'],403);
         $token=$this->sessions->issue((int)$account['id'],(int)$site['id']);if(!$token)return new \WP_REST_Response(['code'=>'session_creation_failed'],500);
