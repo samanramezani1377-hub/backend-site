@@ -26,8 +26,8 @@ contains "$database" 'UNIQUE KEY host \(host\)' 'Site host must be globally uniq
 contains "$account" 'function create' 'Account must be created explicitly'
 contains "$account" 'function updateContactEmail' 'Account contact email update must be explicit'
 if grep -Eq 'findOrCreate\([^)]*email|findOrCreate\(\$email' "$account" "$controller"; then fail 'email must never resolve Account identity'; fi
-contains "$bootstrap" "woogit_idempotency WHERE updated_at < .*AND state IN \\('succeeded','failed'\\)" 'retention must never delete pending/unknown idempotency rows'
-contains "$bootstrap" "woogit_operations WHERE expires_at IS NOT NULL .*status IN \\('succeeded','failed'\\)" 'retention must preserve unknown operations'
+contains "$bootstrap" "woogit_idempotency WHERE updated_at < .*AND state IN \('succeeded','failed'\)" 'retention must never delete pending/unknown idempotency rows'
+contains "$bootstrap" "woogit_operations WHERE expires_at IS NOT NULL .*status IN \('succeeded','failed'\)" 'retention must preserve unknown operations'
 contains "$idempotency" 'state.*pending' 'idempotency must support pending state'
 contains "$operations" 'markUnknown' 'operation service must persist unknown state'
 contains "$rate" 'ON DUPLICATE KEY UPDATE' 'rate limit counter must be atomic'
