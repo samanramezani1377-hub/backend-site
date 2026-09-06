@@ -1,6 +1,6 @@
 # مدل امنیتی WooGit
 
-> وضعیت: V1 — Locked
+> وضعیت: **V1 — Locked / Enforcement implemented**
 
 ## ۱. اهداف امنیتی
 
@@ -23,15 +23,13 @@ WC Consumer Key + WC Consumer Secret
 
 ## ۳. Customer Credential Storage — ممنوع در V1
 
-Customer Credentialها در V1 فقط Request-scoped هستند.
-
-Backend **هرگز** آن‌ها را در DB، Vault، Cache پایدار، Log، Analytics، Telemetry، Crash Report یا Audit نگهداری نمی‌کند و در Response برنمی‌گرداند.
-
-هیچ `site_credentials` table یا Credential Vault برای Customer Credential در V1 وجود ندارد.
+Customer Credentialها در V1 فقط Request-scoped هستند. Backend آن‌ها را در DB، Vault، Cache پایدار، Log، Analytics، Telemetry، Crash Report یا Response نگهداری/برنمی‌گرداند.
 
 ## ۴. کنترل‌های قبل از Forward
 
 ```text
+App Version Gate
+  ↓
 WooGit Session
   ↓
 Account active
@@ -42,7 +40,7 @@ Site ownership
   ↓
 Entitlement
   ↓
-Version / Security / Rate Limit
+Rate Limit / Security / Body Size
   ↓
 Controlled Forward
 ```
@@ -51,27 +49,59 @@ Controlled Forward
 
 ## ۵. Site Isolation و SSRF
 
-`site_id` باید به Site Identity ثبت‌شده resolve و مالکیت آن نسبت به Account بررسی شود. Credential ارسالی Client نباید مقصد را تغییر دهد.
+`site_id` فقط از Session به Site ثبت‌شده resolve می‌شود و `getOwned(account_id, site_id)` باید موفق شود. Credential ارسالی Client مقصد را تغییر نمی‌دهد.
 
-URL دلخواه Client ممنوع است و مقصد فقط از Site Identity مجاز تعیین می‌شود.
+Site host در DB یک uniqueness boundary سراسری است؛ یک host نمی‌تواند همزمان مالک چند Account باشد. مقصد فقط HTTPS است و قبل از outbound، DNS A/AAAA برای IPهای private/reserved بررسی می‌شود؛ سپس `wp_safe_remote_request` نیز استفاده می‌شود.
 
 ## ۶. Session Security
 
-Session منقضی‌شده معتبر نیست و Client نمی‌تواند آن را محلی revive یا extend کند. Automatic re-login یک Authentication/Session Creation جدید است و Backend باید در آن دوباره Account، Site Ownership و Entitlement را بررسی کند.
+Session منقضی‌شده یا revoked معتبر نیست و Client نمی‌تواند آن را محلی revive/extend کند. ایجاد Session جدید دوباره Account، Site Ownership و Entitlement را بررسی می‌کند. Sessionهای منقضی در cleanup روزانه حذف می‌شوند.
 
 ## ۷. Idempotency و Timeout-after-success
 
-CREATE mutationها و سایر عملیات non-idempotent لازم باید Idempotency داشته باشند. Timeout به‌تنهایی به معنی شکست عملیات نیست و retry باید همان operation identity را دنبال کند.
+تمام mutationهای `POST/PUT/PATCH/DELETE` در proxy به `Idempotency-Key` نیاز دارند. Idempotency state مستقل و authoritative است:
 
-## ۸. Logging و Privacy
+```text
+pending → succeeded
+        → failed
+        → unknown
+```
+
+اگر upstream timeout شود، عملیات و idempotency هر دو `unknown` می‌شوند. Retry با همان key **هرگز mutation را دوباره به Customer Site ارسال نمی‌کند**؛ همان `operation_id` برگردانده می‌شود و پاسخ `operation_status_unknown` با `requires_reconciliation=true` داده می‌شود. این رفتار عمداً fail-closed است تا در حالت timeout-after-success، CREATE تکراری رخ ندهد.
+
+برای عملیات `unknown` باید reconciliation معتبر خارج از retry کور انجام شود؛ Backend نباید صرفاً برای رفع unknown، همان CREATE را دوباره forward کند.
+
+## ۸. Rate Limit و Request Size
+
+- `/sites/verify`: حداکثر ۱۰ درخواست در دقیقه برای IP.
+- `/forward`: حداکثر ۱۲۰ درخواست در دقیقه برای Account+Site.
+- `/operations/{id}`: حداکثر ۱۲۰ درخواست در دقیقه برای Account+Site.
+- پاسخ محدودیت `429` و `Retry-After` دارد.
+- body عادی حداکثر ۵ MiB و media حداکثر ۱۰ MiB است.
+
+Rate-limit state در DB با unique window و atomic upsert نگهداری می‌شود.
+
+## ۹. Version Gate
+
+Backend policy authoritative برای `latest_version`، `recommended_version`، `minimum_supported_version` و `deprecated_versions[]` دارد و `X-WooGit-App-Version` را روی مسیرهای API بررسی می‌کند. نسخه deprecated با `APP_VERSION_DEPRECATED` و HTTP 426 متوقف می‌شود و outbound Customer request انجام نمی‌شود.
+
+در migration فعلی، نبودن Header هنوز برای legacy client مجاز است؛ پس از تکمیل migration اپ، policy باید به `APP_VERSION_REQUIRED` تغییر کند.
+
+## ۱۰. Logging و Privacy
 
 Body و Headerهای دارای Secret نباید Log شوند. Request ID برای عیب‌یابی کافی است و Secret باید پیش از logging redaction شود.
 
-## ۹. امنیت عملیاتی
+## ۱۱. Cleanup / Retention
 
-- HTTPS در Production؛
-- Secretهای عملیاتی خارج از Git؛
-- Backup امن؛
-- Dependency scanning؛
-- Audit عملیات حساس؛
-- Fail closed در احراز هویت و authorization.
+Cleanup روزانه:
+
+- Sessionهای منقضی؛
+- Idempotencyهای بدون تغییر بیش از ۷ روز؛
+- Operationهای موفق/ناموفق پس از expiry؛
+- Rate-limit windowهای قدیمی.
+
+`unknown` operation برای جلوگیری از از دست رفتن وضعیت حذف نمی‌شود تا reconciliation معتبر انجام شود.
+
+## ۱۲. CI و تست‌های امنیتی
+
+CI علاوه بر PHP lint، invariantهای احراز هویت، Site Isolation، Idempotency/Unknown، SSRF، body limit و cleanup را بررسی می‌کند. تست‌های واقعی شبکه/DNS و concurrency باید در محیط integration/staging نیز اجرا شوند؛ grep-based CI به‌تنهایی جایگزین تست رفتاری نیست.
