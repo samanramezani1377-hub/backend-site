@@ -34,11 +34,8 @@ final class Database
         global $wpdb;
         $table=$prefix.'sessions';
         $column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'scope'));
-        if(!$column){
-            $wpdb->query("ALTER TABLE {$table} ADD COLUMN scope VARCHAR(20) NULL AFTER site_id");
-        }
+        if(!$column) $wpdb->query("ALTER TABLE {$table} ADD COLUMN scope VARCHAR(20) NULL AFTER site_id");
         $wpdb->query($wpdb->prepare("UPDATE {$table} SET scope=%s WHERE scope IS NULL OR scope=''",SessionService::SCOPE_OPERATIONAL));
         $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN scope VARCHAR(20) NOT NULL");
-        $wpdb->query("ALTER TABLE {$table} ADD KEY account_site_scope (account_id,site_id,scope)");
     }
 }
