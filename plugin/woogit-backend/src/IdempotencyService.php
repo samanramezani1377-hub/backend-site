@@ -5,21 +5,33 @@ defined('ABSPATH') || exit;
 
 final class IdempotencyService
 {
-    public function fingerprint(string $method, string $path, array $query, string $rawBody): string
+    public function fingerprint(string $method,string $path,array $query,string $rawBody): string
     {
-        return hash('sha256', wp_json_encode([
-            'method'=>strtoupper($method), 'path'=>$path, 'query'=>$query,
-            'body_hash'=>hash('sha256',$rawBody),
-        ], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        $query=$this->canonicalize($query);
+        return hash('sha256',wp_json_encode(['method'=>strtoupper($method),'path'=>$path,'query'=>$query,'body_hash'=>hash('sha256',$rawBody)],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
     }
 
-    public function lookup(int $accountId, int $siteId, string $key, string $fingerprint): array
+    private function canonicalize(array $value): array
+    {
+        foreach($value as $key=>$item)if(is_array($item))$value[$key]=$this->canonicalize($item);
+        ksort($value,SORT_STRING);
+        return $value;
+    }
+
+    public function lookup(int $accountId,int $siteId,string $key,string $fingerprint): array
     {
         global $wpdb;
         $row=$wpdb->get_row($wpdb->prepare("SELECT request_fingerprint,operation_id,state,status_code,response_body FROM {$wpdb->prefix}woogit_idempotency WHERE account_id=%d AND site_id=%d AND idempotency_key=%s LIMIT 1",$accountId,$siteId,$key),ARRAY_A);
         if(!$row)return ['state'=>'absent'];
         if(!hash_equals((string)$row['request_fingerprint'],$fingerprint))return ['state'=>'conflict'];
         $state=(string)$row['state'];
+        if($state==='pending'){
+            $operation=$wpdb->get_row($wpdb->prepare("SELECT status FROM {$wpdb->prefix}woogit_operations WHERE operation_id=%s AND account_id=%d AND site_id=%d LIMIT 1",(string)$row['operation_id'],$accountId,$siteId),ARRAY_A);
+            if($operation && (string)$operation['status']==='unknown'){
+                $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state='unknown',updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",current_time('mysql',true),$accountId,$siteId,$key));
+                $state='unknown';
+            }
+        }
         if($state==='pending')return ['state'=>'pending','operation_id'=>(string)$row['operation_id']];
         if($state==='unknown')return ['state'=>'unknown','operation_id'=>(string)$row['operation_id']];
         $body=json_decode((string)$row['response_body'],true);
