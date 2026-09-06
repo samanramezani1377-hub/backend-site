@@ -2,6 +2,14 @@
 
 > این مخزن **فقط برای ساخت بک‌اند سرویس WooGit** است. اپ اندروید WooGit قبلاً ساخته شده و یک پروژه مستقل است؛ این مخزن قرار نیست اپ را بسازد، بازطراحی کند یا جایگزین آن شود.
 
+## مخزن مرجع اپ موجود
+
+برای قرارداد واقعی Backend، رفتار Client و بررسی سازگاری API، مخزن رسمی اپ WooGit این است:
+
+**https://github.com/samanramezani1377-hub/woogit**
+
+این repository مرجع Backend است و `woogit` مرجع Client اندروید. هرجا قرارداد Backend باید با رفتار واقعی اپ تطبیق داده شود، ابتدا باید implementation و قراردادهای موجود در repository اپ بررسی شوند.
+
 ## محدوده قطعی پروژه
 
 مسئولیت این مخزن ساخت سرویس سمت سرور موردنیاز اپ موجود WooGit است:
@@ -111,7 +119,7 @@ Trial به Site Identity/دامنه وابسته است، نه صرفاً ایم
 ## معماری مرجع
 
 ```text
-Android App
+Android App (samanramezani1377-hub/woogit)
    │
    │ HTTPS + short-lived access token
    ▼
