@@ -2,226 +2,148 @@
 
 ## ۱. اهداف امنیتی
 
-معماری تجاری باید این موارد را تضمین کند:
+- Client نتواند Subscription و Entitlement را دور بزند.
+- Customer Credentialها به Account یا Site دیگری افشا نشوند.
+- Account بسته/غیرفعال یا Trial/Subscription منقضی نتواند از Backend به Customer Site درخواست بفرستد.
+- Retry پس از Timeout باعث CREATE تکراری نشود.
+- Proxy به SSRF یا Proxy عمومی تبدیل نشود.
 
-- APK دستکاری‌شده نتواند مجوز اشتراک را دور بزند.
-- اطلاعات ورود WordPress مشتری پس از راه‌اندازی در APK باقی نماند.
-- اعتبار خام سایت در لاگ‌های عادی برنامه نوشته نشود.
-- مشتری نتواند با اعتبار یک سایت به داده سایت دیگر دسترسی پیدا کند.
-- اشتراک منقضی‌شده نتواند با یک توکن طولانی‌عمر از دسترسی ادامه دهد.
-- Retry پس از Timeout باعث ایجاد دوباره یک عملیات CREATE نشود.
-- Bridge فقط قابلیت‌های اختصاصی WooGit را ارائه کند و به یک نقطه اجرای کد راه دور عمومی و بدون احراز هویت تبدیل نشود.
+## ۲. دو لایه اعتبار
 
-## ۲. مدیریت اعتبارها
-
-برای دسترسی برنامه‌ای به WordPress، **Application Password** الزام/استاندارد مورد انتظار WooGit است و نباید با رمز اصلی ورود به `wp-admin` اشتباه گرفته شود. Application Password یک Credential مخصوص دسترسی ماشینی به API است؛ برای ورود تعاملی به پنل WordPress استفاده نمی‌شود و می‌تواند مستقل از رمز اصلی لغو شود. citeturn0search0turn0search3
-
-در صفحه اتصال WooGit، فیلد «رمز عبور WordPress» در حالت استاندارد باید همین **Application Password** باشد، نه رمز اصلی کاربر WordPress.
-
-توصیه عملی:
-
-- برای WooGit یک Application Password اختصاصی ساخته شود.
-- یک Application Password بین چند Integration مشترک نشود.
-- در صورت لغو اتصال، همان Application Password مستقل revoke شود.
-- Application Password در لاگ یا پاسخ API ثبت نشود.
-
-WordPress Application Password را برای احراز هویت API با Basic Authentication روی HTTPS پشتیبانی می‌کند. citeturn0search0turn0search3
-
-طراحی ذخیره‌سازی:
+در درخواست عادی دو دسته Credential وجود دارد:
 
 ```text
-اعتبار خام
-    -> TLS
-    -> حافظه بک‌اند
-    -> رمزنگاری با کلید برنامه / KMS
-    -> مقدار رمزنگاری‌شده در پایگاه داده
+WooGit Session
+    → احراز و مجوز مصرف‌کننده در WooGit Backend
+
+WP Username
++ WP Application Password
++ WC Consumer Key
++ WC Consumer Secret
+    → احراز Backend نزد Customer WordPress/WooCommerce
 ```
 
-مقدار رمزگشایی‌شده فقط برای حداقل زمان لازم جهت درخواست خروجی وجود داشته باشد.
+Application Password یک Credential برنامه‌ای WordPress برای API است و با رمز اصلی `wp-admin` متفاوت است. استفاده از آن برای REST API باید روی HTTPS باشد. citeturn0search1turn0search2
 
-نباید این موارد ذخیره شوند:
+## ۳. Credential در Client
 
-- هدرهای Authorization خام؛
-- Application Passwordهای متنی؛
-- کلیدهای API ارائه‌دهندگان در لاگ؛
-- Dump کامل درخواست‌هایی که اعتبار در آن‌ها وجود دارد.
+Customer credentials may exist in the existing Client because the current App already owns the direct-connection flow.
 
-## ۳. احراز هویت موبایل
+این موضوع در V1 عمداً پذیرفته شده تا تغییرات Android و پردازش Backend حداقلی بماند.
 
-اپ توکن دسترسی/نشست WooGit دریافت می‌کند، نه اعتبار سایت مشتری.
+Backend باید:
 
-مدل پیشنهادی توکن:
+- هرگز آن‌ها را Log نکند؛
+- بی‌دلیل آن‌ها را در Response برنگرداند؛
+- به Account/Site دیگری افشا نکند؛
+- فقط برای مقصد مجاز همان Request مصرف کند؛
+- در Error Response یا Audit Metadata مقدار خام Secret را قرار ندهد.
 
-- Access Token کوتاه‌عمر؛
-- Refresh Token با چرخش؛
-- رکورد نشست و لغو سمت سرور برای عملیات حساس؛
-- فراداده دستگاه/نشست؛
-- محدودسازی نرخ.
+## ۴. Credential Storage
 
-سرور مرجع نهایی وضعیت حساب است.
-
-## ۴. اعمال اشتراک
-
-هر درخواست Gateway از این زنجیره عبور می‌کند:
+Credential Vault برای مسیر عادی Lightweight Proxy اجباری نیست.
 
 ```text
-احراز هویت
-  -> وضعیت حساب
-  -> وضعیت اشتراک
-  -> مالکیت سایت
-  -> مجوز
-  -> قابلیت
-  -> محدودیت نرخ
-  -> سیاست Idempotency
-  -> درخواست خروجی
+Client
+ ↓ HTTPS
+WooGit Session + Customer Credentials
+ ↓
+Backend checks
+ ↓
+Lightweight Proxy
+ ↓
+Customer Site
 ```
 
-هیچ پرچم سمت کلاینت قابل اعتماد نیست.
+در صورت نیاز آینده به background job، webhook یا عملیات بدون حضور Client، ذخیره‌سازی امن Credential می‌تواند به‌عنوان تصمیم جداگانه اضافه شود. این موضوع نباید مسیر عادی را به Vault lookup وابسته کند.
 
-## ۵. جداسازی سایت‌ها
-
-هر سایت مشتری یک `site_id` یکتا و غیرقابل حدس دارد که متعلق به یک حساب WooGit است.
-
-مجوز باید هر دو شرط را بررسی کند:
+## ۵. کنترل‌های قبل از Forward
 
 ```text
-request.account_id مالک site_id است
+WooGit Session
+  ↓
+Account active / not closed
+  ↓
+Trial / Subscription valid
+  ↓
+Site ownership
+  ↓
+Entitlement
+  ↓
+Version / Security / Rate Limit
+  ↓
+Forward
+```
+
+هیچ Flag سمت Client به‌تنهایی مجوز محسوب نمی‌شود.
+
+## ۶. Site Isolation
+
+`site_id` باید در Backend به Site Identity ثبت‌شده resolve و مالکیت آن نسبت به Account بررسی شود.
+
+```text
+request.account_id owns site_id
 AND
-request.account_id برای site_id قابلیت X را دارد
+request.account_id has required entitlement
 ```
 
-هرگز یک مرجع اعتبار ارسال‌شده توسط کلاینت را معتبر فرض نکنید. اعتبار را بر اساس مالکیت سایت در سمت سرور پیدا کنید.
+Customer Credential ارسالی Client نباید برای تغییر مقصد یا دور زدن Site ownership قابل استفاده باشد.
 
-## ۶. احراز هویت Bridge
+## ۷. Proxy و SSRF
 
-Bridge نباید فرمان‌های حساس را به‌صورت ناشناس ارائه کند.
+URL دلخواه Client ممنوع است:
 
-مدل پیشنهادی، یک اعتبار/توکن اختصاصی سایت است که هنگام راه‌اندازی ایجاد می‌شود. این توکن باید:
+```text
+/proxy?url=https://anything.com   ❌
+```
 
-- فقط به یک سایت محدود باشد؛
-- قابل لغو باشد؛
-- قابل چرخش باشد؛
-- در سمت سرور به‌صورت رمزنگاری‌شده نگهداری شود؛
-- هرگز در اختیار ابزارک مرورگر قرار نگیرد.
-
-ابزارک مرورگر باید با یک نشست عمومی و محدود سایت به WooGit احراز هویت کند، نه با راز دارای دسترسی Bridge.
-
-## ۷. امضای درخواست و جلوگیری از Replay
-
-برای عملیات حساس Bridge از این موارد استفاده شود:
-
-- Timestamp؛
-- Request ID؛
-- Nonce/Idempotency Key؛
-- بازه اعتبار کوتاه؛
-- تشخیص Replay در سمت سرور.
-
-از یک راز ثابت قرارگرفته داخل JavaScript به‌عنوان مدرک مجوز استفاده نکنید.
+مقصد از Site Identity مجاز تعیین می‌شود و Backend فقط مسیرهای مجاز WordPress/WooCommerce را Forward می‌کند.
 
 ## ۸. Idempotency
 
-همه تغییرات نوع CREATE باید از این هدر پشتیبانی کنند:
+همه CREATE mutationهای موردنیاز و سایر عملیات non-idempotent باید Idempotency داشته باشند:
 
-```text
-Idempotency-Key: <کلید پایدار تولیدشده توسط کلاینت>
+```http
+Idempotency-Key: <stable-client-key>
 ```
 
-رکورد عملیات باید شامل این موارد باشد:
+رکورد عملیات حداقل Account، Site، operation، request fingerprint، state و نتیجه/مرجع remote لازم را نگه می‌دارد. Retry با همان کلید نباید CREATE دوم ایجاد کند.
 
-- account_id؛
-- site_id؛
-- operation_type؛
-- idempotency_key؛
-- اثرانگشت درخواست؛
-- state؛
-- شناسه منبع راه دور در صورت وجود؛
-- خلاصه پاسخ؛
-- زمان ایجاد/به‌روزرسانی.
-
-اگر همان کلید دوباره ارسال شود، نتیجه عملیات قبلی برگردانده شود و CREATE دوم اجرا نشود.
-
-## ۹. Timeout بعد از موفقیت
-
-سناریوی بحرانی:
+## ۹. Timeout-after-success
 
 ```text
-WooGit -> WordPress: CREATE
-WordPress -> اجرا با موفقیت
-WordPress -> پاسخ گم می‌شود / Timeout
-WooGit -> Timeout را می‌بیند
-WooGit -> Retry
+Client → Backend → Customer: CREATE
+Customer → SUCCESS
+Response lost / timeout
+Client → retry
+Backend → same operation identity
+Backend → previous result / reconciliation
 ```
 
-مسیر Retry باید ابتدا وضعیت را تطبیق دهد. بسته به عملیات، روش می‌تواند شامل این موارد باشد:
+Timeout به‌تنهایی نباید به معنی «عملیات انجام نشده» تلقی شود.
 
-- Idempotency Key پشتیبانی‌شده توسط Bridge؛
-- مرجع خارجی قطعی ذخیره‌شده روی منبع راه دور؛
-- جست‌وجو با شناسه یکتای تولیدشده توسط کلاینت؛
-- نقطه پایانی وضعیت عملیات.
+## ۱۰. Rate Limit و Abuse Protection
 
-باید یک تست خودکار وجود داشته باشد که اثبات کند یک CREATE منطقی، حتی وقتی پاسخ اول بعد از ثبت موفقیت‌آمیز گم می‌شود، فقط یک منبع راه دور ایجاد می‌کند.
+حداقل کنترل‌ها:
 
-## ۱۰. حریم خصوصی
-
-Telemetry پیش‌فرض باید تا حد امکان از شناسه‌های مستقیم اجتناب کند.
-
-برای تحلیل:
-
-- طرح رویدادها را مشخص کنید؛
-- فیلدها را حداقلی کنید؛
-- مدت نگهداری تعیین کنید؛
-- کنترل حذف/نگهداری ارائه کنید؛
-- الزامات رضایت را در موارد لازم مستند کنید؛
-- داده حساس را بی‌صدا جمع‌آوری نکنید.
-
-رهگیری کاربر یک قابلیت محصول است، نه مجوز جمع‌آوری هر نوع داده شخصی.
-
-## ۱۱. امنیت AI
-
-ارائه‌دهندگان AI نباید اعتبار کامل WordPress را دریافت کنند.
-
-لایه ابزار AI باید ابزارهای Typed مانند این‌ها را ارائه کند:
-
-```text
-get_order(order_id)
-get_product(product_id)
-search_products(query)
-get_customer(customer_id)
-```
-
-مدل فقط نتیجه لازم برای کار را دریافت کند. عملیات حساس نیازمند تأیید صریح هستند.
-
-هرگز اجازه ندهید LLM مستقیماً درخواست HTTP دلخواه به سایت مشتری بسازد.
-
-## ۱۲. کنترل سوءاستفاده
-
-موارد زیر باید پیاده‌سازی شوند:
-
-- محدودیت نرخ برای هر حساب؛
-- محدودیت نرخ برای هر سایت؛
+- Rate Limit برای Account؛
+- Rate Limit برای Site؛
 - محدودیت IP در نقاط مناسب؛
-- محدودیت پیام‌های چت؛
-- سقف هزینه AI؛
-- حداکثر اندازه بدنه درخواست؛
-- حداکثر اندازه پاسخ؛
-- Timeout خروجی و Circuit Breaker؛
-- رویداد حسابرسی برای عملیات حساس.
+- حداکثر اندازه Request/Response؛
+- Timeout مقصد؛
+- Circuit Breaker در صورت نیاز؛
+- Audit Event برای عملیات حساس.
 
-## ۱۳. امنیت عملیاتی
+## ۱۱. Logging و Privacy
 
-الزامات محیط عملیاتی:
+Body و Headerهای دارای Secret نباید Log شوند. Request ID برای عیب‌یابی کافی است؛ Log نباید امکان بازیابی Customer Credential را فراهم کند.
 
-- HTTPS در همه مسیرها؛
-- کوکی امن برای نشست‌های مرورگر؛
-- محافظت CSRF برای تغییرات پنل WordPress؛
-- فهرست مجاز CORS؛
-- فرایند چرخش اسرار؛
-- پشتیبان‌های رمزنگاری‌شده؛
-- اسکن امنیتی وابستگی‌ها؛
-- هشدار برای تلاش‌های مکرر احراز هویت ناموفق؛
-- سابقه حسابرسی برای ایجاد/لغو اعتبار؛
-- نبود اسرار عملیاتی در Git.
+## ۱۲. امنیت عملیاتی
 
-## ۱۴. نکات اختصاصی WordPress
-
-REST API رسمی WordPress از احراز هویت Application Password روی HTTPS و نقاط پایانی مبتنی بر قابلیت پشتیبانی می‌کند. نقطه پایانی افزونه‌ها نیز برای مدیریت افزونه نیازمند سطح دسترسی مناسب WordPress است. WooGit باید این مرزهای مجوز را حفظ کند و برای دور زدن آن‌ها تلاش نکند.
+- HTTPS در Production؛
+- مدیریت امن Secretهای عملیاتی؛
+- Backup امن؛
+- Dependency scanning؛
+- هشدار برای احراز هویت ناموفق؛
+- Audit برای تغییرات حساس؛
+- نبود Secret عملیاتی در Git.
