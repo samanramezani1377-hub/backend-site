@@ -2,11 +2,41 @@
 
 ## ۱. وضعیت این سند
 
-این سند مرجع Flow اتصال سایت، احراز Account و Credentialهای مقصد است.
+این سند مرجع Flow اتصال سایت، هویت Account و Credentialهای مقصد است.
 
-اپ Android موجود WooGit مستقل است و صفحه اتصال فعلی آن Credentialهای Customer Site را دریافت می‌کند. Backend باید با همین سطح اتصال سازگار بماند.
+اصل قفل‌شده V1: **Account بر اساس Email ساخته یا Resolve نمی‌شود. Site Identity ریشه هویت و مالکیت Account است.**
 
-## ۲. تنظیمات هر Customer Site
+## ۲. اصل هویت Account و Site
+
+هر Customer Site یک `Site Identity` مستقل در WooGit دارد و Account متعلق به همان Site است.
+
+```text
+Verified Customer Site
+        │
+        ▼
+   Site Identity
+        │
+        ▼
+      Account
+```
+
+`email` فقط اطلاعات تماس (Contact Metadata) است و **هرگز** نباید به‌عنوان شناسه هویتی Account، کلید Resolve Account، یا اثبات مالکیت Account استفاده شود.
+
+بنابراین Backend نباید هیچ‌وقت این مدل را اجرا کند:
+
+```text
+Request email
+   ↓
+findOrCreate(email)
+   ↓
+Account identity
+```
+
+و نباید فرض کند کسی که Credential معتبر یک Site را دارد، مالک Account مربوط به هر Email دلخواه در Request است.
+
+در عوض، Verification موفق Credentialهای WordPress و WooCommerce فقط کنترل **همان Customer Site** را اثبات می‌کند و Account فقط برای همان Site ایجاد یا Resolve می‌شود.
+
+## ۳. تنظیمات هر Customer Site
 
 هر مشتری/فروشگاه یک `Site Identity` مستقل در WooGit دارد. تنظیمات اتصال یک Site نباید با Site دیگر مشترک یا مخلوط شود.
 
@@ -24,17 +54,16 @@ Application Password باید Credential برنامه‌ای WordPress باشد�
 این Credentialها در Backend به‌عنوان دادهٔ پایدار Site Identity ذخیره نمی‌شوند و فقط در Scope همان Request مصرف می‌شوند.
 
 ```text
-Account
-  └── Site Identity
-       └── Connection Metadata
-            ├── WordPress URL
-            └── سایر metadata غیرحساس
+Site Identity
+   └── Account
+       └── Contact Metadata
+            └── email (optional)
 
 Customer Credentials
   └── Request-scoped only
 ```
 
-## ۳. تنظیمات خود WooCommerce
+## ۴. تنظیمات خود WooCommerce
 
 تنظیمات خود WooCommerce متعلق به Customer Site است و روی همان WordPress مشتری باقی می‌ماند.
 
@@ -56,7 +85,7 @@ Customer WordPress / WooCommerce
 
 Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
 
-## ۴. WooGit Session
+## ۵. WooGit Session
 
 در کنار چهار Credential مقصد، درخواست عادی یک `WooGit Session` معتبر دارد.
 
@@ -72,7 +101,7 @@ Customer Credentials
     = اعتبار دسترسی به Customer WordPress/WooCommerce
 ```
 
-## ۵. Flow درخواست عادی
+## ۶. Flow درخواست عادی
 
 ```text
 WooGit Android
@@ -110,14 +139,14 @@ WooGit Android
 
 اگر Account بسته/غیرفعال یا Trial/Subscription منقضی باشد، Request نباید به Customer Site ارسال شود.
 
-## ۶. Verification و Registration اولیه
+## ۷. Verification و Registration اولیه
 
 در اولین اتصال ممکن است WooGit Session هنوز وجود نداشته باشد. بنابراین **اولین درخواست می‌تواند هم‌زمان Registration + Site Connection + Verification باشد**.
 
 ```text
 App
   ↓
-4 Customer Credentials + Site URL
+Site URL + Customer Credentials
   ↓
 WordPress reachability + authentication
   ↓
@@ -125,13 +154,9 @@ WordPress identity/access verification
   ↓
 WooCommerce availability/authentication
   ↓
-Resolve existing Site Identity
+Resolve existing Site Identity by verified site
   OR
-Create new Site Identity
-  ↓
-Resolve existing Account
-  OR
-Create Account
+Create new Site Identity + Account for that site
   ↓
 Trial eligibility
   ↓
@@ -140,49 +165,73 @@ Create / Activate WooGit Session
 Normal requests
 ```
 
-در این مدل، Verification موفق با Credentialهای معتبر WordPress/WooCommerce مبنای اثبات کنترل کاربر روی همان Customer Site است. بنابراین بعد از اتصال موفق، **تأیید دستی جداگانه‌ای از صاحب سایت لازم نیست**.
+Verification موفق با Credentialهای معتبر WordPress/WooCommerce مبنای اثبات کنترل کاربر روی **همان Customer Site** است. این Verification مالکیت Email یا Account دیگری را اثبات نمی‌کند.
+
+بعد از Verification موفق، اگر Site قبلاً وجود داشته باشد، Backend فقط Account متصل به همان Site را Resolve می‌کند. اگر Site جدید باشد، Account جدید فقط برای همان Site ایجاد می‌شود.
+
+Email در این Flow اختیاری و صرفاً Contact Metadata است. ارسال Email دلخواه نمی‌تواند باعث Resolve شدن Account متعلق به آن Email شود.
 
 `pending_verification` برای مسیر موفق اولیه اجباری نیست؛ Site پس از Verification کامل می‌تواند `verified/active` شود.
 
 Verification باید read-only باشد و صرفاً برای تست، Product/Order/Media mutation انجام ندهد.
 
-## ۷. Site موجود
+## ۸. Site موجود
 
-برای Site Identity موجود، Verification با Credentialهای همان Site انجام می‌شود و Backend Account مالک آن Site را resolve می‌کند.
+برای Site Identity موجود، Verification با Credentialهای همان Site انجام می‌شود و Backend Account مالک **همان Site** را از رابطه Site → Account resolve می‌کند.
 
 ```text
-Verify credentials
+Verify credentials for Site X
    ↓
-Resolve Site Identity
+Resolve Site X
    ↓
-Resolve owning Account
+Resolve Account X
    ↓
 Trial / Subscription / Entitlement
    ↓
-WooGit Session
+WooGit Session scoped to Account X + Site X
 ```
 
-موفقیت Verification یک Site نباید به معنی دسترسی به Site دیگر باشد.
+حتی اگر Request شامل Email متعلق به Account دیگری باشد، آن Email نباید باعث تغییر Account یا انتقال Site شود.
 
-## ۸. Site جدید
+موفقیت Verification یک Site هرگز به معنی دسترسی به Site دیگر نیست.
+
+## ۹. Site جدید
 
 برای Site بدون Account قبلی:
 
 ```text
-Verification موفق
+Verification موفق برای Site X
    ↓
-New Site Identity
+Create Site Identity X
    ↓
-Account creation / completion
+Create Account X فقط برای Site X
+   ↓
+Bind Account X ↔ Site X
    ↓
 Trial eligibility
    ↓
-WooGit Session
+WooGit Session scoped to X
 ```
 
 Trial برابر ۱۵ روز است و به Site Identity/دامنه تعلق دارد.
 
-## ۹. عدم نگهداری Customer Credential در Backend
+## ۱۰. Site Isolation و عدم انتقال Account
+
+این invariant اجباری V1 است:
+
+```text
+Account A ───────> Site A
+Account A ──X────> Site B
+
+Account B ───────> Site B
+Account B ──X────> Site A
+```
+
+در هر Request عادی، Backend باید `Session → Account → Site Ownership → Entitlement` را بررسی کند. دانستن `site_id`، داشتن Credential سایت دیگر، یا ارسال Email مربوط به Account دیگر نباید Site/Account scope را تغییر دهد.
+
+Account جدید فقط پس از Verification کامل Site ایجاد می‌شود و باید به همان Site متصل شود.
+
+## ۱۱. عدم نگهداری Customer Credential در Backend
 
 در V1، Backend **هیچ Customer Credentialای را در DB، Vault، Cache پایدار یا هر storage دائمی نگهداری نمی‌کند**.
 
@@ -205,7 +254,7 @@ Backend نباید:
 
 هر قابلیت آینده‌ای که به Credential پایدار نیاز داشته باشد خارج از این قرارداد V1 است و نمی‌تواند با فرض وجود Credential Storage در Backend طراحی شود.
 
-## ۱۰. قوانین امنیتی
+## ۱۲. قوانین امنیتی
 
 Backend باید:
 
@@ -217,9 +266,22 @@ Backend باید:
 - از `site_id` برای اعمال Site Isolation استفاده کند؛
 - پس از پایان Request، هیچ storage پایدار حاوی Customer Credential ایجاد نکند.
 
-## ۱۱. اصل نهایی
+## ۱۳. اصل نهایی
 
 ```text
+Site Identity
+    = ریشه هویت و مالکیت Account
+
+Account
+    = متعلق به همان Site
+    = قابل اتصال/دسترسی فقط برای همان Site
+
+Email
+    = Contact Metadata
+    = نه Authentication Identity
+    = نه Account Ownership Proof
+    = نه Account Lookup Key
+
 First Request
     → Registration + Site Connection + Verification
 
@@ -241,6 +303,7 @@ WooCommerce Settings
 Backend
     → Account / Site / Subscription / Entitlement
     → Lightweight Proxy
+    → Site Isolation اجباری
     → حداقل تغییر در Request/Response
 ```
 
