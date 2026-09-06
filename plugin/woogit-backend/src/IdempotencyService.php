@@ -27,7 +27,7 @@ final class IdempotencyService
         $state=(string)$row['state'];
         if($state==='pending'){
             $operation=$wpdb->get_row($wpdb->prepare("SELECT status FROM {$wpdb->prefix}woogit_operations WHERE operation_id=%s AND account_id=%d AND site_id=%d LIMIT 1",(string)$row['operation_id'],$accountId,$siteId),ARRAY_A);
-            if($operation && (string)$operation['status']==='unknown'){
+            if(!$operation || (string)$operation['status']==='unknown'){
                 $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state='unknown',updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",current_time('mysql',true),$accountId,$siteId,$key));
                 $state='unknown';
             }
