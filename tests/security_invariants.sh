@@ -9,7 +9,7 @@ while IFS= read -r -d '' file; do
   echo "CHECK PHP: $file"
   php -l "$file" >/dev/null || fail "PHP syntax: $file"
 done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"
 
 echo "CHECK controller ownership"; contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 echo "CHECK controller session"; contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
@@ -67,5 +67,11 @@ echo "CHECK minimum version"; contains "$version" 'minimum_supported_version' 'v
 echo "CHECK deprecated versions"; contains "$version" 'deprecated_versions' 'version gate must support explicit deprecated versions'
 echo "CHECK versioned migrations"; contains "$database" 'version_compare' 'database migrations must be version gated'
 echo "CHECK migration failure guard"; contains "$database" 'false===\$result' 'database migrations must stop on failed schema alteration'
+echo "CHECK version admin capability"; contains "$versionAdmin" 'manage_options' 'version policy admin must require administrator capability'
+echo "CHECK version admin nonce"; contains "$versionAdmin" 'check_admin_referer' 'version policy changes must require CSRF nonce'
+echo "CHECK version admin validation"; contains "$versionAdmin" 'VERSION_PATTERN' 'version policy admin must validate version syntax'
+echo "CHECK version admin safe update"; contains "$versionAdmin" "update_option\(self::OPTION" 'version policy admin must persist through WordPress options API'
+echo "CHECK version admin registration"; contains "$bootstrap" 'VersionAdmin' 'version policy admin must be registered by plugin bootstrap'
+echo "CHECK version admin constraints"; contains "$versionAdmin" 'minimum.*latest' 'version policy admin must enforce minimum/latest ordering'
 
 echo "security invariants: PASS"
