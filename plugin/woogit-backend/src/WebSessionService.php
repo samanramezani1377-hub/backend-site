@@ -30,7 +30,9 @@ final class WebSessionService
     public function revoke(string $token): bool
     {
         $token=trim($token);if($token==='')return false;
-        global $wpdb;$table=$wpdb->prefix.'woogit_web_sessions';
-        return false!==$wpdb->update($table,['revoked_at'=>gmdate('Y-m-d H:i:s')],['token_hash'=>hash('sha256',$token),'revoked_at'=>null],['%s'],['%s','%s']);
+        global $wpdb;$table=$wpdb->prefix.'woogit_web_sessions';$hash=hash('sha256',$token);
+        $id=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE token_hash=%s AND revoked_at IS NULL LIMIT 1",$hash));
+        if(!$id)return false;
+        return false!==$wpdb->update($table,['revoked_at'=>gmdate('Y-m-d H:i:s')],['id'=>(int)$id],['%s'],['%d']);
     }
 }
