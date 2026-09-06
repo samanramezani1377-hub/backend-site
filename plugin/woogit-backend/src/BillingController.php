@@ -52,8 +52,10 @@ final class BillingController
         $ipLimit=$this->rateLimits->check('billing_status_ip',$this->clientIp(),self::STATUS_LIMIT,self::WINDOW_SECONDS);
         if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
         $context=$this->authenticateAccountContext($request);if($context instanceof \WP_REST_Response)return $context;
-        if(!$this->billingLimit('billing_status_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::STATUS_LIMIT))return $this->rateLimited(self::WINDOW_SECONDS);
-        if(!$this->billingLimit('billing_status_session',$this->sessionKey($request),self::STATUS_LIMIT))return $this->rateLimited(self::WINDOW_SECONDS);
+        $accountSiteLimit=$this->billingLimit('billing_status_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::STATUS_LIMIT);
+        if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
+        $sessionLimit=$this->billingLimit('billing_status_session',$this->sessionKey($request),self::STATUS_LIMIT);
+        if(!$sessionLimit['allowed'])return $this->rateLimited($sessionLimit['retry_after']);
         return new \WP_REST_Response(['account_id'=>(int)$context['account_id'],'site_id'=>(int)$context['site_id'],'billing'=>$this->billing->getStatus((int)$context['account_id'],(int)$context['site_id'])],200);
     }
 
@@ -63,7 +65,8 @@ final class BillingController
         $ipLimit=$this->rateLimits->check('billing_checkout_ip',$this->clientIp(),self::CHECKOUT_LIMIT,self::WINDOW_SECONDS);
         if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
         $context=$this->authenticateAccountContext($request);if($context instanceof \WP_REST_Response)return $context;
-        if(!$this->billingLimit('billing_checkout_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::CHECKOUT_LIMIT))return $this->rateLimited(self::WINDOW_SECONDS);
+        $accountSiteLimit=$this->billingLimit('billing_checkout_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::CHECKOUT_LIMIT);
+        if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
         $input=$request->get_json_params();$productId=is_array($input)?(int)($input['plan_id']??0):0;$variationId=is_array($input)?(int)($input['variation_id']??0):0;
         if($productId<=0)return new \WP_REST_Response(['code'=>'missing_plan'],400);
         $result=$this->billing->createCheckout((int)$context['account_id'],(int)$context['site_id'],$productId,$variationId);
@@ -77,8 +80,10 @@ final class BillingController
         $ipLimit=$this->rateLimits->check('billing_activate_session_ip',$this->clientIp(),self::ACTIVATE_SESSION_LIMIT,self::WINDOW_SECONDS);
         if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
         $context=$this->authenticateAccountContext($request);if($context instanceof \WP_REST_Response)return $context;
-        if(!$this->billingLimit('billing_activate_session_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::ACTIVATE_SESSION_LIMIT))return $this->rateLimited(self::WINDOW_SECONDS);
-        if(!$this->billingLimit('billing_activate_session_session',$this->sessionKey($request),self::ACTIVATE_SESSION_LIMIT))return $this->rateLimited(self::WINDOW_SECONDS);
+        $accountSiteLimit=$this->billingLimit('billing_activate_session_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::ACTIVATE_SESSION_LIMIT);
+        if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
+        $sessionLimit=$this->billingLimit('billing_activate_session_session',$this->sessionKey($request),self::ACTIVATE_SESSION_LIMIT);
+        if(!$sessionLimit['allowed'])return $this->rateLimited($sessionLimit['retry_after']);
         if(($context['scope']??'')!==SessionService::SCOPE_BILLING)return new \WP_REST_Response(['code'=>'session_already_operational'],409);
         $accountId=(int)$context['account_id'];$siteId=(int)$context['site_id'];
         if(!$this->entitlements->isAllowed($accountId,$siteId,'commerce'))return new \WP_REST_Response(['code'=>'not_entitled'],403);
@@ -98,10 +103,9 @@ final class BillingController
         $session['site']=$site;return $session;
     }
 
-    private function billingLimit(string $bucket,string $key,int $limit): bool
+    private function billingLimit(string $bucket,string $key,int $limit): array
     {
-        $result=$this->rateLimits->check($bucket,$key,$limit,self::WINDOW_SECONDS);
-        return (bool)$result['allowed'];
+        return $this->rateLimits->check($bucket,$key,$limit,self::WINDOW_SECONDS);
     }
 
     private function sessionKey(\WP_REST_Request $request): string
@@ -118,8 +122,9 @@ final class BillingController
 
     private function rateLimited(int $retryAfter): \WP_REST_Response
     {
-        $response=new \WP_REST_Response(['code'=>'RATE_LIMITED','retry_after'=>max(1,$retryAfter),'retryable'=>true],429);
-        $response->header('Retry-After',(string)max(1,$retryAfter));
+        $retryAfter=max(1,$retryAfter);
+        $response=new \WP_REST_Response(['code'=>'RATE_LIMITED','retry_after'=>$retryAfter,'retryable'=>true],429);
+        $response->header('Retry-After',(string)$retryAfter);
         return $response;
     }
 
