@@ -1,15 +1,33 @@
 # صورتحساب و مجوزهای WooGit
 
-## ۱. مدل تجاری
+> وضعیت: V1 — Locked
 
-پیشنهاد اولیه:
+## ۱. مدل تجاری
 
 - دوره آزمایشی رایگان ۱۵ روزه؛
 - پلن‌های پولی زمان‌محور؛
 - بسته‌های اختیاری اعتبار AI؛
 - محدودیت اختیاری تعداد سایت یا قابلیت.
 
-## ۲. دوره آزمایشی
+## ۲. زیرساخت فروش اشتراک
+
+برای V1 فروش مدت استفاده و اشتراک WooGit روی WordPress اصلی WooGit با این ترکیب انجام می‌شود:
+
+```text
+WordPress اصلی WooGit
+├── WooCommerce
+├── WooCommerce Subscriptions
+├── WooGit Main Plugin
+└── WooGit Theme
+```
+
+`WooCommerce` مسئول فروش و پرداخت سفارش‌ها است و `WooCommerce Subscriptions` مرجع چرخه اشتراک تجاری مانند دوره، Renewal، Cancellation و وضعیت اشتراک است.
+
+`WooGit Main Plugin` با WooCommerce Subscriptions یکپارچه می‌شود و وضعیت Billing را به مدل داخلی WooGit یعنی `Account`، `Subscription` و `Entitlement` منتقل/تطبیق می‌دهد.
+
+**نکته:** WooCommerce Subscriptions جایگزین Authorization داخلی WooGit نیست. برای درخواست‌های محافظت‌شده، WooGit Main Plugin همچنان مرجع نهایی مجوز و Entitlement است.
+
+## ۳. دوره آزمایشی
 
 دوره آزمایشی در سمت سرور و هنگام واجد شرایط شدن حساب ایجاد می‌شود.
 
@@ -21,9 +39,9 @@ status = trial
 
 اپ موبایل می‌تواند زمان باقی‌مانده را نمایش دهد، اما نمی‌تواند آن را تمدید کند.
 
-## ۳. مدت پولی
+## ۴. مدت پولی
 
-خرید باید طبق قانون محصول، مدت مجاز دسترسی را افزایش دهد.
+خرید یک Subscription Product باید طبق قانون محصول، مدت مجاز دسترسی را ایجاد یا افزایش دهد.
 
 نمونه:
 
@@ -33,9 +51,27 @@ status = trial
 انقضای جدید: 2026-10-21
 ```
 
-اگر حساب از قبل منقضی شده باشد، شروع دوره جدید طبق قانون صورتحساب تنظیم‌شده تعیین می‌شود.
+اگر حساب از قبل منقضی شده باشد، شروع دوره جدید طبق سیاست Billing تعیین می‌شود.
 
-## ۴. ارزیابی مجوز
+## ۵. Renewal و Cancellation
+
+چرخه Renewal و Cancellation در V1 توسط `WooCommerce Subscriptions` مدیریت می‌شود. WooGit Main Plugin باید تغییرات معتبر وضعیت Subscription را دریافت و مدل داخلی دسترسی را همگام کند.
+
+```text
+WooCommerce Subscription
+        ↓
+Billing event / verified state
+        ↓
+WooGit Main Plugin
+        ↓
+Subscription + Entitlement
+        ↓
+API Authorization
+```
+
+اپ مرجع وضعیت Billing نیست و نباید بتواند با Callback یا Timestamp محلی وضعیت اشتراک را جعل کند.
+
+## ۶. ارزیابی مجوز
 
 سیاست مفهومی:
 
@@ -49,13 +85,13 @@ isAllowed(account, site, capability):
     AND usage limits are not exceeded
 ```
 
-نتیجه برای هر درخواست محافظت‌شده در سمت بک‌اند محاسبه می‌شود.
+نتیجه برای هر درخواست محافظت‌شده در سمت Backend محاسبه می‌شود.
 
-## ۵. مهلت ارفاقی
+## ۷. مهلت ارفاقی
 
-اگر درگاه پرداخت استفاده شود، می‌توان یک مهلت ارفاقی قابل تنظیم داشت. این مهلت باید صریح و سمت‌سروری باشد؛ موفقیت پرداخت را صرفاً از Callback کلاینت فرض نکنید.
+اگر درگاه پرداخت استفاده شود، می‌توان یک مهلت ارفاقی قابل تنظیم داشت. این مهلت باید صریح و سمت‌سروری باشد؛ موفقیت پرداخت صرفاً از Callback کلاینت پذیرفته نمی‌شود.
 
-## ۶. اعتبار AI
+## ۸. اعتبار AI
 
 اعتبار AI در صورت نیاز تجاری از مدت اشتراک جدا باشد.
 
@@ -70,23 +106,21 @@ isAllowed(account, site, capability):
 
 هرگز اجازه ندهید کلاینت «موجودی باقی‌مانده» را به سرور اعلام کند.
 
-## ۷. مرز درگاه پرداخت
+## ۹. مرز درگاه پرداخت
 
-درگاه‌های پرداخت باید از طریق رویدادهای امضاشده/تأییدشده Webhook با بک‌اند WooGit ارتباط داشته باشند. اپ مرجع پرداخت نیست.
-
-بک‌اند این چرخه را تطبیق می‌دهد:
+رویدادهای پرداخت و Renewal باید از مسیرهای رسمی و قابل‌تأیید WooCommerce/WooCommerce Subscriptions به Backend منتقل شوند. رویدادهای دریافتی باید Idempotent پردازش شوند.
 
 ```text
-رویداد پرداخت
- -> بررسی اصالت
+Payment / Renewal Event
+ -> بررسی اصالت و وضعیت
  -> ثبت تراکنش به‌صورت Idempotent
- -> به‌روزرسانی اشتراک/اعتبار
- -> حسابرسی
+ -> به‌روزرسانی Subscription / Entitlement
+ -> Audit
 ```
 
-## ۸. پیکربندی پلن
+## ۱۰. پیکربندی پلن
 
-پلن‌ها باید داده‌محور باشند. قیمت را در اندروید یا Gateway به‌صورت Hard-code قرار ندهید.
+پلن‌ها باید داده‌محور باشند. قیمت و مدت را در Android یا Customer Gateway به‌صورت Hard-code قرار ندهید.
 
 هر پلن می‌تواند این موارد را تعریف کند:
 
@@ -100,7 +134,9 @@ isAllowed(account, site, capability):
 - مدت نگهداری تحلیل؛
 - محدودیت چت.
 
-## ۹. رفتار انقضا
+محصولات Subscription و قیمت‌های فروش در WooCommerce مدیریت می‌شوند و WooGit Main Plugin باید mapping مشخصی بین محصول/Subscription و Plan داخلی داشته باشد.
+
+## ۱۱. رفتار انقضا
 
 در زمان انقضا:
 
@@ -110,7 +146,7 @@ isAllowed(account, site, capability):
 - Jobهای نیازمند مجوز متوقف یا Paused می‌شوند؛
 - داده مشتری طبق سیاست نگهداری حذف یا نگهداری می‌شود.
 
-## ۱۰. اصل امنیتی
+## ۱۲. اصل امنیتی
 
 کاربر نباید بتواند سرویس را با تغییر این موارد برگرداند:
 
@@ -119,4 +155,19 @@ isAllowed(account, site, capability):
 - داده کش‌شده پلن؛
 - وضعیت محلی «Premium».
 
-فقط بک‌اند می‌تواند مجوز دسترسی صادر کند.
+فقط WooGit Backend می‌تواند مجوز دسترسی صادر کند.
+
+## ۱۳. مرز WooCommerce و WooGit
+
+```text
+WooCommerce / Subscriptions
+    = فروش، سفارش پرداخت، Renewal و Cancellation
+
+WooGit Main Plugin
+    = Account، Site، Subscription داخلی، Entitlement و Authorization
+
+Customer WooCommerce
+    = داده واقعی فروشگاه مشتری
+```
+
+این WooCommerce مربوط به **فروش خود سرویس WooGit روی WordPress اصلی WooGit** است و با WooCommerce سایت مشتری یکی نیست.
