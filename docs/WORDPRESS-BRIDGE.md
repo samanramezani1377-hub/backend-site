@@ -1,71 +1,71 @@
-# WooGit Bridge Plugin
+# افزونه WooGit Bridge
 
-## 1. Purpose
+## ۱. هدف
 
-WooGit Bridge is the integration layer installed on the customer's WordPress site. It should be small, headless and capability-oriented.
+WooGit Bridge لایه یکپارچه‌سازی نصب‌شده روی WordPress مشتری است. باید کوچک، Headless و مبتنی بر قابلیت باشد.
 
-The plugin is not the commercial backend and is not the primary UX.
+این افزونه بک‌اند تجاری نیست و رابط کاربری اصلی WooGit هم نیست.
 
-## 2. WordPress admin UX
+## ۲. رابط کاربری پنل WordPress
 
-Default design:
+طراحی پیش‌فرض:
 
 ```text
 WordPress Plugins
   WooGit Bridge — Active
 ```
 
-No required WooGit settings page.
+هیچ صفحه تنظیمات اجباری برای WooGit وجود ندارد.
 
-All product configuration is controlled by WooGit.
+تمام پیکربندی محصول از WooGit کنترل می‌شود.
 
-The plugin may expose a minimal diagnostics/status link only if operationally necessary, but no feature should depend on manual wp-admin configuration.
+افزونه فقط در صورت نیاز عملیاتی می‌تواند یک لینک حداقلی وضعیت/عیب‌یابی داشته باشد، اما هیچ قابلیت نباید به تنظیم دستی در wp-admin وابسته باشد.
 
-## 3. Responsibilities
+## ۳. مسئولیت‌ها
 
 ### REST
 
-Register only WooGit-specific routes under a versioned namespace.
+فقط مسیرهای اختصاصی WooGit را زیر یک Namespace نسخه‌بندی‌شده ثبت کنید.
 
-### Hooks
+### Hookها
 
-Use WordPress/WooCommerce hooks for events such as:
+برای رویدادهایی مانند این موارد از Hookهای WordPress/WooCommerce استفاده کنید:
 
-- order created/updated;
-- order status changed;
-- customer registration/login where appropriate;
-- product viewed or commerce events where client-side tracking is enabled.
+- ایجاد/به‌روزرسانی سفارش؛
+- تغییر وضعیت سفارش؛
+- ثبت‌نام/ورود مشتری در صورت نیاز؛
+- مشاهده محصول یا رویدادهای تجاری وقتی رهگیری سمت کاربر فعال است.
 
 ### Frontend
 
-When enabled, inject a small, versioned widget/collector asset.
+در صورت فعال بودن قابلیت، یک Widget/Collector کوچک و نسخه‌بندی‌شده تزریق کنید.
 
-Do not inject code when the feature is disabled.
+وقتی قابلیت غیرفعال است، هیچ کدی برای آن تزریق نکنید.
 
-### Health
+### سلامت
 
-Expose protocol/plugin version and health state.
+نسخه پروتکل/افزونه و وضعیت سلامت را ارائه کنید.
 
-## 4. Provisioning
+## ۴. Provisioning
 
-Preferred lifecycle:
+چرخه پیشنهادی:
 
 ```text
 Install
   -> Activate
-  -> Bridge boot
-  -> WooGit provisioning request
-  -> register site/bridge instance
-  -> receive scoped bridge credential
-  -> verify discovery
+  -> اجرای Bridge
+  -> درخواست Provisioning از WooGit
+  -> ثبت سایت/نمونه Bridge
+  -> دریافت اعتبار محدود Bridge
+  -> بررسی Discovery
   -> Ready
 ```
 
-The provisioning process must be idempotent.
+فرایند Provisioning باید Idempotent باشد.
 
-## 5. No arbitrary proxy
+## ۵. بدون Proxy دلخواه
 
-The Bridge must not expose an endpoint like:
+Bridge نباید نقطه‌ای مانند این ارائه کند:
 
 ```text
 POST /woogit/v1/proxy
@@ -74,11 +74,11 @@ POST /woogit/v1/proxy
 }
 ```
 
-Instead it should execute known commands or expose narrowly scoped resources.
+در عوض باید فرمان‌های شناخته‌شده را اجرا یا منابع با دامنه محدود ارائه کند.
 
-## 6. Capability discovery
+## ۶. کشف قابلیت‌ها
 
-Example:
+نمونه:
 
 ```json
 {
@@ -93,19 +93,19 @@ Example:
 }
 ```
 
-The capability list is informational. Server-side WooGit entitlements remain authoritative.
+فهرست قابلیت‌ها فقط اطلاعاتی است و مجوزهای سمت سرور WooGit همچنان مرجع نهایی هستند.
 
-## 7. Chat widget
+## ۷. ابزارک چت
 
-The Bridge can enqueue/inject a WooGit chat widget only when the backend says the site is entitled and the site configuration enables it.
+Bridge فقط وقتی ابزارک چت WooGit را در صف/صفحه تزریق می‌کند که بک‌اند مجوز سایت را تأیید کرده و پیکربندی سایت آن را فعال کرده باشد.
 
-The browser receives a short-lived, site-scoped chat session token, never a privileged Bridge token.
+مرورگر یک توکن کوتاه‌عمر و محدود به نشست سایت دریافت می‌کند، نه توکن دارای دسترسی Bridge.
 
-## 8. User tracking
+## ۸. رهگیری کاربر
 
-Tracking should be event-based and privacy-minimized.
+رهگیری باید رویدادمحور و حداقلی از نظر حریم خصوصی باشد.
 
-Example event:
+نمونه رویداد:
 
 ```json
 {
@@ -117,42 +117,42 @@ Example event:
 }
 ```
 
-Do not send WordPress passwords, payment data or arbitrary page HTML as event properties.
+رمزهای WordPress، داده پرداخت یا HTML دلخواه صفحه را به‌عنوان خصوصیات رویداد ارسال نکنید.
 
-## 9. Plugin management
+## ۹. مدیریت افزونه‌ها
 
-WooGit can manage standard WordPress plugins when the authenticated WordPress user has the required capabilities. WordPress's REST API documents plugin listing, activation/deactivation and deletion, while plugin creation is based on a WordPress.org plugin directory slug. Therefore the standard endpoint should not be treated as a generic private ZIP upload API.
+WooGit می‌تواند افزونه‌های استاندارد WordPress را زمانی مدیریت کند که کاربر احراز‌شده سطح دسترسی لازم را داشته باشد. REST API وردپرس فهرست‌کردن، فعال‌سازی/غیرفعال‌سازی و حذف افزونه‌ها را مستند می‌کند و نصب افزونه در مسیر استاندارد بر پایه Slug موجود در WordPress.org است. بنابراین نباید Endpoint استاندارد را به‌عنوان API عمومی برای آپلود ZIP خصوصی در نظر گرفت.
 
-For a private WooGit Bridge, installation strategy must be one of:
+برای Bridge خصوصی WooGit، راهبرد نصب باید یکی از این موارد باشد:
 
-1. WordPress.org distribution;
-2. one-time manual installation;
-3. hosting-level installation access;
-4. another explicitly supported provisioning channel.
+۱. انتشار در WordPress.org؛
+۲. نصب دستی یک‌باره؛
+۳. دسترسی نصب در سطح هاست؛
+۴. یک کانال Provisioning صریحاً پشتیبانی‌شده دیگر.
 
-Do not silently depend on an undocumented admin upload flow.
+نباید به یک مسیر آپلود مدیریتی مستندنشده به‌صورت پنهانی وابسته شد.
 
-## 10. Security checklist
+## ۱۰. چک‌لیست امنیتی
 
-- Validate every parameter.
-- Check capability/authorization for every privileged endpoint.
-- Use nonces for same-origin browser admin interactions where applicable.
-- Use HTTPS for external communication.
-- Escape output.
-- Sanitize input.
-- Reject oversized payloads.
-- Add replay/idempotency protection to mutations.
-- Never log credentials.
-- Keep the plugin dependency footprint small.
-- Fail closed when provisioning/authentication is invalid.
+- همه پارامترها را اعتبارسنجی کنید.
+- برای هر Endpoint حساس Capability/Authorization را بررسی کنید.
+- در تعاملات Admin مرورگر که لازم است از Nonce استفاده کنید.
+- ارتباط خارجی را با HTTPS انجام دهید.
+- خروجی را Escape کنید.
+- ورودی را Sanitize کنید.
+- Payload بیش از حد بزرگ را رد کنید.
+- برای Mutationها Replay/Idempotency Protection داشته باشید.
+- اعتبارها را هرگز لاگ نکنید.
+- وابستگی‌های افزونه را کوچک نگه دارید.
+- در صورت نامعتبر بودن Provisioning/Authentication، Fail Closed باشید.
 
-## 11. Versioning
+## ۱۱. نسخه‌بندی
 
-Bridge protocol and plugin version are separate:
+نسخه پروتکل و نسخه افزونه جدا هستند:
 
 ```text
-protocol_version = API compatibility contract
-plugin_version   = implementation release
+protocol_version = قرارداد سازگاری API
+plugin_version   = نسخه انتشار پیاده‌سازی
 ```
 
-The backend must be able to reject incompatible protocol versions cleanly and guide the customer through an upgrade path.
+بک‌اند باید بتواند نسخه‌های ناسازگار پروتکل را به‌صورت کنترل‌شده رد کند و مسیر ارتقا را به مشتری نشان دهد.
