@@ -1,8 +1,8 @@
 # بک‌اند WooGit
 
-> این مخزن **فقط برای ساخت بک‌اند سرویس WooGit** است. اپ اندروید WooGit قبلاً ساخته شده و یک پروژه مستقل است؛ این مخزن قرار نیست اپ را بسازد، بازطراحی کند یا جایگزین آن شود.
+> این مخزن **Backend و WordPress stack ووگیت** است. اپ اندروید WooGit قبلاً ساخته شده و یک پروژه مستقل است؛ این مخزن قرار نیست اپ را بسازد، بازطراحی کند یا جایگزین آن شود.
 >
-> **وضعیت فعلی:** اپ WooGit در حال حاضر مستقل از Backend است و به آن متصل نیست. پس از آماده و عملیاتی شدن Backend، اپ موجود به این Backend متصل خواهد شد و از آن به‌عنوان سرویس سمت سرور استفاده می‌کند.
+> **وضعیت فعلی:** اپ WooGit در حال حاضر مستقل از Backend است و مستقیماً با سایت مشتری کار می‌کند. Backend جدید به‌عنوان سرویس سمت سرور برای اتصال آینده اپ به سایت‌های مشتری ساخته می‌شود.
 
 ## مخزن مرجع اپ موجود
 
@@ -10,45 +10,127 @@
 
 **https://github.com/samanramezani1377-hub/woogit**
 
-این repository مرجع Backend است و `woogit` مرجع Client اندروید. هرجا قرارداد Backend باید با رفتار واقعی اپ تطبیق داده شود، ابتدا باید implementation و قراردادهای موجود در repository اپ بررسی شوند.
+این repository مرجع Backend است و `woogit` مرجع Client اندروید. هرجا قرارداد Backend باید با رفتار واقعی اپ تطبیق داده شود، ابتدا implementation و قراردادهای موجود در repository اپ بررسی می‌شوند.
+
+## تصمیم جدید: یک Repository برای Theme + Backend Plugin
+
+برای لایه WordPress ووگیت، همین Repository به‌صورت **Monorepo** دو Component مستقل را نگهداری می‌کند:
+
+```text
+backend-site/
+├── theme/
+│   └── woogit/              ← ظاهر وب‌سایت WooGit
+│
+├── plugin/
+│   └── woogit-backend/      ← مغز Backend WooGit
+│
+├── docs/
+└── .github/
+```
+
+این دو Component از نظر source control در یک Repository هستند، اما از نظر مسئولیت، کد، تست و release مستقل باقی می‌مانند.
+
+جزئیات کامل این تصمیم در [`docs/WORDPRESS_MONOREPO.md`](docs/WORDPRESS_MONOREPO.md) ثبت شده است.
+
+### Theme چیست؟
+
+Theme فقط لایه Presentation وب‌سایت WooGit است:
+
+- صفحه اصلی؛
+- معرفی محصول؛
+- Pricing؛
+- FAQ؛
+- Contact؛
+- Header/Footer؛
+- Responsive UI؛
+- Typography و Design System؛
+- Template و Pattern؛
+- CSS/JS مربوط به ظاهر.
+
+Theme نباید محل منطق تجاری، امنیت یا داده حساس Backend باشد.
+
+### Backend Plugin چیست؟
+
+`woogit-backend` مغز سرویس WooGit در WordPress است:
+
+- REST API؛
+- Authentication / Sessions؛
+- Site Identity؛
+- Account lifecycle؛
+- Trial / Subscription؛
+- Entitlements؛
+- App Version Gate؛
+- Credential Vault؛
+- Gateway / Controlled Proxy؛
+- Idempotency؛
+- Timeout-after-success؛
+- Reconciliation؛
+- Audit / Security؛
+- Webhooks / Jobs؛
+- Admin Console؛
+- داده‌ها و جداول عملیاتی Backend.
+
+این قابلیت‌ها نباید به فعال بودن Theme وابسته باشند.
+
+## اصل معماری WordPress
+
+```text
+                    WordPress
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+       Theme                 WooGit Backend Plugin
+          │                         │
+     Presentation          Backend / Business Logic
+          │                         │
+          └────────────┬────────────┘
+                       │
+                 WooGit Website
+```
+
+**یک Repository، دو Component مستقل.**
+
+Theme ظاهر سایت را کنترل می‌کند؛ Plugin رفتار و قابلیت‌های Backend را کنترل می‌کند.
 
 ## محدوده قطعی پروژه
 
-مسئولیت این مخزن ساخت سرویس سمت سرور موردنیاز اپ موجود WooGit است:
+مسئولیت این مخزن ساخت سرویس سمت سرور موردنیاز اپ موجود WooGit و WordPress stack عمومی/مدیریتی آن است:
 
 ```text
-                 وضعیت فعلی
-┌──────────────────────────────┐
-│      WooGit Android App      │
-│       مستقل از Backend       │
-└──────────────┬───────────────┘
-               │
-               │ پس از آماده شدن Backend
-               │ HTTPS / API
-               ▼
+WooGit Android App
+       │
+       │ آینده: HTTPS / WooGit API
+       ▼
 ┌──────────────────────────────┐
 │        WooGit Backend        │
+│      WordPress + Plugin      │
 │                              │
 │ Auth / Sessions              │
 │ Site Identity                │
-│ Subscription / Entitlements │
+│ Subscription / Entitlements  │
 │ Credential Vault             │
-│ API Gateway                 │
+│ API Gateway / Proxy          │
 │ WooCommerce Operations       │
-│ WordPress Bridge Integration │
 │ Webhooks / Jobs              │
 │ Idempotency / Reliability    │
 │ Audit / Security             │
 └──────────────┬───────────────┘
                │
                ▼
-       WordPress / WooCommerce
-             مشتری
+       Customer WordPress
+          + WooCommerce
+
+        ┌────────────────┐
+        │ WooGit Theme   │
+        │ Public Website │
+        └────────────────┘
 ```
 
 ### این پروژه چیست؟
 
-یک Backend production-grade که **پس از آماده شدن و اتصال اپ**، اپ موجود WooGit از طریق آن به سایت‌های WordPress/WooCommerce مشتریان متصل می‌شود و منطق تجاری، احراز هویت، اشتراک، مجوز، امنیت، اعتبارهای سایت و عملیات سمت سرور را کنترل می‌کند.
+یک Backend production-grade که پس از آماده شدن و اتصال اپ موجود WooGit، مسیر کنترل‌شده اتصال اپ به سایت‌های WordPress/WooCommerce مشتریان را فراهم می‌کند و منطق تجاری، احراز هویت، اشتراک، مجوز، امنیت، اعتبارهای سایت و عملیات سمت سرور را کنترل می‌کند.
+
+همچنین Theme اختصاصی WooGit در همین Repository برای طراحی وب‌سایت عمومی استفاده خواهد شد؛ اما Theme و Plugin از نظر مسئولیت مستقل هستند.
 
 ### این پروژه چیست؟
 
@@ -57,8 +139,8 @@
 - محل بازطراحی ConnectionScreen یا Dashboard اپ نیست.
 - جایگزین اپ WooGit نیست.
 - نباید قابلیت‌های اپ را دوباره داخل این مخزن پیاده‌سازی کند.
-
-اپ موجود در حال حاضر مستقل است و **Client خارجی آینده این Backend** محسوب می‌شود.
+- Theme نباید Backend logic را در خود نگه دارد.
+- Plugin نباید به یک Theme خاص برای اجرای قابلیت‌های حیاتی وابسته باشد.
 
 ## مرز مسئولیت‌ها
 
@@ -71,7 +153,7 @@
 - ارسال درخواست به Backend پس از آماده شدن و اتصال Backend
 - نگهداری توکن نشست در سمت کلاینت
 
-### WooGit Backend — این مخزن
+### WooGit Backend Plugin — این مخزن
 
 - احراز هویت و نشست‌ها
 - Site Identity و مالکیت سایت
@@ -82,14 +164,25 @@
 - Gateway و سیاست دسترسی
 - عملیات محصولات، سفارش‌ها، مشتریان و سایر داده‌های WooCommerce
 - ارتباط امن با WordPress/WooCommerce
-- Bridge integration
 - Webhook، Queue و Job
 - Idempotency و Retry safety
 - Timeout-after-success safety
 - Rate limiting و Abuse protection
 - Audit و Security
-- Analytics/Events در صورت فعال بودن قابلیت
-- AI Gateway در صورت فعال بودن قابلیت تجاری
+- Version Gate
+- Admin Console
+- داده و جداول عملیاتی Backend
+
+### WooGit Theme — این مخزن
+
+- طراحی و ظاهر وب‌سایت عمومی WooGit
+- صفحات Marketing
+- Pricing / FAQ / Contact
+- Header / Footer
+- Responsive UI
+- Design System
+- Template / Pattern
+- CSS / JS presentation
 
 ### WordPress/WooCommerce مشتری
 
@@ -98,6 +191,30 @@
 ### WooGit Bridge
 
 یک جزء سمت WordPress مشتری است که در صورت نیاز برای عملیات و قابلیت‌های کنترل‌شده توسط Backend استفاده می‌شود. Bridge بخشی از اپ اندروید نیست.
+
+## Admin Console
+
+پنل مدیریتی Backend در V1 داخل همان WordPress و از طریق `woogit-backend` ساخته می‌شود و نیاز به یک Admin Panel مستقل ندارد.
+
+ساختار منطقی:
+
+```text
+WooGit
+├── Dashboard
+├── Sites
+├── Customers / Accounts
+├── Subscriptions
+├── Plans
+├── Trials
+├── App Versions
+├── Entitlements
+├── Operations
+├── Audit Logs
+├── Security
+└── Settings
+```
+
+API و Admin باید از Service Layer مشترک استفاده کنند و business logic نباید بین آن‌ها duplicate شود.
 
 ## Flow اتصال و حساب
 
@@ -125,35 +242,6 @@ Trial به Site Identity/دامنه وابسته است، نه صرفاً ایم
 
 اعتبارهای سایت پس از onboarding نباید برای عملیات عادی به اپ برگردند؛ Backend آن‌ها را در Credential Vault امن نگهداری و هنگام نیاز استفاده می‌کند.
 
-## معماری مرجع
-
-```text
-Android App (samanramezani1377-hub/woogit)
-   │
-   │ وضعیت فعلی: مستقل
-   │
-   │ پس از آماده شدن Backend:
-   │ HTTPS + short-lived access token
-   ▼
-WooGit API / Gateway
-   │
-   ├── Authentication / Sessions
-   ├── Account / Site Identity
-   ├── Subscription / Entitlements
-   ├── Credential Vault
-   ├── Typed WooCommerce API
-   ├── Jobs / Webhooks / Events
-   ├── Audit / Rate Limit / Security
-   └── Optional AI / Chat / Analytics
-   │
-   ▼
-WordPress / WooCommerce Customer Site
-   │
-   └── WooGit Bridge (when required)
-```
-
-وب‌سایت عمومی یا پنل مدیریتی WooGit می‌تواند یک سامانه جداگانه WordPress باشد و در صورت وجود، از Backend استفاده کند؛ اما **ساخت آن وب‌سایت موضوع اصلی این مخزن نیست**.
-
 ## اصول اصلی Backend
 
 1. **Server-side authorization** — اپ مرجع Trial، Subscription یا Entitlement نیست.
@@ -164,7 +252,7 @@ WordPress / WooCommerce Customer Site
 6. **Typed operations** — به‌جای Proxy دلخواه URL، عملیات مشخص و مجاز ارائه می‌شود.
 7. **Secure gateway** — درخواست تجاری اپ از مسیر Backend عبور می‌کند.
 8. **Observable and recoverable** — لاگ، متریک، Audit، Queue و Recovery از ابتدا بخشی از طراحی هستند.
-9. **Cloud-heavy / WordPress-light** — پردازش‌های سنگین در Backend انجام می‌شوند.
+9. **WordPress-light backend** — V1 باید تا حد ممکن سبک بماند و Customer WooCommerce را Source of Truth نگه دارد.
 10. **APK is untrusted** — تغییر یا دستکاری کلاینت نباید مجوز سمت سرور را دور بزند.
 
 ## اسناد
@@ -172,6 +260,7 @@ WordPress / WooCommerce Customer Site
 - [`docs/SCOPE.md`](docs/SCOPE.md) — مرز قطعی پروژه و تفکیک Backend از اپ موجود.
 - [`docs/PRODUCT.md`](docs/PRODUCT.md) — محدوده سرویس Backend، مدل تجاری و قابلیت‌های موردنیاز آن.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — معماری سیستم و جریان درخواست‌ها.
+- [`docs/WORDPRESS_MONOREPO.md`](docs/WORDPRESS_MONOREPO.md) — ساختار Monorepo، مرز Theme/Plugin، Admin Console، Database و Release.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — امنیت اعتبارها، حریم خصوصی و احراز هویت.
 - [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) — موجودیت‌های اصلی و روابط آن‌ها.
 - [`docs/API-CONTRACT.md`](docs/API-CONTRACT.md) — قرارداد API و الگوهای استاندارد درخواست.
@@ -182,19 +271,6 @@ WordPress / WooCommerce Customer Site
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — مراحل پیاده‌سازی Backend و معیارهای پذیرش.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — تصمیم‌های معماری و مرزهای پروژه.
 
-## پشته پیشنهادی
-
-- API/Gateway: Laravel/PHP، تا حد امکان Stateless
-- Database: PostgreSQL
-- Cache/Queue/Rate Limit: Redis
-- Realtime در صورت نیاز: WebSocket/SSE
-- Object Storage: S3-compatible
-- Secrets: Encryption + KMS/Secret Manager در محیط عملیاتی
-- Customer integration: WordPress/WooCommerce + WooGit Bridge
-- Client: اپ Android موجود WooGit
-
-MVP می‌تواند روی یک VPS کوچک شروع شود و با افزایش بار اجزا جدا شوند. این انتخاب به معنی اجباری بودن استقرار همه سرویس‌ها از روز اول نیست.
-
 ## وضعیت پروژه
 
-این مخزن نقشه و محل پیاده‌سازی **Backend اپ موجود WooGit** است. هیچ ادعایی مبنی بر کامل بودن implementation پذیرفته نیست؛ هر قابلیت باید مطابق Roadmap، API Contract، معیارهای امنیتی و تست‌های واقعی پیاده‌سازی و اثبات شود.
+این مخزن نقشه و محل پیاده‌سازی **Backend + WordPress Theme/Plugin stack ووگیت** است. هیچ ادعایی مبنی بر کامل بودن implementation پذیرفته نیست؛ هر قابلیت باید مطابق Roadmap، API Contract، معیارهای امنیتی و تست‌های واقعی پیاده‌سازی و اثبات شود.
