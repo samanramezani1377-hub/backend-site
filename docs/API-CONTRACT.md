@@ -1,101 +1,57 @@
 # قرارداد API ووگیت
 
-این سند مرزهای عمومی موردنظر را تعریف می‌کند. قرارداد عمداً مستقل از فریم‌ورک است تا بتوان آن را در Laravel پیاده‌سازی کرد، بدون اینکه کلاینت اندروید به کلاس‌های داخلی وابسته شود.
+این سند قرارداد V1 را در سطح عمومی تعریف می‌کند. Backend باید با کمترین تغییر ممکن با Android Client موجود سازگار شود.
 
-## ۱. گروه‌های API
+## ۱. اصول احراز هویت
+
+در درخواست عادی Backend دو دسته اطلاعات دریافت می‌کند:
 
 ```text
-/api/v1/auth
-/api/v1/account
-/api/v1/sites
-/api/v1/subscription
-/api/v1/gateway
-/api/v1/bridge
-/api/v1/chat
-/api/v1/analytics
-/api/v1/ai
+WooGit Session
+    → احراز و مجوز مصرف‌کننده در Backend
+
+WP Username
+WP Application Password
+WC Consumer Key
+WC Consumer Secret
+    → احراز دسترسی به Customer Site
 ```
 
-## ۲. احراز هویت
+Customer Credentials ممکن است در Client موجود باشند و برای همان Request به Backend ارسال شوند. Backend نباید برای Proxy عادی به Credential Vault lookup وابسته باشد.
 
-### POST `/api/v1/auth/login`
+## ۲. Bootstrap / Connection Verification
 
-حساب WooGit را احراز هویت می‌کند.
+Flow اولیه ممکن است بدون WooGit Session کامل انجام شود:
 
-### POST `/api/v1/auth/refresh`
+### POST `/api/v1/sites/verify`
 
-نشست را تازه‌سازی/چرخش می‌دهد. Refresh Token خام هرگز در لاگ ثبت نمی‌شود.
-
-### POST `/api/v1/auth/logout`
-
-نشست فعلی را لغو می‌کند.
-
-## ۳. اتصال سایت
-
-### POST `/api/v1/sites`
-
-یک عملیات اتصال سایت ایجاد می‌کند.
-
-نمونه مفهومی درخواست:
+نمونه مفهومی:
 
 ```json
 {
   "url": "https://example.com",
-  "wordpress_username": "admin",
-  "wordpress_application_password": "..."
+  "wordpress_username": "...",
+  "wordpress_application_password": "...",
+  "woocommerce_consumer_key": "...",
+  "woocommerce_consumer_secret": "..."
 }
 ```
 
-الزامات:
+Backend ابتدا WordPress reachability/authentication و سپس WooCommerce verification را انجام می‌دهد. تا Verification کامل موفق نشود، Site/Account/Trial به‌عنوان اتصال موفق اعلام نمی‌شوند.
 
-- ارتباط با WooGit از طریق HTTPS.
-- هرگز بدنه درخواست را لاگ نکنید.
-- URL را استاندارد و اعتبارسنجی کنید.
-- از Idempotency Key استفاده کنید.
-- پیش از ذخیره نهایی اعتبارسنجی کنید.
-- فقط فراداده امن را برگردانید.
+Credentialها هرگز در Response بازگردانده نمی‌شوند.
 
-نمونه پاسخ:
+## ۳. Session
 
-```json
-{
-  "site_id": "opaque-site-id",
-  "status": "connected",
-  "display_name": "Example Store",
-  "bridge": {
-    "installed": false,
-    "required": false
-  }
-}
-```
+پس از Bootstrap/Account lifecycle یک WooGit Session معتبر برای درخواست‌های عادی صادر/فعال می‌شود.
 
-خود اعتبار هرگز نباید در پاسخ ظاهر شود.
+جزئیات مکانیزم Session (نوع دقیق Token، Rotation و غیره) در سؤال معماری مربوط به Session تعیین می‌شود و این قرارداد آن را به یک مدل خاص قفل نمی‌کند.
 
-## ۴. فهرست سایت‌ها
+## ۴. Gateway / Lightweight Proxy
 
-### GET `/api/v1/sites`
+برای جلوگیری از SSRF، Client نباید URL مقصد دلخواه ارسال کند.
 
-سایت‌های متعلق به حساب احراز‌شده را برمی‌گرداند.
-
-### GET `/api/v1/sites/{site_id}`
-
-فراداده امن اتصال و مجوز سایت را برمی‌گرداند.
-
-### DELETE `/api/v1/sites/{site_id}`
-
-سایت را قطع اتصال می‌کند. این عملیات باید اعتبار ذخیره‌شده را لغو/حذف و طبق سیاست قطع اتصال، اعتبارهای Bridge را نیز نامعتبر کند.
-
-## ۵. Gateway
-
-نقطه پایانی عمومی Gateway نباید به یک Proxy بدون محدودیت تبدیل شود. عملیات Typed ترجیح دارند.
-
-بد:
-
-```text
-POST /gateway?url=https://customer-site/...
-```
-
-خوب:
+قرارداد بیرونی می‌تواند مسیرهای شناخته‌شده داشته باشد:
 
 ```text
 POST /api/v1/gateway/sites/{site_id}/products/list
@@ -103,107 +59,96 @@ POST /api/v1/gateway/sites/{site_id}/orders/get
 POST /api/v1/gateway/sites/{site_id}/media/upload
 ```
 
-عملیات Typed امکان اعمال صریح مجوز، حسابرسی، محدودسازی نرخ و Idempotency را فراهم می‌کنند.
-
-برای مهاجرت اولیه از اپ فعلی WooGit می‌توان از یک Proxy داخلی محدود استفاده کرد، اما باید فهرست مجاز مسیرهای WooCommerce/WordPress و متدهای HTTP را اعمال کند. ارسال URL دلخواه به مقصدهای خارجی ممنوع است.
-
-## ۶. قرارداد تغییرات
-
-هر عملیات CREATE/فعال‌سازی/Provisioning این هدر را می‌پذیرد:
-
-```http
-Idempotency-Key: 9c2c...
-```
-
-پاسخ باید شامل این ساختار باشد:
-
-```json
-{
-  "operation_id": "opaque-operation-id",
-  "status": "completed"
-}
-```
-
-برای عملیات غیرهمزمان:
-
-```json
-{
-  "operation_id": "opaque-operation-id",
-  "status": "pending"
-}
-```
-
-Retry کلاینت با همان کلید باید همان وضعیت عملیات قبلی را برگرداند.
-
-## ۷. نقاط پایانی Bridge
-
-Namespace پیشنهادی در سایت مشتری:
+اما رفتار داخلی Lightweight Proxy است:
 
 ```text
-/wp-json/woogit/v1/discovery
-/wp-json/woogit/v1/health
-/wp-json/woogit/v1/command
-/wp-json/woogit/v1/events
-/wp-json/woogit/v1/chat/config
+Client Request
+   ↓
+Backend authorization checks
+   ↓
+Forward same path/query/body as applicable
+   ↓
+Customer WordPress/WooCommerce
+   ↓
+Return response with minimum necessary transformation
 ```
 
-فهرست نهایی باید به حداقل موردنیاز قابلیت‌های فعال کاهش یابد.
+Backend نباید برای هر عملیات داده را دوباره مدل یا Mirror کند.
 
-## ۸. چت
+## ۵. اطلاعات Request Gateway
 
-### POST `/api/v1/sites/{site_id}/chat/conversations`
+هر درخواست عادی Gateway شامل این اطلاعات منطقی است:
 
-یک مکالمه را با توجه به مجوز حساب ایجاد می‌کند.
-
-### POST `/api/v1/chat/conversations/{conversation_id}/messages`
-
-یک پیام اضافه می‌کند.
-
-### GET `/api/v1/chat/conversations/{conversation_id}`
-
-داده مکالمه مجاز را برمی‌گرداند.
-
-برای Streaming از SSE/WebSocket با یک توکن نشست چت کوتاه‌عمر استفاده کنید. اطلاعات ورود حساس سایت نباید در اختیار مرورگر قرار گیرد.
-
-## ۹. دریافت رویدادهای تحلیل
-
-### POST `/api/v1/sites/{site_id}/events`
-
-یک Batch محدود از رویدادهای Typed را می‌پذیرد.
-
-الزامات:
-
-- Schema سخت‌گیرانه؛
-- حداکثر اندازه Batch؛
-- حداکثر اندازه رویداد؛
-- Rate Limit؛
-- Deduplication/Event ID؛
-- فیلتر حریم خصوصی؛
-- پردازش غیرهمزمان.
-
-## ۱۰. هوش مصنوعی
-
-### POST `/api/v1/ai/chat`
-
-درخواست AI مجاز را از طریق انتزاع ارائه‌دهندگان WooGit مسیریابی می‌کند.
-
-درخواست باید یک مدل منطقی را مشخص کند، نه URL دلخواه یک ارائه‌دهنده.
-
-```json
-{
-  "model": "balanced",
-  "messages": [],
-  "site_context": {
-    "site_id": "opaque-site-id"
-  }
-}
+```text
+WooGit Session
+site_id / destination reference
+WP Username
+WP Application Password
+WC Consumer Key
+WC Consumer Secret
+HTTP method
+path/query
+body
+Idempotency-Key (برای mutationهای لازم)
 ```
 
-بک‌اند پیکربندی واقعی ارائه‌دهنده و مدل را در سمت سرور تعیین می‌کند.
+Backend قبل از Forward باید حداقل این موارد را بررسی کند:
 
-## ۱۱. قرارداد خطا
+1. Session معتبر باشد.
+2. Account بسته/غیرفعال نباشد.
+3. Trial/Subscription منقضی نشده باشد.
+4. Account مالک/مجاز Site باشد.
+5. Entitlement عملیات را اجازه دهد.
+6. Version/Security/Rate Limit برقرار باشد.
 
-از یک ساختار پایدار و قابل پردازش توسط ماشین استفاده کنید:
+در صورت شکست، Request به Customer Site ارسال نمی‌شود.
+
+## ۶. Customer Response
+
+Response Customer Site باید تا حد امکان بدون تغییر غیرضروری به Client برگردد. Backend فقط در موارد لازم برای قرارداد امنیتی/خطا/Request ID آن را حداقل transform می‌کند.
+
+Customer Credential نباید در Response قرار بگیرد.
+
+## ۷. Idempotency
+
+برای CREATE و سایر mutationهای non-idempotent که نیاز به محافظت دارند:
+
+```http
+Idempotency-Key: <stable-client-key>
+```
+
+Retry با همان کلید باید نتیجه عملیات قبلی را برگرداند یا وضعیت canonical آن را مشخص کند و نباید CREATE دوم اجرا کند.
+
+## ۸. Timeout-after-success
+
+Client باید بتواند بعد از Timeout وضعیت Operation را بررسی کند:
+
+```text
+GET /api/v1/operations/{operation_id}
+```
+
+این نقطه باید برای عملیات‌هایی که Operation Identity دارند امکان بازیابی نتیجه را فراهم کند.
+
+## ۹. Account / Site
+
+```text
+GET /api/v1/sites
+GET /api/v1/sites/{site_id}
+```
+
+این نقاط فقط Siteهای مجاز Account را برمی‌گردانند و Customer Credential را هرگز نمایش نمی‌دهند.
+
+## ۱۰. Subscription / Entitlement
+
+Subscription و Entitlement مرجع تصمیم Backend هستند. Client نباید با ارسال Flag یا وضعیت محلی، انقضا یا محدودیت را دور بزند.
+
+## ۱۱. Bridge / Chat / Analytics / AI
+
+این قابلیت‌ها در صورت فعال بودن APIهای جداگانه دارند و نباید برای مسیر اصلی Lightweight Proxy اجباری باشند.
+
+## ۱۲. Error Contract
+
+خطاها باید پایدار و قابل پردازش باشند:
 
 ```json
 {
@@ -215,16 +160,8 @@ Namespace پیشنهادی در سایت مشتری:
 }
 ```
 
-در پاسخ خطای محیط عملیاتی هرگز اعتبار، SQL، Stack Trace یا اسرار ارائه‌دهنده قرار ندهید.
+هرگز Customer Credential، SQL، Stack Trace یا Secret ارائه‌دهنده در Response عمومی قرار نگیرد.
 
-## ۱۲. شناسه درخواست
+## ۱۳. Request ID
 
-هر درخواست یک Request ID تولیدشده توسط سرور دریافت می‌کند. در صورت امن بودن، این شناسه به لاگ داخلی منتقل و برای عیب‌یابی به کلاینت برگردانده می‌شود.
-
-## ۱۳. نقطه تطبیق Idempotency
-
-نقطه پیشنهادی برای اپ:
-
-`GET /api/v1/operations/{operation_id}`
-
-این نقطه به کلاینت اجازه می‌دهد بعد از Timeout وضعیت عملیات را بازیابی کند، بدون اینکه Mutation اصلی را دوباره اجرا کند.
+هر درخواست باید یک Request ID داشته باشد. این شناسه می‌تواند برای عیب‌یابی در Log داخلی استفاده شود، بدون اینکه Body یا Headerهای حاوی Secret ثبت شوند.
