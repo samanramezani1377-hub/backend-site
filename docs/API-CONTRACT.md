@@ -58,6 +58,14 @@ WooGit Session
 
 Verification read-only است و قبل از استفاده از gateway انجام می‌شود.
 
+### تعریف Site Ownership در WooGit
+
+در V1، **Site Ownership به معنی مالکیت حقوقی دامنه یا مالکیت قانونی سایت نیست.** مالکیت در WooGit به معنی **کنترل معتبر سایت از طریق credentialهای مدیریتی ارائه‌شده** است؛ یعنی Backend با credentialهای ارائه‌شده می‌تواند دسترسی مدیریتی/مجاز موردنیاز WooGit به WordPress/WooCommerce همان Site را با موفقیت تأیید کند.
+
+بنابراین موفقیت `verify` به‌تنهایی هیچ ادعایی درباره مالک قانونی دامنه، برند یا شرکت ایجاد نمی‌کند. نتیجه verification فقط نشان می‌دهد Account ارائه‌دهنده credential، در چارچوب قرارداد WooGit، **کنترل معتبر آن Site** را اثبات کرده است.
+
+پس از verification موفق، Backend رابطه Account و Site را بر همین مبنای کنترل معتبر ثبت می‌کند و authorizationهای بعدی بر اساس **Account + Site Ownership + Entitlement + Session** انجام می‌شوند. این تعریف، credential verification را از ادعای مالکیت حقوقی دامنه جدا می‌کند.
+
 Verification موفق حتی وقتی Entitlement منقضی است، Account + Site را resolve کرده و Session صادر می‌کند؛ اما در این حالت Session فقط برای Account/Billing UI است و مجوز gateway ایجاد نمی‌کند. Response شامل `scope=billing`, `access_enabled=false` و `billing_required=true` خواهد بود.
 
 ## ۴. WooGit Session
@@ -154,6 +162,8 @@ Idempotency recordهای `pending` و `unknown` نباید توسط retention jo
 ## ۸. Sites / Subscription
 
 فقط Site مجاز Account قابل استفاده است. Customer Credentials هرگز در Response سایت نمایش داده نمی‌شوند.
+
+Site Ownership در این سند به معنای **کنترل معتبر فنی سایت از طریق credentialهای مدیریتی تأییدشده** است و نه مالکیت حقوقی دامنه. این Ownership مبنای authorization داخلی WooGit است؛ بنابراین وجود آن به‌تنهایی ادعای مالکیت قانونی دامنه یا برند محسوب نمی‌شود.
 
 Subscription و Entitlement مرجع Backend هستند و Account/Plan منقضی نباید outbound request داشته باشد.
 
