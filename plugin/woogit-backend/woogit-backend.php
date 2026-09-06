@@ -13,7 +13,7 @@ define('WOOGIT_BACKEND_VERSION','0.3.6');
 define('WOOGIT_BACKEND_FILE',__FILE__);
 define('WOOGIT_BACKEND_DIR',plugin_dir_path(__FILE__));
 
-foreach(['Database','AccountService','SiteService','EntitlementService','SessionService','WebSessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','VersionAdmin','AnnouncementService','AnnouncementAdmin','AnnouncementController','BillingService','RestController','BillingController','WebAuthController'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
+foreach(['Database','AccountService','SiteService','EntitlementService','SessionService','WebSessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','VersionAdmin','AnnouncementService','AnnouncementAdmin','AnnouncementController','RequirementService','BillingService','RestController','BillingController','WebAuthController'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
 
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{
