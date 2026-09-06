@@ -1,302 +1,251 @@
 # محدوده محصول و مدل تجاری WooGit Backend
 
-## ۰. مرز قطعی این مخزن
+> وضعیت: **V1 — Locked**
 
-این سند درباره **Backend ووگیت برای اپ اندروید موجود** است.
+## ۰. مرز قطعی
 
-اپ Android WooGit قبلاً ساخته شده و یک پروژه مستقل است. بنابراین این مخزن مسئول ساخت، بازطراحی یا نگهداری UI و منطق داخلی اپ نیست. اپ فقط یک Client مصرف‌کننده APIهای این Backend است.
-
-```text
-Android App موجود
-      │
-      │ HTTPS / API
-      ▼
-WooGit Backend  ← این مخزن
-      │
-      ▼
-WordPress / WooCommerce مشتری
-```
-
-وب‌سایت تجاری/پنل کنترل WooGit، در صورت وجود، یک سامانه جداگانه است. این Backend می‌تواند API و integration لازم برای آن را فراهم کند، اما ساخت خود آن سایت در محدوده این repository نیست.
-
-## ۱. محصول
-
-محصول این مخزن یک سرویس SaaS سمت‌سرور است که اپ موجود WooGit از طریق آن به سایت‌های WordPress/WooCommerce متصل می‌شود. Backend مسئول احراز هویت، Site Identity، اشتراک، مجوز، نگهداری امن اعتبارهای سایت، Gateway و عملیات تجاری است.
-
-اجزای خارجی که Backend با آن‌ها کار می‌کند:
-
-1. **اپ اندروید WooGit** — Client موجود و مستقل.
-2. **WordPress/WooCommerce مشتری** — منبع داده فروشگاه.
-3. **WooGit Bridge** — Integration component سمت WordPress در قابلیت‌هایی که به آن نیاز دارند.
-4. **وب‌سایت/پنل تجاری WooGit** — سامانه جداگانه، در صورت وجود.
-
-### مسئولیت‌های Backend
-
-- Authentication و Session
-- Site Identity و مالکیت سایت
-- Account lifecycle
-- Trial / Subscription
-- Entitlement و Feature authorization
-- Credential Vault
-- API Gateway
-- عملیات Typed برای WooCommerce
-- WordPress/WooCommerce integration
-- Webhook / Event ingestion
-- Queue / Job / Retry
-- Idempotency
-- Timeout-after-success safety
-- Rate limiting و Abuse protection
-- Audit و Security
-- Observability و Operations
-- قابلیت‌های اختیاری Chat / AI / Analytics در صورت فعال بودن قرارداد محصول
-
-## ۲. مسیر اتصال اپ موجود
-
-### ۲.۱ صفحه اول اپ — طراحی قفل‌شده
-
-صفحه اول فعلی اپ WooGit **از قبل ساخته شده و قفل است**. Backend نباید برای اجرای این Flow ظاهر، UI یا فیلدهای آن را تغییر دهد.
-
-این صفحه موارد زیر را می‌گیرد:
-
-- **پروتکل اتصال:** HTTPS یا HTTP؛ پیش‌فرض HTTPS.
-- **آدرس فروشگاه:** مثلاً `senoobar.ir`.
-- **WooCommerce Consumer Key**.
-- **WooCommerce Consumer Secret**.
-- **نام کاربری WordPress**.
-- **WordPress Application Password**.
-
-ورودی آدرس فروشگاه باید استاندارد شود و پیشوندهای `https://` و `http://` از مقدار جدا شوند؛ پروتکل انتخاب‌شده توسط Client اعمال می‌شود.
-
-نکته: فیلد «رمز عبور WordPress» در قرارداد فعلی به معنی رمز عادی ورود `wp-admin` نیست؛ باید **Application Password** باشد، یعنی اعتبار برنامه‌ای مخصوص دسترسی API.
-
-Backend همین اطلاعات را در لحظه اتصال دریافت و اتصال واقعی WordPress/WooCommerce را اعتبارسنجی می‌کند.
-
-### ۲.۲ شکست اتصال
+این مخزن Backend اپ Android موجود WooGit است. اپ مستقل است و نباید در این repository بازسازی یا از نظر UI/UX بازطراحی شود.
 
 ```text
-App
-  -> اطلاعات اتصال
-  -> WooGit Backend
-  -> اعتبارسنجی WordPress/WooCommerce
-  -> شکست
-  -> خطا به App
+WooGit Android — Existing Client
+          ↓
+WooGit Backend / Main Plugin
+          ↓
+Customer WordPress / WooCommerce
 ```
 
-در این حالت:
+`WooGit Main Plugin` روی WordPress اصلی WooGit قرار دارد و مغز Backend این پروژه است.
 
-- Account جدید ساخته نمی‌شود.
-- Trial ایجاد نمی‌شود.
-- Session تجاری ایجاد نمی‌شود.
-- کاربر وارد Dashboard نمی‌شود.
+`WooGit Gateway Plugin` یک Plugin مستقل روی سایت مشتری است و **فعلاً کاملاً خارج از Scope توسعه این پروژه است**.
 
-علت خطا باید بدون افشای Secret یا جزئیات حساس به Client برگردد.
+## ۱. محصول V1
 
-### ۲.۳ دامنه دارای حساب قبلی
+هدف V1 این است که Backend با کمترین تغییر ممکن به Client موجود، مسیر محافظت‌شده‌ای بین اپ و سایت مشتری ایجاد کند.
+
+Backend مسئول:
+
+- WooGit Session؛
+- Account lifecycle؛
+- Site Identity و ownership؛
+- Trial / Subscription؛
+- Entitlement؛
+- Version Gate؛
+- Security و Rate Limit؛
+- Controlled Forwarding؛
+- Idempotency؛
+- Timeout-after-success؛
+- Audit و Operations.
+
+Backend نباید برای عملیات عادی یک Mirror از WooCommerce بسازد.
+
+## ۲. Client موجود و Connection
+
+اپ موجود در صفحه اتصال این اطلاعات را دریافت/نگهداری می‌کند:
+
+1. HTTP/HTTPS؛
+2. Store URL؛
+3. WooCommerce Consumer Key؛
+4. WooCommerce Consumer Secret؛
+5. WordPress Username؛
+6. WordPress Application Password.
+
+کد فعلی اپ این Credentialها را در Secure Credential Store نگهداری می‌کند و Store Repository از آن‌ها برای اتصال مستقیم استفاده می‌کند. بنابراین Backend Contract باید همین چهار Customer Credential را به‌عنوان ورودی مقصد در نظر بگیرد و برای V1 نیاز به تغییر بنیادی فرم اتصال نداشته باشد. fileciteturn229file1L23-L29 fileciteturn229file2L42-L55
+
+Client فعلی برای Verification اتصال از WooCommerce REST استفاده می‌کند و در Migration باید همان رفتار قابل تطبیق باقی بماند.
+
+## ۳. دو نوع Credential
 
 ```text
-اطلاعات اتصال صفحه اول
-        ↓
-اعتبارسنجی موفق WordPress/WooCommerce
-        ↓
-کشف Site Identity
-        ↓
-حساب موجود
-        ↓
-احراز حساب متناظر با همان سایت
-        ↓
-Session WooGit
-        ↓
-App Dashboard
+WooGit Session
+    → احراز و مجوز Client در Backend
+
+WP Username
++ WP Application Password
++ WC Consumer Key
++ WC Consumer Secret
+    → احراز Backend در Customer Site
 ```
 
-در این مدل، موفقیت اتصال واقعی به همان سایت نقش Credential ورود آن حساب را دارد. ورود عادی به ایمیل یا Google Account وابسته نیست.
+Access Token + Refresh Token جزو معماری V1 نیست.
 
-Backend مرجع نهایی احراز هویت، مالکیت سایت، وضعیت حساب، Subscription و Entitlement است.
+Credential Vault برای هر Request اجباری نیست. در Proxy عادی، Client می‌تواند Customer Credentials را همراه Request ارسال کند.
 
-### ۲.۴ دامنه بدون حساب قبلی
+## ۴. Onboarding / Verification
+
+در اولین اتصال ممکن است Session هنوز وجود نداشته باشد؛ بنابراین Onboarding یک Flow مستقل است:
 
 ```text
-اطلاعات اتصال صفحه اول
-        ↓
-اعتبارسنجی موفق WordPress/WooCommerce
-        ↓
-Site Identity جدید
-        ↓
-مرحله تکمیل اطلاعات داخل App
-        ↓
-Email + نام + نام خانوادگی
-        ↓
-ایجاد Account
-        ↓
-Trial در صورت واجدشرایط بودن
-        ↓
-Session WooGit
-        ↓
-Dashboard
+Customer Credentials
+      ↓
+WordPress reachability/authentication
+      ↓
+WooCommerce verification
+      ↓
+Site Identity
+      ↓
+Existing Account OR New Account
+      ↓
+Trial eligibility
+      ↓
+WooGit Session
+      ↓
+Normal requests
 ```
 
-صفحه دوم فقط بعد از اتصال موفق نمایش داده می‌شود و حداقل این موارد را دریافت می‌کند:
+Verification باید read-only باشد و هیچ Product/Order/Media mutation صرفاً برای تست انجام نشود.
 
-- ایمیل
-- نام
-- نام خانوادگی
+Verification ناموفق نباید به‌عنوان اتصال موفق ثبت شود و نباید Trial یا Session تجاری نهایی ایجاد کند.
 
-ایمیل برای هویت، ارتباطات و در صورت نیاز Email Verification یا Recovery استفاده می‌شود، اما Login عادی بر اساس ایمیل نیست.
+## ۵. Site موجود
 
-### ۲.۵ قانون اصلی Trial
-
-**۱۵ روز Trial به Site Identity/دامنه تعلق دارد، نه به Google Account یا صرفاً ایمیل.**
-
-مثال ممنوع:
+برای Site Identity موجود:
 
 ```text
-example.com + gmail-A -> 15 روز
-example.com + gmail-B -> 15 روز دیگر
-example.com + gmail-C -> 15 روز دیگر
+Verify credentials
+   ↓
+Resolve Site Identity
+   ↓
+Resolve owning Account
+   ↓
+Account/Subscription/Entitlement checks
+   ↓
+WooGit Session
 ```
 
-بک‌اند باید Trial history را برای Site Identity نگهداری کند و قبل از ایجاد Trial جدید بررسی کند که قبلاً مصرف نشده باشد.
+موفقیت اتصال واقعی به همان Site مبنای احراز دسترسی به Site است؛ Login عادی Google/email بخشی از Flow فعلی نیست.
 
-### ۲.۶ اصل مالکیت سایت
+## ۶. Site جدید
 
-دامنه خام Secret نیست و به‌تنهایی نباید برای دسترسی کافی باشد. اثبات دسترسی از موفقیت اعتبارسنجی واقعی WordPress/WooCommerce به‌دست می‌آید.
-
-Site Identity باید Canonical شود تا تغییرات ظاهری مانند `http/https` یا slash انتهایی باعث ایجاد هویت دوم برای یک سایت نشود.
-
-### ۲.۷ Credential Vault
-
-اعتبارهای دریافت‌شده از صفحه اول باید فقط برای اتصال امن و عملیات مجاز Backend استفاده شوند.
-
-پس از onboarding:
-
-- Credential خام سایت نباید برای عملیات عادی به اپ برگردد.
-- Backend در صورت نیاز آن را در Credential Vault رمزنگاری‌شده نگهداری می‌کند.
-- Gateway در زمان اجرای عملیات اعتبار لازم را بازیابی می‌کند.
-- دسترسی به Credential باید Audit و Least Privilege داشته باشد.
-
-## ۳. Subscription و Entitlement
-
-Trial و Subscription فقط در Backend معتبر هستند.
-
-پیشنهاد تجاری اولیه:
-
-- Trial: ۱۵ روز
-- بسته‌های زمان‌محور: ۳۰، ۹۰، ۱۸۰ و ۳۶۵ روز
-
-قیمت، محدودیت‌ها و واحد پول باید تنظیمات Backend باشند و نباید به‌صورت منطق ثابت در Client قرار بگیرند.
-
-هر Plan می‌تواند شامل موارد زیر باشد:
+برای Site بدون Account قبلی:
 
 ```text
-Plan
-- مدت
-- قیمت
-- واحد پول
-- محدودیت سایت
-- Feature flags
-- Rate/request limits
-- مدت نگهداری تحلیل
-- محدودیت چت
-- اعتبار AI
+Verification موفق
+   ↓
+New Site Identity
+   ↓
+Email + First Name + Last Name
+   ↓
+Account creation
+   ↓
+Trial eligibility
+   ↓
+WooGit Session
 ```
 
-نمونه قابلیت‌ها:
+Trial برابر ۱۵ روز است و به Site Identity/دامنه تعلق دارد، نه صرفاً به Email یا Google Account.
 
-- محصولات
-- سفارش‌ها
-- مشتریان
-- رسانه
-- مدیریت افزونه‌ها
-- مدیریت Bridge
-- تحلیل
-- رهگیری کاربران
-- چت
-- چت هوش مصنوعی
-- عامل هوش مصنوعی
-- خودکارسازی
-- خروجی گرفتن
-
-## ۴. راهبرد افزونه Bridge
-
-Bridge یک Integration component سمت WordPress است و در این پروژه به‌عنوان بخشی از Backend contract تعریف می‌شود، نه بخشی از اپ.
-
-Bridge عمداً باید Headless باشد و نباید برای استفاده عادی از WooGit به صفحه تنظیمات اجباری در `wp-admin` نیاز داشته باشد.
-
-مسئولیت‌های Bridge می‌تواند شامل این موارد باشد:
-
-- نقاط پایانی API احراز‌شده
-- اعلام قابلیت‌ها
-- ارتباط خروجی امن
-- تزریق اختیاری دارایی‌های سمت کاربر
-- Hookهای WordPress/WooCommerce
-- اجرای فرمان‌های مجاز Backend
-- گزارش سلامت و نسخه
-
-## ۵. هوش مصنوعی تجاری — قابلیت اختیاری Backend
-
-AI جزء هسته اجباری Backend برای اتصال پایه اپ نیست، اما اگر در محصول فعال شود باید پشت WooGit Backend قرار بگیرد.
-
-### اعتبارهای مدیریت‌شده توسط WooGit
+## ۷. درخواست عادی
 
 ```text
-مشتری -> پرداخت به WooGit
-       -> اعتبار AI
-       -> AI Gateway
-       -> ارائه‌دهنده
+Android
+  ↓
+WooGit Session + site_id
++ Customer Credentials
++ operation/path/query/body
+  ↓
+Main Plugin
+  ├─ Session
+  ├─ Account status
+  ├─ Trial/Subscription
+  ├─ Entitlement
+  ├─ Site ownership
+  ├─ Version/Security/Rate Limit
+  └─ Idempotency where required
+  ↓
+Controlled Forwarding
+  ↓
+Customer WordPress/WooCommerce
+  ↓
+Minimum necessary transformation
+  ↓
+Android
 ```
 
-### BYOK
+در صورت Account بسته/غیرفعال یا Subscription/Trial منقضی، Backend نباید Request را به Customer Site ارسال کند.
+
+## ۸. Controlled Proxy
+
+Backend یک Proxy عمومی URL دلخواه نیست.
+
+مقصد از `site_id` و Site Identity ثبت‌شده resolve می‌شود و فقط operation/pathهای مجاز قابل Forward هستند.
 
 ```text
-کلید ارائه‌دهنده مشتری
-        -> Credential Vault
-        -> AI Gateway
-        -> ارائه‌دهنده
+/proxy?url=https://anything.com  ❌
 ```
 
-کلیدهای AI نباید به App یا WordPress مشتری واگذار شوند.
+نام `gateway` در API path، در صورت استفاده، فقط نام integration surface داخل Main Plugin است و به `WooGit Gateway Plugin` مشتری اشاره نمی‌کند.
 
-## ۶. چت — قابلیت اختیاری Backend
+## ۹. Credential Vault
 
-در صورت فعال شدن Chat، پیام‌ها باید از مسیر Backend عبور کنند:
+Vault یک قابلیت optional است.
+
+در مسیر عادی:
 
 ```text
-Client / Bridge
-    -> WooGit Chat API
-    -> انسان یا AI
-    -> Backend
-    -> Client / Bridge
+Client → Session + Customer Credentials → Backend → Customer Site
 ```
 
-این معماری امکان اعمال Subscription، Rate Limit، تاریخچه، Routing و Audit را فراهم می‌کند.
+هیچ Vault lookup اجباری برای هر Request وجود ندارد.
 
-## ۷. تحلیل و رهگیری — قابلیت اختیاری Backend
+Vault فقط در صورت نیاز واقعی به عملیات بدون حضور Client، مانند بعضی Background Job/Webhookها، قابل استفاده است. چنین قابلیتی باید نیاز خود را جداگانه مشخص کند.
 
-در صورت فعال بودن Analytics، رویدادها به Backend ارسال و در Queue/Storage مناسب پردازش می‌شوند. WordPress مشتری نباید انبار اصلی Analytics باشد.
+Customer Credentials در هیچ Log، Error Response، Audit Metadata یا Telemetry عمومی ثبت نمی‌شوند.
 
-نمونه رویدادها:
+## ۱۰. Account / Subscription / Entitlement
 
-- `page_view`
-- `product_view`
-- `search`
-- `add_to_cart`
-- `checkout_started`
-- `order_completed`
-- `chat_started`
-- `chat_message`
-- `user_login`
+Backend مرجع نهایی این موارد است:
 
-قوانین حریم خصوصی، نگهداری داده و رضایت باید متناسب با حوزه قضایی و حالت محصول تنظیم شوند.
+```text
+Account
+  └── Site Identity
+        └── Subscription / Trial
+              └── Entitlements
+```
 
-## ۸. موارد خارج از هدف این مخزن
+Client نمی‌تواند با وضعیت محلی، Flag یا تاریخ محلی این policy را دور بزند.
 
-- ساخت یا بازطراحی Android App
-- UI/UX اپ
-- Compose / Navigation / State management اپ
-- ConnectionScreen یا Dashboard اپ
-- ساخت APK و CI مخصوص Android
-- ذخیره رمزهای خام WordPress در اپ
-- اجرای مدل بزرگ AI روی هاست WordPress مشتری
-- تبدیل WordPress `wp-admin` به رابط اصلی اپ
-- اعمال Subscription فقط در Client
-- ساخت زیرساخت بیش از حد توزیع‌شده پیش از نیاز واقعی
+## ۱۱. Idempotency و Timeout-after-success
+
+تمام CREATE mutationهای موردنیاز باید idempotent باشند.
+
+```text
+Client → CREATE
+Backend → Customer
+Customer → SUCCESS
+response lost
+Client → retry same operation identity
+Backend → previous result / reconciliation
+```
+
+Retry نباید CREATE دوم ایجاد کند.
+
+## ۱۲. Currency
+
+Currency از Customer WooCommerce می‌آید. Backend نباید واحد پول را فرض، hard-code یا بی‌دلیل تبدیل کند و باید context مالی موردنیاز Client را حفظ کند.
+
+## ۱۳. عملیات اصلی Client
+
+V1 باید با حوزه‌های واقعی موجود در Client قابل تطبیق باشد:
+
+- Products؛
+- Orders؛
+- Customers؛
+- Categories؛
+- Variations؛
+- Attributes / Terms؛
+- Media؛
+- Sync؛
+- Conflicts / reconciliation؛
+- Product/Order mutations.
+
+در کد Presentation فعلی این Use Caseها و عملیات مستقیماً در Client وجود دارند؛ Backend باید قرارداد آینده را بر اساس همین surface طراحی کند، نه یک API مستقل و بی‌مصرف. fileciteturn226file0L1-L2
+
+## ۱۴. چیزهای خارج از V1 Backend
+
+- بازسازی Android App؛
+- تغییر UI/UX اپ برای سازگار شدن با Backend؛
+- پیاده‌سازی `WooGit Gateway Plugin` سایت مشتری؛
+- الزام PostgreSQL؛
+- الزام Redis؛
+- الزام Queue service مستقل؛
+- Mirror دائمی WooCommerce.
