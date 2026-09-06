@@ -12,6 +12,8 @@ final class BillingController
     private EntitlementService $entitlements;
     private VersionGate $versionGate;
     private RateLimitService $rateLimits;
+    private IdempotencyService $idempotency;
+    private OperationService $operations;
 
     private const PLANS_LIMIT = 60;
     private const STATUS_LIMIT = 30;
@@ -28,6 +30,8 @@ final class BillingController
         $this->entitlements = new EntitlementService();
         $this->versionGate = new VersionGate();
         $this->rateLimits = new RateLimitService();
+        $this->idempotency = new IdempotencyService();
+        $this->operations = new OperationService();
     }
 
     public function register(): void
@@ -62,16 +66,54 @@ final class BillingController
     public function checkout(\WP_REST_Request $request): \WP_REST_Response
     {
         $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
+        $key=trim((string)$request->get_header('Idempotency-Key'));
+        if($key==='')return new \WP_REST_Response(['code'=>'missing_idempotency_key'],400);
+        if(strlen($key)>190)return new \WP_REST_Response(['code'=>'invalid_idempotency_key'],400);
         $ipLimit=$this->rateLimits->check('billing_checkout_ip',$this->clientIp(),self::CHECKOUT_LIMIT,self::WINDOW_SECONDS);
         if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
         $context=$this->authenticateAccountContext($request);if($context instanceof \WP_REST_Response)return $context;
-        $accountSiteLimit=$this->billingLimit('billing_checkout_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::CHECKOUT_LIMIT);
+        $accountId=(int)$context['account_id'];$siteId=(int)$context['site_id'];
+        $accountSiteLimit=$this->billingLimit('billing_checkout_account_site',(string)$accountId.':'.$siteId,self::CHECKOUT_LIMIT);
         if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
+        $rawBody=(string)$request->get_body();
+        $fingerprint=$this->idempotency->fingerprint('POST','/woogit/v1/billing/checkout',(array)$request->get_query_params(),$rawBody);
+        $existing=$this->idempotency->lookup($accountId,$siteId,$key,$fingerprint);
+        if($existing['state']==='conflict')return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);
+        if($existing['state']==='completed')return new \WP_REST_Response($existing['body'],$existing['status']);
+        if($existing['state']==='unknown')return new \WP_REST_Response(['code'=>'operation_unknown','operation_id'=>$existing['operation_id'],'retryable'=>false],409);
+        if($existing['state']==='pending'){
+            $recovered=$this->billing->findCheckoutByIdempotencyKey($accountId,$siteId,$key);
+            if($recovered['ok']){
+                $body=['order_id'=>$recovered['order_id'],'payment_url'=>$recovered['payment_url'],'status'=>$recovered['status']];
+                $this->operations->update($accountId,$siteId,(string)$existing['operation_id'],'succeeded',201,$body);
+                $this->idempotency->complete($accountId,$siteId,$key,201,$body);
+                return new \WP_REST_Response($body,201);
+            }
+            return new \WP_REST_Response(['code'=>'operation_pending','operation_id'=>$existing['operation_id'],'retryable'=>true],409);
+        }
         $input=$request->get_json_params();$productId=is_array($input)?(int)($input['plan_id']??0):0;$variationId=is_array($input)?(int)($input['variation_id']??0):0;
         if($productId<=0)return new \WP_REST_Response(['code'=>'missing_plan'],400);
-        $result=$this->billing->createCheckout((int)$context['account_id'],(int)$context['site_id'],$productId,$variationId);
-        if(!$result['ok'])return new \WP_REST_Response(['code'=>$result['code']],400);
-        return new \WP_REST_Response(['order_id'=>$result['order_id'],'payment_url'=>$result['payment_url'],'status'=>$result['status']],201);
+        $operation=$this->operations->create($accountId,$siteId,$key,$fingerprint,'billing','/woogit/v1/billing/checkout','POST');
+        if(!$operation)return new \WP_REST_Response(['code'=>'operation_creation_failed'],500);
+        $claim=$this->idempotency->claim($accountId,$siteId,$key,$fingerprint,(string)$operation['operation_id']);
+        if($claim['state']!=='claimed'){
+            $this->operations->deletePending($accountId,$siteId,(string)$operation['operation_id']);
+            if($claim['state']==='conflict')return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);
+            if($claim['state']==='completed')return new \WP_REST_Response($claim['body'],$claim['status']);
+            if($claim['state']==='unknown')return new \WP_REST_Response(['code'=>'operation_unknown','operation_id'=>$claim['operation_id'],'retryable'=>false],409);
+            return new \WP_REST_Response(['code'=>'operation_pending','operation_id'=>$claim['operation_id'],'retryable'=>true],409);
+        }
+        $result=$this->billing->createCheckout($accountId,$siteId,$productId,$variationId,$key);
+        if(!$result['ok']){
+            $body=['code'=>$result['code']];
+            $this->operations->update($accountId,$siteId,(string)$operation['operation_id'],'failed',400,$body);
+            $this->idempotency->complete($accountId,$siteId,$key,400,$body);
+            return new \WP_REST_Response($body,400);
+        }
+        $body=['order_id'=>$result['order_id'],'payment_url'=>$result['payment_url'],'status'=>$result['status']];
+        $this->operations->update($accountId,$siteId,(string)$operation['operation_id'],'succeeded',201,$body);
+        $this->idempotency->complete($accountId,$siteId,$key,201,$body);
+        return new \WP_REST_Response($body,201);
     }
 
     public function activateSession(\WP_REST_Request $request): \WP_REST_Response
