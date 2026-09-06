@@ -61,7 +61,7 @@ final class RestController
             }
         }
         $result=$this->proxy->forward($base,$path,$method,$credentials['wordpress_username'],$credentials['wordpress_application_password'],$credentials['consumer_key'],$credentials['consumer_secret'],$query,$rawBody,$contentType);
-        $status=(int)$result['status'];$responseBody=(string)$result['body'];$decoded=json_decode($responseBody,true);$idempotentBody=is_array($decoded)?$decoded:['raw'=>$responseBody];
+        $status=(int)$result['status'];$rawResponse=(string)$result['body'];$decoded=json_decode($rawResponse,true);$responseBody=json_last_error()===JSON_ERROR_NONE?$decoded:$rawResponse;$idempotentBody=is_array($decoded)?$decoded:['raw'=>$rawResponse];
         if($key!==''){
             if(!empty($result['timeout'])){$this->operations->markUnknown((int)$session['account_id'],(int)$session['site_id'],$operationId);return new \WP_REST_Response(['code'=>'upstream_timeout','operation_id'=>$operationId,'status'=>'unknown','retryable'=>true],504);}
             $operationStatus=$status>=200&&$status<300?'succeeded':'failed';$this->operations->update((int)$session['account_id'],(int)$session['site_id'],$operationId,$operationStatus,$status,$idempotentBody);$this->idempotency->complete((int)$session['account_id'],(int)$session['site_id'],$key,$status,$idempotentBody);
@@ -80,8 +80,8 @@ final class RestController
 
     private function credentials(\WP_REST_Request $request): ?array
     {
-        $keys=['wordpress_username','wordpress_application_password','consumer_key','consumer_secret'];$result=[];
-        foreach($keys as $key){$header='X-WooGit-'.str_replace('_','-',ucwords($key,'_'));$value=(string)$request->get_header($header);if($value==='')return null;$result[$key]=$value;}
+        $headers=['X-WooGit-Wordpress-Username'=>'wordpress_username','X-WooGit-Wordpress-Application-Password'=>'wordpress_application_password','X-WooGit-Consumer-Key'=>'consumer_key','X-WooGit-Consumer-Secret'=>'consumer_secret'];$result=[];
+        foreach($headers as $header=>$key){$value=(string)$request->get_header($header);if($value==='')return null;$result[$key]=$value;}
         return $result;
     }
 }
