@@ -107,9 +107,9 @@ WooGit Android
 
 اگر Account بسته/غیرفعال یا Trial/Subscription منقضی باشد، Request نباید به Customer Site ارسال شود.
 
-## ۶. Verification و Onboarding اولیه
+## ۶. Verification و Registration اولیه
 
-ممکن است در اولین اتصال WooGit Session هنوز وجود نداشته باشد؛ بنابراین Verification یک Bootstrap Flow مستقل دارد:
+در اولین اتصال ممکن است WooGit Session هنوز وجود نداشته باشد. بنابراین **اولین درخواست می‌تواند هم‌زمان Registration + Site Connection + Verification باشد**.
 
 ```text
 App
@@ -118,24 +118,46 @@ App
   ↓
 WordPress reachability + authentication
   ↓
-WooCommerce verification
+WordPress identity/access verification
   ↓
-Site Identity
+WooCommerce availability/authentication
   ↓
-Existing Account OR New Account
+Resolve existing Site Identity
+  OR
+Create new Site Identity
+  ↓
+Resolve existing Account
+  OR
+Create Account
   ↓
 Trial eligibility
   ↓
-WooGit Session
+Create / Activate WooGit Session
   ↓
 Normal requests
 ```
+
+در این مدل، Verification موفق با Credentialهای معتبر WordPress/WooCommerce مبنای اثبات کنترل کاربر روی همان Customer Site است. بنابراین بعد از اتصال موفق، **تأیید دستی جداگانه‌ای از صاحب سایت لازم نیست**.
+
+`pending_verification` برای مسیر موفق اولیه اجباری نیست؛ Site پس از Verification کامل می‌تواند `verified/active` شود.
 
 Verification باید read-only باشد و صرفاً برای تست، Product/Order/Media mutation انجام ندهد.
 
 ## ۷. Site موجود
 
 برای Site Identity موجود، Verification با Credentialهای همان Site انجام می‌شود و Backend Account مالک آن Site را resolve می‌کند.
+
+```text
+Verify credentials
+   ↓
+Resolve Site Identity
+   ↓
+Resolve owning Account
+   ↓
+Trial / Subscription / Entitlement
+   ↓
+WooGit Session
+```
 
 موفقیت Verification یک Site نباید به معنی دسترسی به Site دیگر باشد.
 
@@ -146,7 +168,7 @@ Verification باید read-only باشد و صرفاً برای تست، Product
 ```text
 Verification موفق
    ↓
-Site Identity
+New Site Identity
    ↓
 Account creation / completion
    ↓
@@ -183,19 +205,26 @@ Backend باید:
 ## ۱۱. اصل نهایی
 
 ```text
+First Request
+    → Registration + Site Connection + Verification
+
+Successful WordPress/WooCommerce Verification
+    → اثبات کنترل Credential-based روی همان Site
+    → بدون تأیید دستی دوم
+
 WooGit Session
-        → احراز و مجوز Client در Backend
+    → احراز و مجوز Client در Backend
 
 Customer Credentials
-        → احراز Backend نزد Customer WordPress/WooCommerce
+    → احراز Backend نزد Customer WordPress/WooCommerce
 
 WooCommerce Settings
-        → متعلق به Customer Site
+    → متعلق به Customer Site
 
 Backend
-        → Account / Site / Subscription / Entitlement
-        → Lightweight Proxy
-        → حداقل تغییر در Request/Response
+    → Account / Site / Subscription / Entitlement
+    → Lightweight Proxy
+    → حداقل تغییر در Request/Response
 ```
 
 `WooGit Gateway Plugin` یک Plugin جداگانه روی سایت مشتری است و در Scope فعلی Backend توسعه داده نمی‌شود.
