@@ -1,175 +1,175 @@
-# WooGit Security Model
+# مدل امنیتی WooGit
 
-## 1. Security objectives
+## ۱. اهداف امنیتی
 
-The commercial architecture must make these statements true:
+معماری تجاری باید این موارد را تضمین کند:
 
-- A modified APK cannot bypass subscription authorization.
-- Customer WordPress credentials are not stored in the APK after onboarding.
-- Raw site credentials are never written to normal application logs.
-- A customer cannot use one site's credential to access another site's data.
-- Expired subscriptions cannot continue through an already-issued long-lived token.
-- Retry after a timeout cannot duplicate a CREATE mutation.
-- The Bridge exposes only WooGit-specific capabilities and does not become a generic unauthenticated remote-code-execution endpoint.
+- APK دستکاری‌شده نتواند مجوز اشتراک را دور بزند.
+- اطلاعات ورود WordPress مشتری پس از راه‌اندازی در APK باقی نماند.
+- اعتبار خام سایت در لاگ‌های عادی برنامه نوشته نشود.
+- مشتری نتواند با اعتبار یک سایت به داده سایت دیگر دسترسی پیدا کند.
+- اشتراک منقضی‌شده نتواند با یک توکن طولانی‌عمر از دسترسی ادامه دهد.
+- Retry پس از Timeout باعث ایجاد دوباره یک عملیات CREATE نشود.
+- Bridge فقط قابلیت‌های اختصاصی WooGit را ارائه کند و به یک نقطه اجرای کد راه دور عمومی و بدون احراز هویت تبدیل نشود.
 
-## 2. Credential handling
+## ۲. مدیریت اعتبارها
 
-WordPress Application Passwords are preferred over the customer's primary WordPress password for programmatic access. WordPress documents Application Passwords as revocable per-application credentials intended for API access.
+برای دسترسی برنامه‌ای به WordPress، Application Password ترجیح دارد و بهتر است به‌جای رمز اصلی WordPress استفاده شود. WordPress این اعتبارها را برای دسترسی API و قابل لغو به‌ازای هر برنامه طراحی کرده است.
 
-Storage design:
+طراحی ذخیره‌سازی:
 
 ```text
-credential plaintext
+اعتبار خام
     -> TLS
-    -> backend memory
-    -> encrypt using application encryption key / KMS
-    -> encrypted database value
+    -> حافظه بک‌اند
+    -> رمزنگاری با کلید برنامه / KMS
+    -> مقدار رمزنگاری‌شده در پایگاه داده
 ```
 
-The decrypted value exists only for the minimum time required to make an outbound request.
+مقدار رمزگشایی‌شده فقط برای حداقل زمان لازم جهت درخواست خروجی وجود داشته باشد.
 
-Do not store:
+نباید این موارد ذخیره شوند:
 
-- raw Authorization headers;
-- plaintext application passwords;
-- provider API keys in logs;
-- full request dumps containing credentials.
+- هدرهای Authorization خام؛
+- Application Passwordهای متنی؛
+- کلیدهای API ارائه‌دهندگان در لاگ؛
+- Dump کامل درخواست‌هایی که اعتبار در آن‌ها وجود دارد.
 
-## 3. Mobile authentication
+## ۳. احراز هویت موبایل
 
-The app receives a WooGit access token/session, not a customer-site credential.
+اپ توکن دسترسی/نشست WooGit دریافت می‌کند، نه اعتبار سایت مشتری.
 
-Recommended token model:
+مدل پیشنهادی توکن:
 
-- short-lived access token;
-- refresh token with rotation;
-- server-side session/revocation record for sensitive actions;
-- device/session metadata;
-- rate limits.
+- Access Token کوتاه‌عمر؛
+- Refresh Token با چرخش؛
+- رکورد نشست و لغو سمت سرور برای عملیات حساس؛
+- فراداده دستگاه/نشست؛
+- محدودسازی نرخ.
 
-The server is authoritative for account state.
+سرور مرجع نهایی وضعیت حساب است.
 
-## 4. Subscription enforcement
+## ۴. اعمال اشتراک
 
-Every gateway request passes an authorization pipeline:
+هر درخواست Gateway از این زنجیره عبور می‌کند:
 
 ```text
-authenticate
-  -> account status
-  -> subscription status
-  -> site ownership
-  -> entitlement
-  -> capability
-  -> rate limit
-  -> idempotency policy
-  -> outbound request
+احراز هویت
+  -> وضعیت حساب
+  -> وضعیت اشتراک
+  -> مالکیت سایت
+  -> مجوز
+  -> قابلیت
+  -> محدودیت نرخ
+  -> سیاست Idempotency
+  -> درخواست خروجی
 ```
 
-No client-side flag is trusted.
+هیچ پرچم سمت کلاینت قابل اعتماد نیست.
 
-## 5. Site isolation
+## ۵. جداسازی سایت‌ها
 
-Every customer site has a unique opaque `site_id` owned by a WooGit account.
+هر سایت مشتری یک `site_id` یکتا و غیرقابل حدس دارد که متعلق به یک حساب WooGit است.
 
-Authorization must verify both:
+مجوز باید هر دو شرط را بررسی کند:
 
 ```text
-request.account_id owns site_id
+request.account_id مالک site_id است
 AND
-request.account_id has capability X for site_id
+request.account_id برای site_id قابلیت X را دارد
 ```
 
-Never accept a credential reference supplied by the client as authoritative. Resolve credential references from server-side site ownership.
+هرگز یک مرجع اعتبار ارسال‌شده توسط کلاینت را معتبر فرض نکنید. اعتبار را بر اساس مالکیت سایت در سمت سرور پیدا کنید.
 
-## 6. Bridge authentication
+## ۶. احراز هویت Bridge
 
-The Bridge should not expose privileged commands anonymously.
+Bridge نباید فرمان‌های حساس را به‌صورت ناشناس ارائه کند.
 
-A recommended model is a site-specific Bridge credential/token established during provisioning. The token is:
+مدل پیشنهادی، یک اعتبار/توکن اختصاصی سایت است که هنگام راه‌اندازی ایجاد می‌شود. این توکن باید:
 
-- scoped to one site;
-- revocable;
-- rotatable;
-- stored server-side in encrypted form;
-- never exposed to the browser widget.
+- فقط به یک سایت محدود باشد؛
+- قابل لغو باشد؛
+- قابل چرخش باشد؛
+- در سمت سرور به‌صورت رمزنگاری‌شده نگهداری شود؛
+- هرگز در اختیار ابزارک مرورگر قرار نگیرد.
 
-The browser widget should authenticate to WooGit using a constrained public/site session mechanism, not the Bridge's privileged secret.
+ابزارک مرورگر باید با یک نشست عمومی و محدود سایت به WooGit احراز هویت کند، نه با راز دارای دسترسی Bridge.
 
-## 7. Request signing and replay protection
+## ۷. امضای درخواست و جلوگیری از Replay
 
-For high-value Bridge operations, use:
+برای عملیات حساس Bridge از این موارد استفاده شود:
 
-- timestamp;
-- request ID;
-- nonce/idempotency key;
-- short validity window;
-- server-side replay detection.
+- Timestamp؛
+- Request ID؛
+- Nonce/Idempotency Key؛
+- بازه اعتبار کوتاه؛
+- تشخیص Replay در سمت سرور.
 
-Do not use a static secret embedded in JavaScript as proof of authorization.
+از یک راز ثابت قرارگرفته داخل JavaScript به‌عنوان مدرک مجوز استفاده نکنید.
 
-## 8. Idempotency
+## ۸. Idempotency
 
-All CREATE-style mutations must support:
+همه تغییرات نوع CREATE باید از این هدر پشتیبانی کنند:
 
 ```text
-Idempotency-Key: <client-generated stable key>
+Idempotency-Key: <کلید پایدار تولیدشده توسط کلاینت>
 ```
 
-Store an operation record containing:
+رکورد عملیات باید شامل این موارد باشد:
 
-- account_id;
-- site_id;
-- operation_type;
-- idempotency_key;
-- request fingerprint;
-- state;
-- remote resource identifier if known;
-- response summary;
-- created_at/updated_at.
+- account_id؛
+- site_id؛
+- operation_type؛
+- idempotency_key؛
+- اثرانگشت درخواست؛
+- state؛
+- شناسه منبع راه دور در صورت وجود؛
+- خلاصه پاسخ؛
+- زمان ایجاد/به‌روزرسانی.
 
-If the same key is retried, return the existing operation result instead of executing a second CREATE.
+اگر همان کلید دوباره ارسال شود، نتیجه عملیات قبلی برگردانده شود و CREATE دوم اجرا نشود.
 
-## 9. Timeout-after-success
+## ۹. Timeout بعد از موفقیت
 
-A critical failure mode is:
+سناریوی بحرانی:
 
 ```text
 WooGit -> WordPress: CREATE
-WordPress -> executes successfully
-WordPress -> response lost / timeout
-WooGit -> sees timeout
-WooGit -> retries
+WordPress -> اجرا با موفقیت
+WordPress -> پاسخ گم می‌شود / Timeout
+WooGit -> Timeout را می‌بیند
+WooGit -> Retry
 ```
 
-The retry path must first reconcile state. Depending on the operation, reconciliation may use:
+مسیر Retry باید ابتدا وضعیت را تطبیق دهد. بسته به عملیات، روش می‌تواند شامل این موارد باشد:
 
-- idempotency key supported by the Bridge;
-- deterministic external reference stored on the remote object;
-- lookup by a unique client-generated identifier;
-- operation status endpoint.
+- Idempotency Key پشتیبانی‌شده توسط Bridge؛
+- مرجع خارجی قطعی ذخیره‌شده روی منبع راه دور؛
+- جست‌وجو با شناسه یکتای تولیدشده توسط کلاینت؛
+- نقطه پایانی وضعیت عملیات.
 
-The system must have an automated test proving that one logical CREATE produces one remote resource even when the first response is lost after the remote commit.
+باید یک تست خودکار وجود داشته باشد که اثبات کند یک CREATE منطقی، حتی وقتی پاسخ اول بعد از ثبت موفقیت‌آمیز گم می‌شود، فقط یک منبع راه دور ایجاد می‌کند.
 
-## 10. Privacy
+## ۱۰. حریم خصوصی
 
-Default telemetry should avoid collecting direct identifiers unless needed.
+Telemetry پیش‌فرض باید تا حد امکان از شناسه‌های مستقیم اجتناب کند.
 
-For analytics:
+برای تحلیل:
 
-- define event schemas;
-- minimize fields;
-- define retention periods;
-- provide deletion/retention controls;
-- document consent requirements where applicable;
-- do not silently collect sensitive data.
+- طرح رویدادها را مشخص کنید؛
+- فیلدها را حداقلی کنید؛
+- مدت نگهداری تعیین کنید؛
+- کنترل حذف/نگهداری ارائه کنید؛
+- الزامات رضایت را در موارد لازم مستند کنید؛
+- داده حساس را بی‌صدا جمع‌آوری نکنید.
 
-User tracking is a product feature, not permission to collect arbitrary personal data.
+رهگیری کاربر یک قابلیت محصول است، نه مجوز جمع‌آوری هر نوع داده شخصی.
 
-## 11. AI security
+## ۱۱. امنیت AI
 
-AI providers must never receive unrestricted WordPress credentials.
+ارائه‌دهندگان AI نباید اعتبار کامل WordPress را دریافت کنند.
 
-The AI tool layer should expose typed tools such as:
+لایه ابزار AI باید ابزارهای Typed مانند این‌ها را ارائه کند:
 
 ```text
 get_order(order_id)
@@ -178,39 +178,39 @@ search_products(query)
 get_customer(customer_id)
 ```
 
-The model receives only the result needed for the task. Sensitive actions require explicit confirmation.
+مدل فقط نتیجه لازم برای کار را دریافت کند. عملیات حساس نیازمند تأیید صریح هستند.
 
-Never let an LLM directly construct arbitrary HTTP requests against customer sites.
+هرگز اجازه ندهید LLM مستقیماً درخواست HTTP دلخواه به سایت مشتری بسازد.
 
-## 12. Abuse controls
+## ۱۲. کنترل سوءاستفاده
 
-Implement:
+موارد زیر باید پیاده‌سازی شوند:
 
-- per-account rate limits;
-- per-site rate limits;
-- per-IP limits where appropriate;
-- chat message throttling;
-- AI spend limits;
-- maximum request body size;
-- maximum response size;
-- outbound timeout and circuit breaker;
-- audit events for privileged operations.
+- محدودیت نرخ برای هر حساب؛
+- محدودیت نرخ برای هر سایت؛
+- محدودیت IP در نقاط مناسب؛
+- محدودیت پیام‌های چت؛
+- سقف هزینه AI؛
+- حداکثر اندازه بدنه درخواست؛
+- حداکثر اندازه پاسخ؛
+- Timeout خروجی و Circuit Breaker؛
+- رویداد حسابرسی برای عملیات حساس.
 
-## 13. Operational security
+## ۱۳. امنیت عملیاتی
 
-Production requirements:
+الزامات محیط عملیاتی:
 
-- HTTPS everywhere;
-- secure cookies where browser sessions exist;
-- CSRF protection for WordPress control-plane mutations;
-- strict CORS allowlist;
-- secret rotation procedure;
-- encrypted backups;
-- dependency/security scanning;
-- alerting for repeated authentication failures;
-- audit trail for credential creation/revocation;
-- no production secrets in Git.
+- HTTPS در همه مسیرها؛
+- کوکی امن برای نشست‌های مرورگر؛
+- محافظت CSRF برای تغییرات پنل WordPress؛
+- فهرست مجاز CORS؛
+- فرایند چرخش اسرار؛
+- پشتیبان‌های رمزنگاری‌شده؛
+- اسکن امنیتی وابستگی‌ها؛
+- هشدار برای تلاش‌های مکرر احراز هویت ناموفق؛
+- سابقه حسابرسی برای ایجاد/لغو اعتبار؛
+- نبود اسرار عملیاتی در Git.
 
-## 14. WordPress-specific notes
+## ۱۴. نکات اختصاصی WordPress
 
-The official WordPress REST API supports Application Password authentication over HTTPS and exposes capability-controlled endpoints. The plugin endpoint also requires appropriate WordPress capabilities for plugin management. WooGit must preserve those permission boundaries rather than attempting to circumvent them.
+REST API رسمی WordPress از احراز هویت Application Password روی HTTPS و نقاط پایانی مبتنی بر قابلیت پشتیبانی می‌کند. نقطه پایانی افزونه‌ها نیز برای مدیریت افزونه نیازمند سطح دسترسی مناسب WordPress است. WooGit باید این مرزهای مجوز را حفظ کند و برای دور زدن آن‌ها تلاش نکند.
