@@ -66,6 +66,6 @@ echo "CHECK fail-closed rate limit"; contains "$rate" 'allowed.*false' 'rate lim
 echo "CHECK minimum version"; contains "$version" 'minimum_supported_version' 'version gate must enforce minimum supported version'
 echo "CHECK deprecated versions"; contains "$version" 'deprecated_versions' 'version gate must support explicit deprecated versions'
 echo "CHECK versioned migrations"; contains "$database" 'version_compare' 'database migrations must be version gated'
-echo "CHECK migration failure guard"; contains "$database" 'false===$result' 'database migrations must stop on failed schema alteration'
+echo "CHECK migration failure guard"; contains "$database" 'false===\$result' 'database migrations must stop on failed schema alteration'
 
 echo "security invariants: PASS"
