@@ -1,242 +1,192 @@
-# ساختار WordPress ووگیت: Theme + Backend Plugin
+# ساختار WordPress ووگیت: Theme + WooGit Main Plugin
 
 > وضعیت: **V1 — Locked**
->
-> این سند ساختار نهایی Repository مربوط به WordPress ووگیت را تعریف می‌کند. Theme و Backend Plugin در **یک Repository واحد** نگهداری می‌شوند، اما از نظر مسئولیت، کد، چرخه تغییر و وابستگی کاملاً از هم جدا هستند.
 
-## ۱. تصمیم اصلی
+## ۱. هدف Repository
 
-Repository `backend-site` به‌عنوان Monorepo لایه WordPress ووگیت استفاده می‌شود:
+`backend-site` محل WordPress اصلی WooGit و Backend آن است.
 
 ```text
 backend-site/
-├── theme/
-│   └── woogit/
-│       ├── style.css
-│       ├── theme.json
-│       ├── templates/
-│       ├── parts/
-│       ├── patterns/
-│       └── assets/
-│
-├── plugin/
-│   └── woogit-backend/
-│       ├── woogit-backend.php
-│       ├── src/
-│       │   ├── API/
-│       │   ├── Auth/
-│       │   ├── Sites/
-│       │   ├── Subscriptions/
-│       │   ├── Entitlements/
-│       │   ├── Version/
-│       │   ├── Credentials/
-│       │   ├── Gateway/
-│       │   ├── Idempotency/
-│       │   ├── Audit/
-│       │   └── Security/
-│       ├── admin/
-│       ├── tests/
-│       └── assets/
-│
+├── theme/woogit/          ← وب‌سایت عمومی / Presentation
+├── plugin/woogit-backend/ ← WooGit Main Plugin / Backend
 ├── docs/
 └── .github/
 ```
 
-این ساختار به معنی یکی کردن Theme و Plugin نیست. فقط source control و release management آن‌ها مشترک است.
+این Repository شامل Android App یا `WooGit Gateway Plugin` سایت مشتری نیست.
 
----
+## ۲. دو Plugin کاملاً مستقل
 
-## ۲. چرا یک Repository؟
+### WooGit Main Plugin
 
-برای V1 این مدل مزیت‌های عملی دارد:
+روی **WordPress اصلی WooGit** نصب می‌شود و Backend فعلی این پروژه است.
 
-- توسعه و versioning هماهنگ؛
-- یک CI مشترک برای کیفیت کل WordPress stack؛
-- امکان تست سازگاری Theme و Plugin در کنار هم؛
-- یک محل مستندات و تصمیم‌های معماری؛
-- deployment ساده‌تر برای محیط V1؛
-- جلوگیری از ایجاد چند Repository کوچک با قراردادهای مبهم؛
-- امکان تغییر ظاهر سایت بدون شکستن Backend؛
-- امکان تغییر Backend بدون وابستگی به Theme.
-
-**Monorepo به معنی coupling نیست.** مرزهای معماری باید حتی در یک Repository نیز حفظ شوند.
-
----
-
-## ۳. مرز Theme و Plugin
-
-WordPress به‌صورت استاندارد Theme را مسئول presentation و Plugin را مسئول behavior/functionality می‌داند. قابلیت‌هایی که باید مستقل از طراحی سایت باقی بمانند نباید فقط در Theme قرار بگیرند. urlWordPress — What Is a Theme?https://developer.wordpress.org/themes/getting-started/what-is-a-theme/ urlWordPress — Custom Functionalityhttps://developer.wordpress.org/themes/core-concepts/custom-functionality/
-
-### Theme = ظاهر و تجربه وب‌سایت
-
-Theme مسئول موارد زیر است:
-
-- صفحه اصلی WooGit؛
-- معرفی محصول و سرویس؛
-- Pricing؛
-- FAQ؛
-- Contact؛
-- Header و Footer؛
-- صفحات عمومی؛
-- طراحی Responsive؛
-- Typography؛
-- رنگ‌ها و Design System؛
-- انیمیشن‌ها و تعاملات ظاهری؛
-- Templateها و Patternهای WordPress؛
-- نمایش محتوای WordPress؛
-- Assetهای CSS/JS مربوط به presentation.
-
-Theme **مسئول منطق تجاری Backend نیست**.
-
-### Plugin = مغز Backend ووگیت
-
-Plugin مسئول موارد زیر است:
+مسئولیت‌های اصلی:
 
 - REST API؛
-- Authentication و Session؛
-- Site Identity؛
+- WooGit Session؛
 - Account lifecycle؛
-- Trial؛
-- Subscription؛
+- Site Identity؛
+- Trial / Subscription؛
 - Entitlement؛
-- App Version Gate؛
-- Credential Vault؛
-- Gateway/Proxy؛
-- کنترل دسترسی؛
-- Rate limiting و Abuse protection؛
+- Version Gate؛
+- Security / Rate Limit؛
+- Controlled Forwarding به Customer Site؛
 - Idempotency؛
 - Timeout-after-success؛
 - Reconciliation؛
-- Audit Log؛
-- Security controls؛
-- Webhook/Event handling؛
-- Queue/Job در صورت نیاز؛
-- Admin Console مربوط به Backend؛
-- جداول اختصاصی Backend؛
-- سرویس‌های داخلی و business rules.
-
-این قابلیت‌ها باید با تغییر Theme همچنان فعال بمانند.
-
----
-
-## ۴. چیزهایی که عمداً نباید داخل Theme قرار بگیرند
-
-موارد زیر نباید به `functions.php` یا سایر فایل‌های Theme منتقل شوند:
-
-- Subscription logic؛
-- Trial eligibility؛
-- Site ownership؛
-- Authentication؛
-- Credential encryption/storage؛
-- REST API اصلی Backend؛
-- Version Gate؛
-- Idempotency؛
 - Audit؛
-- Gateway/Proxy؛
-- داده‌های حساس؛
-- جداول Backend؛
-- business rules؛
-- عملیات امنیتی حیاتی.
+- Admin Console؛
+- داده‌های عملیاتی Backend.
 
-دلیل: اگر Theme عوض یا غیرفعال شود، قابلیت‌های حیاتی سرویس نباید از بین بروند. WordPress نیز همین separation را به‌عنوان best practice توصیه می‌کند. urlWordPress Theme Functionalityhttps://developer.wordpress.org/themes/classic-themes/functionality/
+### WooGit Gateway Plugin
 
-`functions.php` فقط برای functionality محدود و ذاتاً وابسته به همان Theme قابل استفاده است؛ functionality مستقل از طراحی باید در Plugin باشد. urlWordPress Custom Functionality — functions.phphttps://developer.wordpress.org/themes/core-concepts/custom-functionality/
+روی **WordPress/WooCommerce سایت مشتری** نصب می‌شود.
 
----
+این Plugin با Main Plugin یکی نیست و **در فاز فعلی این Repository ساخته، refactor یا migrate نمی‌شود**.
 
-## ۵. Theme پیشنهادی WooGit
+هر عبارت `Gateway/Proxy` در Backend که به integration اشاره دارد، به logic داخل `WooGit Main Plugin` مربوط است؛ نباید آن را با Customer `WooGit Gateway Plugin` اشتباه گرفت.
 
-Theme اختصاصی WooGit برای **وب‌سایت عمومی محصول** ساخته می‌شود، نه برای اجرای منطق Backend.
+## ۳. Theme
+
+Theme فقط مسئول Presentation وب‌سایت اصلی WooGit است:
+
+- Home؛
+- Pricing؛
+- Features؛
+- FAQ؛
+- Contact؛
+- Documentation؛
+- Header/Footer؛
+- Responsive design؛
+- Typography؛
+- CSS/JS presentation.
+
+Business logic، Authentication، Session، Subscription، Entitlement، Security و API نباید به Theme وابسته باشند.
+
+## ۴. Backend Plugin
 
 ساختار پیشنهادی:
-
-```text
- theme/woogit/
- ├── style.css
- ├── theme.json
- ├── functions.php
- ├── templates/
- ├── parts/
- ├── patterns/
- ├── assets/
- │   ├── css/
- │   ├── js/
- │   └── images/
- └── README.md
-```
-
-در صورت انتخاب Block Theme، `theme.json` و Site Editor بخش اصلی Design System و تنظیمات ظاهری خواهند بود. WordPress برای Block Themeها ساختار مبتنی بر template و `theme.json` را پشتیبانی می‌کند. urlWordPress Theme Handbookhttps://developer.wordpress.org/themes/
-
-### صفحات عمومی موردنظر
-
-حداقل ساختار طراحی:
-
-```text
-/
-├── pricing/
-├── features/
-├── faq/
-├── contact/
-├── documentation/
-├── login/
-└── account/        ← فقط در صورت نیاز محصول
-```
-
-Theme می‌تواند صفحات بیشتری داشته باشد، اما اضافه شدن صفحه نباید باعث انتقال business logic از Plugin به Theme شود.
-
----
-
-## ۶. Backend Plugin پیشنهادی
-
-ساختار پیشنهادی Plugin:
 
 ```text
 plugin/woogit-backend/
 ├── woogit-backend.php
 ├── src/
 │   ├── API/
-│   ├── Auth/
-│   ├── Sites/
+│   ├── Auth/              ← WooGit Session
 │   ├── Accounts/
+│   ├── Sites/
 │   ├── Subscriptions/
 │   ├── Entitlements/
 │   ├── Version/
-│   ├── Credentials/
-│   ├── Gateway/
+│   ├── CustomerSite/      ← controlled integration/forwarding
 │   ├── Operations/
 │   ├── Idempotency/
 │   ├── Reconciliation/
-│   ├── Webhooks/
-│   ├── Jobs/
 │   ├── Audit/
 │   └── Security/
 ├── admin/
-│   ├── pages/
-│   ├── assets/
-│   └── views/
 ├── database/
 ├── tests/
-├── assets/
 └── README.md
 ```
 
-نام‌گذاری نهایی کلاس‌ها و namespaceها باید با استاندارد PHP/WordPress پروژه تعیین شود، اما اصل جداسازی لایه‌ها ثابت است.
+`CustomerSite/` نام پیشنهادی برای جلوگیری از ابهام با `WooGit Gateway Plugin` است. نام دقیق namespace بعداً با کد نهایی تعیین می‌شود.
 
----
+## ۵. مدل Authentication
 
-## ۷. Admin Console داخل WordPress
+در Backend فقط یک مدل احراز هویت Client داریم:
 
-برای V1 نیازی به ساخت یک پنل مدیریتی مستقل با Laravel/React/Node نداریم.
+```text
+WooGit Session
+    → Authentication / Authorization در Backend
+```
 
-Plugin یک **WooGit Admin Console** داخل WordPress ارائه می‌کند.
+Access Token + Refresh Token بخشی از معماری WooGit نیست.
 
-ساختار منطقی منو:
+برای Customer Site، Client چهار Credential فعلی خود را دارد:
+
+```text
+WP Username
+WP Application Password
+WC Consumer Key
+WC Consumer Secret
+```
+
+این‌ها Credential مقصد هستند و برای احراز Backend نزد Customer WordPress/WooCommerce استفاده می‌شوند.
+
+## ۶. Lightweight Forwarding
+
+مسیر عادی:
+
+```text
+Android
+  ↓
+WooGit Session + site_id
++ Customer Credentials
++ operation/path/query/body
+  ↓
+WooGit Main Plugin
+  ├─ Session
+  ├─ Account
+  ├─ Subscription / Trial
+  ├─ Entitlement
+  ├─ Site ownership
+  ├─ Version / Security / Rate Limit
+  └─ Idempotency where required
+  ↓
+CustomerSite / Controlled Forwarding
+  ↓
+Customer WordPress/WooCommerce
+```
+
+Backend نباید URL دلخواه Client را Forward کند و نباید برای عملیات عادی دیتابیس دوم WooCommerce بسازد.
+
+## ۷. Credential Vault
+
+Credential Vault **اختیاری** است.
+
+در Proxy عادی:
+
+```text
+Client → Customer Credentials → Backend → Customer Site
+```
+
+Vault lookup برای هر Request اجباری نیست.
+
+Vault فقط وقتی لازم است که قابلیت مشخصی به Credential پایدار بدون حضور Client نیاز داشته باشد، مثلاً برخی Background Job/Webhookها. چنین نیازی باید جداگانه تصویب و پیاده‌سازی شود.
+
+Credential خام نباید در Log، Audit Metadata یا Error Response ذخیره شود.
+
+## ۸. WordPress Database
+
+V1 فقط به WordPress Database به‌عنوان Persistence اجباری نیاز دارد.
+
+برای داده‌های کوچک از WordPress Options و برای داده‌های عملیاتی در حال رشد از custom tables با `$wpdb->prefix` استفاده می‌شود.
+
+نمونه:
+
+```text
+wp_woogit_sites
+wp_woogit_sessions
+wp_woogit_subscriptions
+wp_woogit_operations
+wp_woogit_idempotency
+wp_woogit_audit_logs
+```
+
+PostgreSQL، Redis یا Queue مستقل برای V1 اجباری نیستند و فقط با نیاز اثبات‌شده و تصمیم معماری جدید اضافه می‌شوند.
+
+## ۹. Admin Console
+
+Admin داخل WordPress Main Plugin قرار می‌گیرد:
 
 ```text
 WooGit
 ├── Dashboard
 ├── Sites
-├── Customers / Accounts
+├── Accounts
 ├── Subscriptions
 ├── Plans
 ├── Trials
@@ -248,28 +198,9 @@ WooGit
 └── Settings
 ```
 
-### App Versions
+### Site View
 
-این بخش باید Version Policy را مدیریت کند:
-
-```text
-Latest Version        5.0.0
-Recommended Version   5.0.0
-Minimum Supported     3.0.0
-
-Deprecated:
-- 4.0.0
-- 4.1.0
-- 4.2.0
-```
-
-یک نسخه می‌تواند مستقل از minimum supported نسخه‌های دیگر deprecated شود. بنابراین Version Gate فقط یک `minimum_version` ساده نیست و deny-list نسخه‌های مشخص را نیز پشتیبانی می‌کند.
-
----
-
-## ۸. مدیریت Siteها
-
-Admin Console باید بتواند برای هر Site Identity حداقل این موارد را نمایش دهد:
+حداقل:
 
 ```text
 Site Identity
@@ -279,232 +210,53 @@ Plan
 Subscription status
 Trial status
 Connection status
-Credential status
+Credential verification status
 Last operation
 Security status
 Created at
 Updated at
 ```
 
-اطلاعات Products/Orders فروشگاه نباید به‌صورت Mirror دائمی در این بخش ذخیره شود مگر اینکه یک قابلیت مشخص و مستند به چنین داده‌ای نیاز داشته باشد.
-
----
-
-## ۹. Plans و Entitlements
-
-Plugin مرجع Plan و Entitlement سمت Backend خواهد بود.
-
-نمونه Planها:
+`Credential verification status` به معنی «Credential در Vault ذخیره شده» نیست. می‌تواند وضعیت آخرین Verification مقصد را نشان دهد، مانند:
 
 ```text
-Free
-Pro
-Business
-Enterprise
+verified
+invalid
+not_verified
+unknown
 ```
 
-هر Plan می‌تواند شامل موارد زیر باشد:
+## ۱۰. Client Compatibility
 
-- feature flags؛
-- request quota؛
-- تعداد Site مجاز؛
-- محدودیت عملیات؛
-- محدودیت AI در صورت فعال بودن؛
-- محدودیت‌های آینده.
+Android App موجود یک Client خارجی است و Backend باید با surface واقعی آن هماهنگ شود.
 
-اپ حق ندارد این محدودیت‌ها را تعیین کند؛ Client فقط مصرف‌کننده policy سمت سرور است.
+Client فعلی حوزه‌های زیر را دارد:
 
----
+- Connection؛
+- Products؛
+- Orders؛
+- Product Categories؛
+- Variations؛
+- Attributes؛
+- Terms؛
+- Media؛
+- Sync؛
+- Conflicts؛
+- Product/Order mutations.
 
-## ۱۰. داده و Database
+Client فعلی در Presentation از page size برابر 30 برای Products/Orders/Media استفاده می‌کند و Backend Contract باید امکان تطبیق با این الگو را داشته باشد. fileciteturn226file0L1-L2
 
-WordPress database برای داده‌های Backend استفاده می‌شود، اما نباید WooCommerce customer site را mirror کند.
+در Connection، Client چهار Customer Credential را در Secure Credential Store نگهداری می‌کند؛ Backend نباید برای V1 طراحی‌ای تحمیل کند که این Flow را مجبور به حذف یا جایگزینی بنیادی کند. fileciteturn229file1L23-L29
 
-برای تنظیمات کوچک و configuration از WordPress Options استفاده می‌شود.
+## ۱۱. مرزهای غیرقابل نقض
 
-برای داده‌های عملیاتی در حال رشد، جداول اختصاصی Plugin قابل استفاده هستند؛ WordPress رسماً ساخت جدول اختصاصی Plugin و migration/versioning آن را پشتیبانی می‌کند. citeturn0search0
-
-نمونه حوزه‌های مناسب برای جدول اختصاصی:
-
-```text
-wp_woogit_sites
-wp_woogit_subscriptions
-wp_woogit_sessions
-wp_woogit_operations
-wp_woogit_idempotency
-wp_woogit_audit_logs
-```
-
-نام نهایی جداول بعد از نهایی شدن Data Model تعیین می‌شود و باید از `$wpdb->prefix` استفاده کند.
-
----
-
-## ۱۱. API و Admin باید از یک Service Layer استفاده کنند
-
-یکی از قواعد مهم معماری:
-
-```text
-Android App
-    │
-    ▼
-REST API
-    │
-    ▼
-WooGit Services
-    ▲
-    │
-Admin Console
-```
-
-یعنی business logic نباید در Controllerهای REST یا صفحات Admin تکرار شود.
-
-مثلاً Subscription Check باید یک Service واحد داشته باشد که هم API و هم Admin از آن استفاده کنند.
-
-این کار از divergence بین رفتار API و پنل مدیریت جلوگیری می‌کند.
-
----
-
-## ۱۲. Theme و Plugin چگونه با هم ارتباط دارند؟
-
-ارتباط مستقیم باید حداقلی باشد.
-
-```text
-Theme
-  │
-  │ presentation
-  ▼
-WordPress
-  ▲
-  │ hooks / APIs / rendering contracts
-Plugin
-```
-
-Theme می‌تواند از داده‌های عمومی یا UI hooks ارائه‌شده توسط Plugin استفاده کند، اما نباید مستقیماً به جداول داخلی Plugin یا کلاس‌های داخلی آن وابسته شود.
-
-در صورت نیاز به integration، یک interface/hook عمومی و مستند در Plugin تعریف می‌شود.
-
----
-
-## ۱۳. تغییر Theme نباید Backend را خراب کند
-
-این سناریو باید همیشه معتبر باشد:
-
-```text
-Theme A + Plugin
-      ↓
-Theme B + Plugin
-      ↓
-Backend همچنان فعال است
-```
-
-و همچنین:
-
-```text
-Plugin update
-      ↓
-Theme unchanged
-      ↓
-Website presentation unchanged
-```
-
-Theme نباید dependency سختی به implementation داخلی Plugin داشته باشد.
-
----
-
-## ۱۴. تغییر Backend نباید طراحی سایت را مجبور به تغییر کند
-
-مثلاً تغییر:
-
-```text
-Subscription implementation
-Credential storage
-Database schema
-Gateway internals
-```
-
-نباید نیازمند تغییر Theme باشد، مگر اینکه قرارداد public UI عمداً تغییر کرده باشد.
-
----
-
-## ۱۵. Security Boundary
-
-مرز امنیتی اصلی داخل Plugin است:
-
-```text
-Public Website
-     │
-     ├── Public content
-     │
-     └── Public forms
-
-Authenticated API
-     │
-     ▼
-WooGit Backend Plugin
-     │
-     ├── Authentication
-     ├── Authorization
-     ├── Site ownership
-     ├── Subscription
-     ├── Entitlement
-     ├── Version Gate
-     ├── Rate Limit
-     ├── Idempotency
-     └── Gateway
-```
-
-Theme نباید بتواند با یک تغییر ظاهری یا template override، security policy Backend را دور بزند.
-
----
-
-## ۱۶. CI و تست
-
-چون Theme و Plugin در یک Repository هستند، CI مشترک خواهد بود اما تست‌ها باید تفکیک شوند:
-
-```text
-CI
-├── PHP / Plugin tests
-├── REST/API tests
-├── Security tests
-├── Database migration tests
-├── Idempotency tests
-├── Version Gate tests
-├── Theme validation
-├── PHP lint
-├── JS/CSS lint (در صورت وجود)
-└── Integration test: Theme + Plugin
-```
-
-هیچ قابلیت production-ready صرفاً به‌دلیل وجود فایل یا scaffold کامل تلقی نمی‌شود؛ باید با تست واقعی اثبات شود.
-
----
-
-## ۱۷. Release و Deployment
-
-Repository واحد است، ولی release artifactها می‌توانند جدا باشند:
-
-```text
-WooGit WordPress Repository
-        │
-        ├── Theme artifact
-        │     └── woogit-theme.zip
-        │
-        └── Plugin artifact
-              └── woogit-backend.zip
-```
-
-در V1 در صورت نیاز می‌توان هر دو را همراه یک Deployment بسته‌بندی کرد، اما Plugin نباید به فعال بودن Theme وابسته باشد.
-
----
-
-## ۱۸. قانون طلایی پروژه
-
-> **یک Repository، دو Component مستقل.**
->
-> Theme ظاهر WooGit است.
->
-> Plugin مغز Backend WooGit است.
->
-> اشتراک Repository فقط برای مدیریت توسعه، تست و release است؛ نه برای مخلوط کردن مسئولیت‌ها.
-
-این مرز از زمان توسعه اولیه تا Production باید حفظ شود.
+- Theme نباید Backend business logic را مالک شود.
+- Android App نباید در این Repository بازسازی شود.
+- `WooGit Gateway Plugin` سایت مشتری نباید در این Repository پیاده‌سازی شود.
+- `WooGit Main Plugin` و `WooGit Gateway Plugin` نباید یکی فرض شوند.
+- Access/Refresh Token نباید به قرارداد اضافه شود.
+- Vault نباید برای Proxy عادی اجباری شود.
+- Customer Credentials نباید Log شوند.
+- Customer Site URL نباید به Proxy مقصد دلخواه تبدیل شود.
+- WooCommerce Customer data نباید بدون نیاز Mirror شود.
+- PostgreSQL/Redis/Queue مستقل نباید بدون تصمیم معماری جدید اجباری شوند.
