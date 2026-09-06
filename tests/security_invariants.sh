@@ -9,7 +9,7 @@ while IFS= read -r -d '' file; do
   echo "CHECK PHP: $file"
   php -l "$file" >/dev/null || fail "PHP syntax: $file"
 done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"
 
 echo "CHECK controller ownership"; contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 echo "CHECK controller session"; contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
@@ -73,5 +73,17 @@ echo "CHECK version admin validation"; contains "$versionAdmin" 'VERSION_PATTERN
 echo "CHECK version admin safe update"; contains "$versionAdmin" "update_option\(self::OPTION" 'version policy admin must persist through WordPress options API'
 echo "CHECK version admin registration"; contains "$bootstrap" 'VersionAdmin' 'version policy admin must be registered by plugin bootstrap'
 echo "CHECK version admin constraints"; contains "$versionAdmin" 'minimum.*latest' 'version policy admin must enforce minimum/latest ordering'
+echo "CHECK announcement service"; contains "$announcement" 'display_type' 'announcements must carry an app-owned display type'
+contains "$announcement" 'active' 'announcement service must filter active records'
+contains "$announcement" 'app_versions' 'announcements must support app-version targeting'
+echo "CHECK announcement endpoint"; contains "$announcementController" "'/announcements'" 'announcement endpoint must be registered'
+contains "$announcementController" 'VersionGate' 'announcement endpoint must understand deprecated app versions'
+contains "$announcementController" 'system-app-version-deprecated' 'deprecated app must receive an in-app update banner'
+contains "$announcementController" 'system-entitlement-expiring' 'expiring entitlement must receive an in-app warning'
+echo "CHECK announcement admin"; contains "$announcementAdmin" 'manage_options' 'announcement admin must require administrator capability'
+contains "$announcementAdmin" 'check_admin_referer' 'announcement changes must require CSRF nonce'
+contains "$announcementAdmin" 'display_type' 'announcement admin must expose numeric display type'
+contains "$bootstrap" 'AnnouncementController' 'announcement controller must be registered by plugin bootstrap'
+contains "$bootstrap" 'AnnouncementAdmin' 'announcement admin must be registered by plugin bootstrap'
 
 echo "security invariants: PASS"
