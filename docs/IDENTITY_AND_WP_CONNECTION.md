@@ -2,192 +2,167 @@
 
 ## ۱. وضعیت این سند
 
-این سند **مرجع قفل‌شده** برای Flow اتصال فروشگاه، ایجاد/ورود حساب WooGit و تعریف Credential اتصال WordPress است.
+این سند مرجع Flow اتصال سایت، احراز Account و Credentialهای مقصد است.
 
-صفحه اول اتصال اپ از نظر طراحی و فیلدها قفل است و نباید برای پیاده‌سازی حساب/احراز هویت تغییر کند.
+اپ Android موجود WooGit در repository مستقل قرار دارد و صفحه اتصال فعلی آن شامل Credentialهای سایت مشتری است. Backend نباید برای این Flow یک معماری سنگین‌تر از نیاز واقعی اپ تحمیل کند.
 
-## ۲. صفحه اول اپ — طراحی قفل‌شده
+## ۲. Credentialهای اتصال سایت مشتری
 
-صفحه اول اپ WooGit این اطلاعات را می‌گیرد:
+اپ فعلی این چهار Credential را در اختیار دارد و در مدل V1 آن‌ها را برای درخواست به Backend ارسال می‌کند:
 
-- پروتکل اتصال: HTTPS یا HTTP؛ پیش‌فرض HTTPS.
-- آدرس فروشگاه، مانند `senoobar.ir`.
-- WooCommerce Consumer Key.
-- WooCommerce Consumer Secret.
-- نام کاربری WordPress.
-- رمز عبور WordPress.
+- `WordPress Username`
+- `WordPress Application Password`
+- `WooCommerce Consumer Key`
+- `WooCommerce Consumer Secret`
 
-آدرس فروشگاه قبل از استفاده باید Canonical شود و پیشوندهای `https://` و `http://` از ورودی حذف شوند؛ پروتکل انتخاب‌شده توسط اپ اعمال می‌شود.
+این Credentialها برای احراز هویت **در سایت مقصد** هستند، نه برای احراز هویت مصرف‌کننده در WooGit.
 
-## ۳. تعریف دقیق «رمز عبور WordPress» در صفحه اتصال
+Application Password باید Credential برنامه‌ای WordPress باشد، نه رمز اصلی ورود به `wp-admin`. WordPress آن را برای API و احراز هویت ماشینی طراحی کرده و استفاده از آن برای REST API باید روی HTTPS باشد. citeturn0search0turn0search1turn0search2
 
-**رمز عبوری که در صفحه اتصال WooGit وارد می‌شود، رمز عبور معمولی کاربر برای ورود به پنل `wp-admin` نیست.**
-
-این فیلد باید در حالت استاندارد، **WordPress Application Password** باشد؛ یعنی یک Credential اختصاصی برای احراز هویت برنامه‌ای و دسترسی به API، نه رمز عبور تعاملی انسان.
-
-Application Password به یک کاربر WordPress متصل است، اما برای ورود به `wp-admin` با فرم عادی WordPress استفاده نمی‌شود. این Credential برای برنامه‌ها، اسکریپت‌ها، اپ‌های موبایل و Integrationها طراحی شده و به‌صورت مستقل قابل لغو است. citeturn0search0turn0search3
-
-بنابراین کاربر باید:
+مدل مفهومی:
 
 ```text
-WordPress Username
-        +
-Application Password
+WP Username + WP Application Password
++ WC Consumer Key + WC Consumer Secret
         ↓
-احراز هویت API
+احراز هویت در Customer WordPress/WooCommerce
 ```
 
-و **نباید** این کار را انجام دهد:
+## ۳. WooGit Session
+
+در کنار Credentialهای مقصد، درخواست عادی یک `WooGit Session` نیز دارد.
+
+این Session برای احراز هویت و مجاز بودن مصرف‌کننده در **WooGit Backend** است و هیچ جایگزینی برای Credentialهای سایت مشتری نیست.
 
 ```text
-WordPress Username
-        +
-رمز اصلی ورود به wp-admin
-        ↓
-استفاده به‌عنوان Credential اتصال WooGit
+WooGit Session
+    = هویت/دسترسی در WooGit Backend
+
+Customer Credentials
+    = اعتبار دسترسی به Customer Site
 ```
 
-### ۳.۱ نکته امنیتی
+## ۴. Flow درخواست عادی
 
-Application Password باید به‌عنوان Secret واقعی رفتار شود. توصیه می‌شود یک Application Password اختصاصی برای WooGit ساخته شود، نه اینکه یک Credential مشترک بین چند Integration استفاده شود. WordPress امکان لغو مستقل Application Password را فراهم می‌کند، بدون اینکه لازم باشد رمز اصلی حساب WordPress تغییر کند. citeturn0search0turn0search6
+```text
+WooGit Android
+      │
+      │ WooGit Session
+      │ + site_id / destination
+      │ + 4 Customer Credentials
+      │ + همان path/query/body عملیات
+      ▼
+WooGit Backend / WooGit Plugin
+      │
+      ├─ Session
+      ├─ Account status
+      ├─ Trial / Subscription
+      ├─ Entitlement
+      ├─ Site ownership
+      ├─ Version / Rate Limit / Security
+      │
+      ▼
+Lightweight Proxy
+      │
+      │ همان Request با Customer Credentials
+      ▼
+Customer WordPress / WooCommerce
+      │
+      │ Response
+      ▼
+WooGit Backend
+      │
+      │ حداقل تغییر لازم
+      ▼
+WooGit Android
+```
 
-Application Password معمولاً با HTTP Basic Authentication برای REST API ارسال می‌شود و استفاده از آن باید روی HTTPS باشد. citeturn0search0turn0search3
+Backend نباید Request/Response را بی‌دلیل بازسازی یا Mirror کند. Customer WordPress/WooCommerce منبع اصلی داده فروشگاه باقی می‌ماند.
 
-## ۴. اعتبارسنجی اتصال اولیه
+## ۵. Verification و Onboarding اولیه
 
-Flow قطعی:
+اولین اتصال، چون ممکن است هنوز WooGit Session کامل وجود نداشته باشد، یک Bootstrap/Verification Flow جدا از درخواست‌های عادی است.
+
+ترتیب کلی:
 
 ```text
 App
-  -> اطلاعات صفحه اول
-  -> TLS
-  -> WooGit Gateway
-  -> اعتبارسنجی WordPress/WooCommerce
+  ↓
+Customer Credentials
+  ↓
+WordPress reachability + authentication
+  ↓
+WooCommerce verification
+  ↓
+Site Identity
+  ↓
+Account / Trial lifecycle
+  ↓
+WooGit Session
+  ↓
+Normal requests
 ```
 
-اگر اتصال شکست بخورد:
+اگر Verification اولیه شکست بخورد، اتصال موفق، Account/Trial موفق یا Dashboard نباید ثبت/اعلام شود.
+
+## ۶. Site موجود
+
+برای Site Identity موجود، موفقیت Verification Credentialهای همان سایت اثبات دسترسی به مقصد است. پس از آن Backend می‌تواند Account مربوط به همان Site را شناسایی و Session را ادامه دهد، مطابق Flow نهایی Account Lifecycle.
+
+ورود عادی به WooGit نباید وابسته به Google Account یا رمز جداگانه‌ای باشد مگر اینکه در یک سؤال معماری بعدی صراحتاً چنین چیزی تصویب شود.
+
+## ۷. Site جدید
+
+برای Site بدون Account قبلی:
 
 ```text
-Connection Failed
-  -> بدون ایجاد Account
-  -> بدون Trial
-  -> بدون Dashboard
+Verification موفق
+   ↓
+Site Identity
+   ↓
+Account creation / completion
+   ↓
+Trial eligibility
+   ↓
+WooGit Session
+   ↓
+Dashboard / normal operations
 ```
 
-اگر اتصال موفق باشد، Gateway Site Identity استانداردشده را پیدا یا ایجاد می‌کند.
+## ۸. نگهداری Credential در Backend
 
-## ۵. دامنه دارای حساب قبلی
+در مدل فعلی **Credential Vault اجباری برای هر درخواست نیست**.
 
-اگر Site Identity قبلاً به یک حساب WooGit متصل باشد:
+Credentialهای سایت در درخواست عادی از Client می‌آیند و Backend آن‌ها را فقط برای همان مقصد و همان درخواست مصرف می‌کند. Backend نباید برای Forward کردن هر Request به Vault lookup وابسته باشد.
+
+اگر در آینده قابلیت‌هایی مانند background jobs، webhooks یا عملیات بدون حضور Client به نگهداری امن Credential نیاز داشته باشند، آن موضوع باید به‌عنوان یک تصمیم جداگانه تعیین شود.
+
+## ۹. قوانین امنیتی Credential
+
+Backend باید:
+
+- Credentialها را روی مسیر HTTPS دریافت کند؛
+- آن‌ها را در Log، Analytics، Crash Report یا Audit Metadata ثبت نکند؛
+- آن‌ها را در Error Response یا Response عادی به دیگری برنگرداند؛
+- آن‌ها را به Account یا Site دیگری افشا نکند؛
+- فقط برای Customer Site مقصد استفاده کند؛
+- از Credential ارسالی برای دسترسی به مقصدی غیر از Site مجاز استفاده نکند.
+
+این تصمیم به این معنی نیست که Credentialها در Client «ممنوع» هستند؛ اپ فعلی همین Flow مستقیم را دارد و V1 عمداً تغییرات Client را حداقلی نگه می‌دارد.
+
+## ۱۰. اصل نهایی
 
 ```text
-اتصال موفق WordPress/WooCommerce
-        ↓
-Site Identity موجود
-        ↓
-حساب WooGit موجود
-        ↓
-احراز موفق اتصال به همان سایت
-        ↓
-احراز حساب متناظر
-        ↓
-ایجاد نشست WooGit
-        ↓
-Dashboard
+WooGit Session
+        → احراز و مجوز مصرف‌کننده در Backend
+
+Customer Credentials
+        → احراز Backend نزد Customer Site
+
+Backend
+        → کنترل‌های ضروری WooGit
+        → Lightweight Proxy
+        → حداقل تغییر در Request/Response
 ```
 
-در این مدل، **موفقیت اتصال واقعی به همان سایت Credential ورود حساب آن سایت است**. ورود عادی نباید نیازمند ایمیل، Google Account یا یک رمز عبور جداگانه WooGit باشد.
-
-دامنه خام به‌تنهایی Credential نیست؛ مدرک دسترسی، موفقیت اعتبارسنجی واقعی Credentialهای WordPress/WooCommerce است.
-
-## ۶. دامنه بدون حساب قبلی
-
-اگر اتصال موفق باشد اما Site Identity حساب WooGit نداشته باشد:
-
-```text
-اتصال موفق
-   ↓
-Site Identity جدید
-   ↓
-ایجاد رکورد سایت/حساب
-   ↓
-صفحه دوم اپ
-   ↓
-ایمیل + نام + نام خانوادگی
-   ↓
-تکمیل حساب
-   ↓
-Trial ۱۵ روزه، در صورت واجدشرایط بودن
-   ↓
-ایجاد نشست WooGit
-   ↓
-Dashboard
-```
-
-صفحه دوم فقط پس از اتصال موفق نمایش داده می‌شود.
-
-## ۷. قانون Trial
-
-Trial به **Site Identity/دامنه** تعلق دارد، نه به Google Account یا ایمیل به‌تنهایی.
-
-بنابراین:
-
-```text
-example.com + email-A -> Trial
-example.com + email-B -> بدون Trial دوم
-example.com + email-C -> بدون Trial سوم
-```
-
-تغییر ایمیل، تغییر Google Account یا ثبت دوباره اطلاعات شخصی نباید امکان دریافت Trial جدید برای همان Site Identity را ایجاد کند.
-
-## ۸. نشست WooGit
-
-پس از احراز موفق اتصال:
-
-```text
-WordPress/WooCommerce Credentials
-        ↓
-Gateway Verification
-        ↓
-Site Identity / Account Authentication
-        ↓
-Short-lived Access Token
-        +
-Rotating Refresh Token
-        ↓
-App
-```
-
-Credential خام سایت نباید برای عملیات عادی از Backend به اپ برگردانده شود.
-
-## ۹. خزانه Credential
-
-Backend در صورت نیاز برای عملیات بعدی باید Credentialهای سایت را در Credential Vault نگهداری کند:
-
-```text
-Raw Credential
-    ↓ TLS
-Backend memory
-    ↓
-Encryption / KMS
-    ↓
-Encrypted storage
-```
-
-Credential رمزگشایی‌شده فقط برای حداقل زمان لازم جهت درخواست خروجی استفاده شود.
-
-نباید Credential خام یا Application Password متنی در لاگ، Analytics، Crash Report یا پاسخ API ثبت شود.
-
-## ۱۰. اصل امنیتی نهایی
-
-- رمز اصلی ورود `wp-admin` با Application Password یکی نیست.
-- Application Password برای API و اتصال ماشینی است.
-- WooGit باید Application Password را به‌عنوان Secret مدیریت کند.
-- Application Password نباید در پاسخ‌های عادی API به اپ بازگردانده شود.
-- Credential سایت باید فقط برای همان Site Identity قابل استفاده باشد.
-- حساب WooGit و نشست WooGit از حساب کاربر WordPress مستقل هستند.
-- سرور WooGit مرجع نهایی Account، Site Identity، Subscription و Entitlement است.
-
-## ۱۱. منبع رسمی WordPress
-
-مستندات رسمی WordPress تصریح می‌کند که Application Password برای دسترسی برنامه‌ای به API طراحی شده، قابل لغو به‌صورت مستقل است و برای ورود تعاملی به `wp-admin` استفاده نمی‌شود. همچنین استفاده از آن برای REST API روی HTTPS توصیه شده است. citeturn0search0turn0search3
+Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است و WooGit Backend مرجع Account، Site ownership، Subscription و Entitlement است.
