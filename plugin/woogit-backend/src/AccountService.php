@@ -13,17 +13,28 @@ final class AccountService
         return ($row && $row['status'] === 'active') ? $row : null;
     }
 
-    public function findOrCreate(string $email): ?array
+    /**
+     * Create an Account for an already verified Site.
+     * Email is contact metadata only and is never used to resolve Account identity.
+     */
+    public function create(string $email = ''): ?array
     {
         $email = sanitize_email($email);
-        if (!is_email($email)) return null;
+        if ($email !== '' && !is_email($email)) return null;
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_accounts';
-        $existing = $wpdb->get_row($wpdb->prepare("SELECT id,email,status FROM {$table} WHERE email = %s LIMIT 1", $email), ARRAY_A);
-        if ($existing) return $existing['status'] === 'active' ? $existing : null;
         $now = current_time('mysql', true);
-        $ok = $wpdb->insert($table, ['email'=>$email,'status'=>'active','created_at'=>$now,'updated_at'=>$now], ['%s','%s','%s','%s']);
+        $ok = $wpdb->insert($table, ['email'=>$email !== '' ? $email : null,'status'=>'active','created_at'=>$now,'updated_at'=>$now], ['%s','%s','%s','%s']);
         if (!$ok) return null;
         return ['id'=>(int)$wpdb->insert_id,'email'=>$email,'status'=>'active'];
+    }
+
+    public function updateContactEmail(int $accountId, string $email): bool
+    {
+        $email = sanitize_email($email);
+        if ($email !== '' && !is_email($email)) return false;
+        global $wpdb;
+        $table = $wpdb->prefix . 'woogit_accounts';
+        return false !== $wpdb->update($table, ['email'=>$email !== '' ? $email : null,'updated_at'=>current_time('mysql', true)], ['id'=>$accountId], ['%s','%s'], ['%d']);
     }
 }
