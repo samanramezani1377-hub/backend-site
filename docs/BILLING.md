@@ -219,3 +219,22 @@ WooGit Entitlement = active
 ```
 
 Renewal نیز از مسیر Subscription به Backend همگام می‌شود. لغو اشتراک دسترسی را زودتر از سیاست انقضای واقعی قطع نمی‌کند؛ پس از پایان entitlement، `/forward` دوباره مسدود می‌شود.
+
+## ۱۵. Billing Anti-Abuse / Rate Limiting
+
+Billing در V1 یک لایه Rate Limit مستقل از `/forward` دارد. هدف این لایه جلوگیری از مصرف بی‌رویه منابع، ایجاد Orderهای متعدد و فشار غیرضروری روی WooCommerce و دیتابیس است؛ جایگزین Authorization یا Entitlement نیست.
+
+Policyها در بازه‌های ۶۰ ثانیه‌ای اعمال می‌شوند:
+
+| Endpoint | Limit | کلیدهای مستقل |
+|---|---:|---|
+| `GET /billing/plans` | 60/min | IP |
+| `GET /billing/status` | 30/min | IP + Account/Site + Session |
+| `POST /billing/checkout` | 5/min | IP + Account/Site |
+| `POST /billing/activate-session` | 5/min | IP + Account/Site + Session |
+
+برای endpointهای حساس، عبور از یکی از bucketها کافی نیست؛ همه bucketهای مربوط باید مجاز باشند. IP فقط یکی از لایه‌ها است و محدودیت Account/Site یا Session را دور نمی‌زند. کلید Session در Rate Limit به‌صورت SHA-256 مشتق می‌شود و خود توکن خام ذخیره نمی‌شود.
+
+در صورت عبور از حد، API پاسخ `429` با `Retry-After` و قرارداد استاندارد `RATE_LIMITED` برمی‌گرداند. خطای ذخیره‌سازی Rate Limit نیز fail-closed است تا خرابی لایه محدودسازی باعث بازشدن مسیر حساس نشود.
+
+این Rate Limit مستقل از محدودیت شدیدتر `/forward` است و به Authorization موجود Billing اضافه می‌شود: Session معتبر، Account فعال، Site ownership و Entitlement همچنان قبل از عملیات نهایی بررسی می‌شوند.
