@@ -14,7 +14,18 @@
 
 ## ۲. مدیریت اعتبارها
 
-برای دسترسی برنامه‌ای به WordPress، Application Password ترجیح دارد و بهتر است به‌جای رمز اصلی WordPress استفاده شود. WordPress این اعتبارها را برای دسترسی API و قابل لغو به‌ازای هر برنامه طراحی کرده است.
+برای دسترسی برنامه‌ای به WordPress، **Application Password** الزام/استاندارد مورد انتظار WooGit است و نباید با رمز اصلی ورود به `wp-admin` اشتباه گرفته شود. Application Password یک Credential مخصوص دسترسی ماشینی به API است؛ برای ورود تعاملی به پنل WordPress استفاده نمی‌شود و می‌تواند مستقل از رمز اصلی لغو شود. citeturn0search0turn0search3
+
+در صفحه اتصال WooGit، فیلد «رمز عبور WordPress» در حالت استاندارد باید همین **Application Password** باشد، نه رمز اصلی کاربر WordPress.
+
+توصیه عملی:
+
+- برای WooGit یک Application Password اختصاصی ساخته شود.
+- یک Application Password بین چند Integration مشترک نشود.
+- در صورت لغو اتصال، همان Application Password مستقل revoke شود.
+- Application Password در لاگ یا پاسخ API ثبت نشود.
+
+WordPress Application Password را برای احراز هویت API با Basic Authentication روی HTTPS پشتیبانی می‌کند. citeturn0search0turn0search3
 
 طراحی ذخیره‌سازی:
 
