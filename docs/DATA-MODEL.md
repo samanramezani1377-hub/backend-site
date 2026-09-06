@@ -1,8 +1,10 @@
-# مدل داده WooGit
+# مدل داده WooGit Backend
 
-طرح زیر منطقی است. نوع دقیق SQL و جزئیات پیاده‌سازی بعداً تعیین می‌شوند.
+> وضعیت: V1 — Locked
 
-اصل مهم V1: Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است. Backend برای درخواست‌های عادی Customer Credentials را از Client دریافت می‌کند و برای Forward همان Request مصرف می‌کند؛ بنابراین `site_credentials` برای Proxy عادی منبع اجباری Credential نیست.
+## اصل مالکیت داده
+
+Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است. WooGit Backend مالک Account، Site Identity، Session، Subscription و Entitlement است؛ اما تنظیمات و داده‌های خود WooCommerce مشتری روی همان Customer WordPress باقی می‌ماند.
 
 ## ۱. accounts
 
@@ -15,7 +17,7 @@
 
 ## ۲. account_sessions
 
-نماینده **WooGit Session** است. در قرارداد V1 یک Session معتبر، مکانیزم احراز هویت Client در Backend است؛ مدل جداگانه Access/Refresh Token وجود ندارد.
+نماینده **WooGit Session** است. در V1 یک Session معتبر مکانیزم احراز Client در Backend است؛ Access Token + Refresh Token وجود ندارد.
 
 - id
 - account_id
@@ -25,32 +27,41 @@
 - last_seen_at
 - created_at
 
-مقدار خام Session نباید در دیتابیس یا Log ثبت شود؛ فقط representation امن موردنیاز برای اعتبارسنجی نگهداری می‌شود. Session باید قابل انقضا و قابل ابطال باشد.
+مقدار خام Session نباید در دیتابیس یا Log ثبت شود.
 
 ## ۳. sites
 
-Site Identity مستقل Backend:
+هر Customer Site یک Site Identity مستقل در Backend دارد و تنظیمات اتصال آن با Site دیگر مخلوط نمی‌شود.
 
-- id (UUID)
+- id (UUID) — Backend `site_id`
 - account_id
 - canonical_url
 - display_name
 - wordpress_version (اختیاری)
 - woocommerce_version (اختیاری)
-- bridge_version (اختیاری)
-- bridge_status
 - connection_status
 - last_health_check_at
 - created_at
 - updated_at
 
-محدودیت یکتا باید از ایجاد Site Identity تکراری برای یک Account جلوگیری کند.
+`site_id` داخلی WooGit است و نباید صرفاً از Store ID محلی Android مشتق یا با آن یکی فرض شود.
 
-## ۴. site_credentials — اختیاری/سناریویی
+برای یک Account نباید Site Identity تکراری برای همان Customer Site ایجاد شود.
 
-در Proxy عادی Credentialها از Client در همان Request می‌آیند و این جدول برای هر Request خوانده نمی‌شود.
+## ۴. تنظیمات اتصال Customer Site
 
-اگر قابلیت‌هایی مانند background jobs، webhooks یا عملیات بدون حضور Client نیاز به Credential پایدار داشته باشند، می‌توان در این جدول Credential را به‌صورت رمزنگاری‌شده نگهداری کرد:
+برای هر Site، این چهار Credential مقصد باید به‌صورت مستقل شناخته شوند:
+
+- WordPress Username
+- WordPress Application Password
+- WooCommerce Consumer Key
+- WooCommerce Consumer Secret
+
+این چهار مقدار Credential مربوط به **Customer WordPress/WooCommerce** هستند، نه Credential احراز Client در WooGit.
+
+در V1 برای Proxy عادی، Client این چهار Credential را همراه Request می‌فرستد و Backend برای همان Request از آن‌ها استفاده می‌کند. بنابراین نگهداری دائمی Credential در Backend اجباری نیست.
+
+اگر در آینده نیاز به background jobs، webhooks یا عملیات بدون حضور Client ایجاد شود، می‌توان `site_credentials` را به‌صورت رمزنگاری‌شده اضافه کرد:
 
 - id
 - site_id
@@ -63,9 +74,32 @@ Site Identity مستقل Backend:
 - created_at
 - updated_at
 
-این جدول **جزء مسیر اجباری Lightweight Proxy عادی نیست**.
+این جدول جزء مسیر اجباری Lightweight Proxy نیست.
 
-## ۵. plans
+## ۵. WooCommerce Settings
+
+تنظیمات خود WooCommerce متعلق به Customer Site است و Backend آن‌ها را به تنظیمات WooGit تبدیل نمی‌کند.
+
+```text
+WooGit Backend
+├── Account
+├── Site Identity
+├── Session
+├── Subscription
+└── Entitlement
+
+Customer WordPress / WooCommerce
+├── WooCommerce Settings
+├── Products
+├── Orders
+├── Customers
+├── Media
+└── سایر Store Data
+```
+
+Backend فقط در صورت نیاز API مربوط به Customer WooCommerce را از طریق Controlled Forwarding مصرف می‌کند.
+
+## ۶. plans
 
 - id
 - code
@@ -78,14 +112,14 @@ Site Identity مستقل Backend:
 - created_at
 - updated_at
 
-## ۶. plan_entitlements
+## ۷. plan_entitlements
 
 - plan_id
 - capability
 - limit_value (nullable)
 - configuration_json (nullable)
 
-## ۷. subscriptions
+## ۸. subscriptions
 
 - id
 - account_id
@@ -99,11 +133,7 @@ Site Identity مستقل Backend:
 - created_at
 - updated_at
 
-این داده مرجع تصمیم‌گیری درباره دسترسی Backend است.
-
-## ۸. site_entitlements
-
-برای Overrideهای اختصاصی Site:
+## ۹. site_entitlements
 
 - id
 - account_id
@@ -113,7 +143,7 @@ Site Identity مستقل Backend:
 - limit_value
 - expires_at
 
-## ۹. idempotency_operations
+## ۱۰. idempotency_operations
 
 برای mutationهای نیازمند Idempotency:
 
@@ -131,26 +161,7 @@ Site Identity مستقل Backend:
 
 محدودیت یکتا باید حداقل Account + Site + Idempotency Key را پوشش دهد.
 
-## ۱۰. bridge_registrations
-
-در صورت فعال بودن Bridge:
-
-- id
-- site_id
-- bridge_instance_id
-- protocol_version
-- plugin_version
-- token_hash
-- status
-- last_seen_at
-- created_at
-- rotated_at
-
-## ۱۱. chat / analytics / AI
-
-مدل‌های Chat، Analytics و AI در صورت فعال بودن این قابلیت‌ها می‌توانند در جدول‌های مستقل نگهداری شوند؛ این قابلیت‌ها نباید برای مسیر اصلی Lightweight Proxy وابستگی اجباری ایجاد کنند.
-
-## ۱۲. audit_events
+## ۱۱. audit_events
 
 - id
 - account_id
@@ -165,6 +176,10 @@ Site Identity مستقل Backend:
 
 هیچ Customer Credential خامی در metadata ذخیره نشود.
 
+## ۱۲. chat / analytics / AI
+
+در صورت فعال شدن، مدل‌های Chat، Analytics و AI باید مستقل باشند و برای مسیر اصلی Lightweight Proxy وابستگی اجباری ایجاد نکنند.
+
 ## ۱۳. نمای روابط
 
 ```text
@@ -172,12 +187,17 @@ Account
   |
   +-- Sessions (WooGit Session)
   +-- Sites
-  |     +-- optional Credential Storage
-  |     +-- Bridge Registration
+  |     +-- Connection Settings / Customer Credentials
   |     +-- Site Entitlements
   |
   +-- Subscriptions -> Plans -> Entitlements
   +-- Idempotency Operations
   +-- Audit Events
   +-- optional Chat / Analytics / AI
+
+Site
+  |
+  +-- Customer WordPress / WooCommerce
+        +-- WooCommerce Settings
+        +-- Products / Orders / Customers / Media / ...
 ```
