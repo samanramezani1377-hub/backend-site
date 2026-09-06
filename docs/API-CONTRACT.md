@@ -2,7 +2,22 @@
 
 > وضعیت: V1 Target Contract — Locked
 
-## ۱. مدل احراز هویت
+## ۱. معماری
+
+Backend در V1 یک **secure transparent gateway/proxy** است، نه یک WooCommerce business API.
+
+```text
+Android WooGit App
+        ↓
+   WooGit Backend
+   Auth / Ownership / Entitlement / Security / Proxy
+        ↓
+Customer WordPress / WooCommerce
+```
+
+Backend نباید resource model، Product API، Order API یا response model مستقل از Customer site بسازد. App درخواست واقعی خود را به Backend می‌دهد و Backend همان request را، با مقصدی که از Site Identity resolve شده، به Customer site forward می‌کند و response upstream را تا حد ممکن بدون تغییر برمی‌گرداند.
+
+## ۲. مدل احراز هویت
 
 ```text
 WooGit Session
@@ -19,7 +34,7 @@ Access Token + Refresh Token جزو قرارداد V1 نیست.
 
 Customer Credentials برای Request لازم، همراه همان Request ارسال می‌شوند و Backend آن‌ها را در V1 ذخیره نمی‌کند.
 
-## ۲. Bootstrap / Verification
+## ۳. Bootstrap / Verification
 
 `POST /api/v1/sites/verify`
 
@@ -41,63 +56,80 @@ Account / Trial lifecycle
 WooGit Session
 ```
 
-Verification read-only است و قبل از هر mutation تجاری انجام می‌شود.
+Verification read-only است و قبل از استفاده از gateway انجام می‌شود.
 
-## ۳. WooGit Session
+## ۴. WooGit Session
 
-Session باید قابل اعتبارسنجی، expiration و revoke باشد و به Account متصل باشد. Session منقضی‌شده معتبر نیست و locally revive نمی‌شود.
+Session باید قابل اعتبارسنجی، expiration و revoke باشد و به Account و Site متصل باشد. Session منقضی‌شده معتبر نیست و locally revive نمی‌شود.
 
 Automatic re-login یک Session Creation جدید است؛ Backend در آن دوباره Account + Site Ownership + Entitlement را بررسی می‌کند.
 
-## ۴. درخواست عادی
+## ۵. درخواست عادی Gateway
+
+`POST/GET/PUT/PATCH/DELETE /api/v1/forward` با Session و مشخصات request.
 
 ```text
-Client
+App
  ↓
-WooGit Session + site_id
-+ Customer Credentials (request-scoped)
-+ operation/path/query/body
+X-WooGit-Session
+site_id از Session
+request path + query + raw body
+request-scoped Customer Credentials
  ↓
-Session / Account / Subscription / Entitlement / Site ownership / Security
+Session / Account / Site Ownership / Entitlement / Security
  ↓
-Controlled Forwarding
+resolve destination from registered Site Identity
  ↓
 Customer WordPress/WooCommerce
+ ↓
+upstream status + body + relevant headers
+ ↓
+App
 ```
+
+`path` تنها مسیر درخواست است و هرگز URL مقصد نیست. Client حق تعیین host/scheme مقصد را ندارد.
 
 در صورت شکست authorization هیچ outbound request ارسال نمی‌شود.
 
-## ۵. Controlled Gateway Surface
+Gateway body را به مدل تجاری Backend تبدیل نمی‌کند؛ JSON، multipart/binary و سایر payloadهای مورد نیاز باید به‌صورت request body عبور داده شوند.
 
-Client URL دلخواه تعیین نمی‌کند. مقصد از Site Identity ثبت‌شده resolve می‌شود و فقط operation/pathهای مجاز قابل Forward هستند.
+## ۶. Controlled Gateway Surface
 
-## ۶. Idempotency و Timeout-after-success
+Client URL دلخواه تعیین نمی‌کند. Backend فقط pathهایی را قبول می‌کند که بخشی از network surface فعلی WooGit App هستند. این کنترل یک **security boundary** است و نباید به مجموعه‌ای از endpointهای business-domain در Backend تبدیل شود.
 
-برای CREATE و mutationهای لازم:
+در V1 مسیرهای WooCommerce REST و WordPress Media که App استفاده می‌کند قابل forward هستند. مقصد همیشه از Site Identity ثبت‌شده resolve می‌شود.
+
+SSRF protection شامل HTTPS-only، رد localhost/private/reserved IP، نبود credential در URL و جلوگیری از path traversal است.
+
+## ۷. Idempotency و Timeout-after-success
+
+برای mutationها:
 
 ```http
 Idempotency-Key: <stable-client-operation-key>
 ```
 
-Retry با همان Key و همان Request نباید عملیات دوم ایجاد کند. استفاده از همان Key برای Request متفاوت باید Conflict باشد.
+Fingerprint شامل method + path + query + hash بدنه خام request است. Retry با همان Key و همان Request نباید عملیات دوم ایجاد کند. استفاده از همان Key برای Request متفاوت باید Conflict باشد.
 
-`GET /api/v1/operations/{operation_id}` باید در صورت پشتیبانی operation state نهایی را قابل بازیابی کند.
+در صورت timeout پس از ارسال request، Backend نباید موفقیت یا شکست عملیات Customer site را جعل کند؛ operation به وضعیت `unknown` می‌رود و App می‌تواند با `operation_id` وضعیت را بررسی کند.
 
-## ۷. Sites / Subscription
+`GET /api/v1/operations/{operation_id}` فقط برای بازیابی state عملیات gateway است و API محصول/سفارش محسوب نمی‌شود.
 
-فقط Siteهای مجاز Account برگردانده می‌شوند. Customer Credentials هرگز در Response سایت نمایش داده نمی‌شوند.
+## ۸. Sites / Subscription
+
+فقط Site مجاز Account قابل استفاده است. Customer Credentials هرگز در Response سایت نمایش داده نمی‌شوند.
 
 Subscription و Entitlement مرجع Backend هستند و Account/Plan منقضی نباید outbound request داشته باشد.
 
-## ۸. Currency / Collections / Errors
+## ۹. Currency / Collections / Errors
 
-Currency از Customer WooCommerce حفظ می‌شود و hard-code یا بی‌دلیل تبدیل نمی‌شود.
+Backend مقدار response و query semantics Customer WooCommerce را حفظ می‌کند و currency را hard-code یا بی‌دلیل تبدیل نمی‌کند.
 
-Collection APIها باید pagination/filter/sort پایدار داشته باشند.
+Pagination/filter/sort متعلق به upstream WooCommerce است و gateway باید query و response headerهای مرتبط را عبور دهد؛ Backend برای این موارد collection API مستقل نمی‌سازد.
 
 Errorها machine-readable هستند و Secret، SQL، Stack Trace یا Customer Credential در Response عمومی قرار نمی‌گیرد.
 
-## ۹. Customer Credential Storage
+## ۱۰. Customer Credential Storage
 
 در V1:
 
