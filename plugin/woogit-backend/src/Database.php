@@ -20,19 +20,26 @@ final class Database
         dbDelta("CREATE TABLE {$prefix}operations (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,operation_id VARCHAR(64) NOT NULL,account_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,idempotency_key VARCHAR(190) NOT NULL,request_fingerprint CHAR(64) NOT NULL,resource VARCHAR(32) NOT NULL,operation_path TEXT NOT NULL,method VARCHAR(10) NOT NULL,status VARCHAR(16) NOT NULL,upstream_status SMALLINT UNSIGNED NULL,response_body LONGTEXT NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,expires_at DATETIME NULL,PRIMARY KEY (id),UNIQUE KEY operation_id (operation_id),KEY account_site (account_id,site_id),KEY status (status),KEY expires_at (expires_at)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}rate_limits (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,bucket VARCHAR(64) NOT NULL,identifier CHAR(64) NOT NULL,window_start DATETIME NOT NULL,hits INT UNSIGNED NOT NULL DEFAULT 0,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY bucket_identifier_window (bucket,identifier,window_start),KEY window_start (window_start),KEY updated_at (updated_at)) {$charset};");
 
-        if(version_compare($fromVersion ?: '0.0.0','0.3.2','<')) self::migrateSessionScope($prefix);
+        if(version_compare($fromVersion ?: '0.0.0','0.3.2','<') && !self::migrateSessionScope($prefix)){
+            error_log('[WooGit Backend] Database migration to session scope failed; database version was not advanced.');
+            return;
+        }
         if(false===get_option('woogit_backend_version_policy',false))add_option('woogit_backend_version_policy',['latest_version'=>WOOGIT_BACKEND_VERSION,'recommended_version'=>WOOGIT_BACKEND_VERSION,'minimum_supported_version'=>'0.0.0','deprecated_versions'=>[]], '', false);
         update_option('woogit_backend_db_version',WOOGIT_BACKEND_VERSION,false);
     }
 
-    private static function migrateSessionScope(string $prefix): void
+    private static function migrateSessionScope(string $prefix): bool
     {
         global $wpdb;
         $table=$prefix.'sessions';
         $column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'scope'));
-        if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN scope VARCHAR(20) NULL AFTER site_id");if(false===$result)return;}
+        if(!$column){
+            $result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN scope VARCHAR(20) NULL AFTER site_id");
+            if(false===$result)return false;
+        }
         $updated=$wpdb->query($wpdb->prepare("UPDATE {$table} SET scope=%s WHERE scope IS NULL OR scope=''",SessionService::SCOPE_OPERATIONAL));
-        if(false===$updated)return;
-        $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN scope VARCHAR(20) NOT NULL");
+        if(false===$updated)return false;
+        $modified=$wpdb->query("ALTER TABLE {$table} MODIFY COLUMN scope VARCHAR(20) NOT NULL");
+        return false!==$modified;
     }
 }
