@@ -1,17 +1,17 @@
-# WooGit Billing and Entitlements
+# صورتحساب و مجوزهای WooGit
 
-## 1. Commercial model
+## ۱. مدل تجاری
 
-Initial proposal:
+پیشنهاد اولیه:
 
-- 15-day free trial;
-- time-based paid plans;
-- optional AI credit packs;
-- optional site-count or feature limits.
+- دوره آزمایشی رایگان ۱۵ روزه؛
+- پلن‌های پولی زمان‌محور؛
+- بسته‌های اختیاری اعتبار AI؛
+- محدودیت اختیاری تعداد سایت یا قابلیت.
 
-## 2. Trial
+## ۲. دوره آزمایشی
 
-Trial is created server-side when the account becomes eligible.
+دوره آزمایشی در سمت سرور و هنگام واجد شرایط شدن حساب ایجاد می‌شود.
 
 ```text
 trial_started_at
@@ -19,25 +19,25 @@ trial_ends_at
 status = trial
 ```
 
-The mobile app may display the remaining time but cannot extend it.
+اپ موبایل می‌تواند زمان باقی‌مانده را نمایش دهد، اما نمی‌تواند آن را تمدید کند.
 
-## 3. Paid duration
+## ۳. مدت پولی
 
-A purchase extends the entitlement period according to the product rule.
+خرید باید طبق قانون محصول، مدت مجاز دسترسی را افزایش دهد.
 
-Example:
+نمونه:
 
 ```text
-Current expiry: 2026-09-21
-Buy 30 days
-New expiry:     2026-10-21
+انقضای فعلی: 2026-09-21
+خرید ۳۰ روز
+انقضای جدید: 2026-10-21
 ```
 
-If the account is already expired, the new period starts according to the configured billing rule.
+اگر حساب از قبل منقضی شده باشد، شروع دوره جدید طبق قانون صورتحساب تنظیم‌شده تعیین می‌شود.
 
-## 4. Entitlement evaluation
+## ۴. ارزیابی مجوز
 
-Pseudo-policy:
+سیاست مفهومی:
 
 ```text
 isAllowed(account, site, capability):
@@ -49,74 +49,74 @@ isAllowed(account, site, capability):
     AND usage limits are not exceeded
 ```
 
-The result is calculated by the backend for every protected request.
+نتیجه برای هر درخواست محافظت‌شده در سمت بک‌اند محاسبه می‌شود.
 
-## 5. Grace period
+## ۵. مهلت ارفاقی
 
-If a payment provider is used, a configurable grace period may exist. It must be explicit and server-side; never assume payment success from a client callback.
+اگر درگاه پرداخت استفاده شود، می‌توان یک مهلت ارفاقی قابل تنظیم داشت. این مهلت باید صریح و سمت‌سروری باشد؛ موفقیت پرداخت را صرفاً از Callback کلاینت فرض نکنید.
 
-## 6. AI credits
+## ۶. اعتبار AI
 
-AI credits are separate from subscription time when commercially useful.
+اعتبار AI در صورت نیاز تجاری از مدت اشتراک جدا باشد.
 
-Ledger examples:
-
-```text
-+1,000,000 purchase
--12,400 inference usage
--8,000 inference usage
-+500 promotional credit
-```
-
-Never allow the client to submit “remaining balance”.
-
-## 7. Payment provider boundary
-
-Payment providers should communicate with WooGit backend through signed/webhook-verified events. The app is not the payment authority.
-
-The backend reconciles:
+نمونه Ledger:
 
 ```text
-payment event
- -> verify authenticity
- -> idempotently record transaction
- -> update subscription/credits
- -> audit
++1,000,000 خرید
+-12,400 مصرف استنتاج
+-8,000 مصرف استنتاج
++500 اعتبار تبلیغاتی
 ```
 
-## 8. Plan configuration
+هرگز اجازه ندهید کلاینت «موجودی باقی‌مانده» را به سرور اعلام کند.
 
-Plans should be data-driven. Avoid hard-coding prices in Android or the Gateway.
+## ۷. مرز درگاه پرداخت
 
-A plan can define:
+درگاه‌های پرداخت باید از طریق رویدادهای امضاشده/تأییدشده Webhook با بک‌اند WooGit ارتباط داشته باشند. اپ مرجع پرداخت نیست.
 
-- name;
-- duration;
-- price;
-- currency;
-- site limit;
-- feature set;
-- AI credit allocation;
-- analytics retention;
-- chat limits.
+بک‌اند این چرخه را تطبیق می‌دهد:
 
-## 9. Expiration behavior
+```text
+رویداد پرداخت
+ -> بررسی اصالت
+ -> ثبت تراکنش به‌صورت Idempotent
+ -> به‌روزرسانی اشتراک/اعتبار
+ -> حسابرسی
+```
 
-When expired:
+## ۸. پیکربندی پلن
 
-- protected API requests are rejected;
-- outbound customer-site calls are blocked;
-- existing cached UI data may be shown if policy allows;
-- background jobs requiring entitlement stop or are marked paused;
-- customer data is retained/deleted according to the retention policy.
+پلن‌ها باید داده‌محور باشند. قیمت را در اندروید یا Gateway به‌صورت Hard-code قرار ندهید.
 
-## 10. Security invariant
+هر پلن می‌تواند این موارد را تعریف کند:
 
-A user must never be able to restore service by modifying:
+- نام؛
+- مدت؛
+- قیمت؛
+- واحد پول؛
+- محدودیت سایت؛
+- مجموعه قابلیت‌ها؛
+- اعتبار AI؛
+- مدت نگهداری تحلیل؛
+- محدودیت چت.
 
-- APK flags;
-- local subscription timestamps;
-- cached plan data;
-- local “premium” state.
+## ۹. رفتار انقضا
 
-Only the backend can grant an entitlement.
+در زمان انقضا:
+
+- درخواست‌های API محافظت‌شده رد می‌شوند؛
+- تماس خروجی با سایت مشتری مسدود می‌شود؛
+- در صورت اجازه سیاست، داده UI کش‌شده قابل نمایش است؛
+- Jobهای نیازمند مجوز متوقف یا Paused می‌شوند؛
+- داده مشتری طبق سیاست نگهداری حذف یا نگهداری می‌شود.
+
+## ۱۰. اصل امنیتی
+
+کاربر نباید بتواند سرویس را با تغییر این موارد برگرداند:
+
+- پرچم‌های APK؛
+- Timestampهای محلی اشتراک؛
+- داده کش‌شده پلن؛
+- وضعیت محلی «Premium».
+
+فقط بک‌اند می‌تواند مجوز دسترسی صادر کند.
