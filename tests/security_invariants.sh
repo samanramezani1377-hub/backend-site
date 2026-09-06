@@ -9,7 +9,7 @@ while IFS= read -r -d '' file; do
   echo "CHECK PHP: $file"
   php -l "$file" >/dev/null || fail "PHP syntax: $file"
 done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; billing="$PLUGIN/src/BillingService.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"
 
 echo "CHECK controller ownership"; contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 echo "CHECK controller session"; contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
@@ -41,6 +41,9 @@ contains "$billingController" 'ACTIVATE_SESSION_LIMIT = 5' 'billing activation l
 contains "$billingController" 'WINDOW_SECONDS = 60' 'billing billing window must be 60 seconds'
 echo "CHECK billing rate limit response"; contains "$billingController" 'Retry-After' 'billing rate limiting must expose Retry-After'
 echo "CHECK billing session key hashing"; grep -Fq "hash('sha256'" "$billingController" || fail 'billing must not persist raw session tokens as rate-limit keys'
+echo "CHECK payment history"; contains "$billing" 'getPaymentHistory' 'billing service must expose account payment history'
+contains "$billing" "_woogit_account_id" 'payment history must be scoped to WooGit Account metadata'
+contains "$billing" "_woogit_site_id" 'payment history must be scoped to the unique Site metadata'
 echo "CHECK idempotency states"; contains "$idempotency" 'state.*unknown' 'idempotency must support unknown state'
 echo "CHECK safe HTTP"; contains "$proxy" 'wp_safe_remote_request' 'proxy must use safe WordPress HTTP request'
 echo "CHECK resolved destination"; contains "$proxy" 'resolvePublicDestination' 'proxy must validate resolved public destination'
@@ -68,6 +71,9 @@ contains "$webSession" 'random_bytes' 'web session tokens must be cryptographica
 contains "$webAuth" "'/web/login'" 'web login endpoint must exist'
 contains "$webAuth" "'/web/logout'" 'web logout endpoint must exist'
 contains "$webAuth" "'/web/me'" 'web session identity endpoint must exist'
+contains "$webAuth" "'/web/account/contact-email'" 'web contact email management endpoint must exist'
+contains "$webAuth" "'/web/account/password'" 'web password change endpoint must exist'
+contains "$webAuth" "'/web/billing/history'" 'web payment history endpoint must exist'
 contains "$webAuth" "'/account/requirements'" 'account requirements endpoint must exist'
 contains "$webAuth" "'/account/setup-web-credentials'" 'web credential setup endpoint must exist'
 contains "$webAuth" "site_url" 'web login identity must use Site URL'
