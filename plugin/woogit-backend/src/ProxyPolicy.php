@@ -17,12 +17,14 @@ final class ProxyPolicy
         if (strtolower((string)$parts['scheme']) !== 'https') return null;
         if (!empty($parts['user']) || !empty($parts['pass']) || (!empty($parts['port']) && (int)$parts['port'] !== 443)) return null;
 
+        // A site identity is the origin, not an arbitrary path. Keeping the stored
+        // destination at the origin also prevents path-prefix tricks in /forward.
+        $path = (string)($parts['path'] ?? '');
+        if ($path !== '' && $path !== '/') return null;
+
         $host = strtolower(rtrim((string)$parts['host'], '.'));
         if ($host === '' || $this->isPrivateHost($host)) return null;
-
-        $base = 'https://' . $host;
-        if (!empty($parts['path']) && $parts['path'] !== '/') $base .= '/' . trim((string)$parts['path'], '/');
-        return rtrim($base, '/');
+        return 'https://' . $host;
     }
 
     public function validatePath(string $path): ?string
