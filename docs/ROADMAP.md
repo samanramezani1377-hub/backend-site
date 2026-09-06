@@ -13,6 +13,8 @@
 - CI و تست‌های Backend؛
 - بدون PostgreSQL/Redis/Queue مستقل اجباری.
 
+**وضعیت:** پیاده‌سازی پایه انجام شده؛ CI شامل PHP lint و security invariants است.
+
 ## مرحله ۱ — Connection Verification و Onboarding
 
 - دریافت چهار Customer Credential از Client؛
@@ -25,6 +27,8 @@
 
 **قانون:** Verification read-only است و Credential فقط Request-scoped است.
 
+**وضعیت:** پیاده‌سازی شده. Account با Email resolve نمی‌شود؛ Site verified مرز هویت و ownership است.
+
 ## مرحله ۲ — Controlled Forwarding
 
 - Products، Orders، Variations، Attributes/Terms، Media و surfaceهای واقعی Client؛
@@ -33,6 +37,8 @@
 - Version/Security/Rate Limit؛
 - controlled destination resolution؛
 - minimum transformation.
+
+**وضعیت:** enforcementهای Session/Account/Site/Entitlement، Version Gate، Rate Limit، Body Size و SSRF در runtime اضافه شده‌اند.
 
 ## مرحله ۳ — Idempotency و Timeout-after-success
 
@@ -43,6 +49,8 @@
 - Retry policy؛
 - reconciliation؛
 - integration test برای response-loss بعد از موفقیت مقصد.
+
+**وضعیت:** idempotency state و operation identity پیاده‌سازی شده‌اند. Timeout به `unknown` می‌رود و retry همان key هرگز CREATE را دوباره forward نمی‌کند. Reconciliation واقعی مقصد و response-loss integration test هنوز نیازمند staging/customer-site است و نباید با تست استاتیک جعل شود.
 
 ## مرحله ۴ — Billing تجاری
 
@@ -57,8 +65,6 @@
 
 Chat، Analytics، AI، Webhooks و Background Jobs فقط در صورت تصویب محصولی اضافه می‌شوند و نباید مسیر اصلی Proxy را سنگین کنند.
 
-Background Job/Webhook در V1 نباید به Customer Credential ذخیره‌شده متکی باشد.
-
 ## مرحله ۶ — Gateway Plugin مستقل
 
 `WooGit Gateway Plugin` روی Customer WordPress/WooCommerce پروژه/فاز مستقلی است و در این Repository در V1 پیاده‌سازی یا migrate نمی‌شود.
@@ -69,6 +75,8 @@ PostgreSQL، Redis، Worker مستقل، horizontal scaling، monitoring پیش�
 
 ## Commercial V1 Gate
 
-قبل از آمادگی تجاری باید Session authentication، Site isolation، Account/Subscription/Entitlement enforcement، Connection Verification، Idempotency، Timeout-after-success، SSRF protection، Audit، Backup/Restore، monitoring و نبود Secret در repository/log/response اثبات شوند.
+قبل از آمادگی تجاری باید Session authentication، Site isolation، Account/Subscription/Entitlement enforcement، Connection Verification، Idempotency، Timeout-after-success، SSRF protection، Audit، Backup/Restore، monitoring و نبود Secret در repository/log/response **اثبات** شوند.
+
+در این مرحله enforcementهای runtime و invariantهای CI پیاده‌سازی شده‌اند، اما **integration/staging validation برای DNS rebinding، concurrency و timeout-after-success و همچنین عملیات Backup/Restore/monitoring واقعی هنوز خارج از این commit‌هاست**.
 
 **Customer Credential Storage شرط V1 نیست؛ در V1 ممنوع است.**
