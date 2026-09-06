@@ -31,6 +31,12 @@ final class SiteService
         $table = $wpdb->prefix . 'woogit_sites';
         $existing = $this->findByHost($host);
         if ($existing) return ((int)$existing['account_id'] === $accountId && $existing['status'] === 'active') ? $existing : null;
+
+        // WooGit Account identity is one-to-one with the connected site.
+        // Never attach a second host to an existing Account.
+        $owned = $wpdb->get_row($wpdb->prepare("SELECT id,account_id,canonical_url,host,status FROM {$table} WHERE account_id = %d LIMIT 1", $accountId), ARRAY_A);
+        if ($owned) return ((int)$owned['account_id'] === $accountId && $owned['status'] === 'active' && $owned['host'] === $host) ? $owned : null;
+
         $now = current_time('mysql', true);
         $canonical = rtrim($canonicalUrl,'/');
         $ok = $wpdb->insert($table, ['account_id'=>$accountId,'canonical_url'=>$canonical,'host'=>$host,'status'=>'active','created_at'=>$now,'updated_at'=>$now], ['%d','%s','%s','%s','%s','%s']);
