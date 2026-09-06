@@ -16,7 +16,7 @@ Customer WordPress / WooCommerce
 
 `WooGit Main Plugin` روی WordPress اصلی WooGit قرار دارد و مغز Backend این پروژه است.
 
-`WooGit Gateway Plugin` یک Plugin مستقل روی سایت مشتری است و **فعلاً کاملاً خارج از Scope توسعه این پروژه است**.
+`WooGit Gateway Plugin` یک Plugin مستقل روی سایت مشتری است و فعلاً کاملاً خارج از Scope توسعه این پروژه است.
 
 ## ۱. محصول V1
 
@@ -49,11 +49,35 @@ Backend نباید برای عملیات عادی یک Mirror از WooCommerce �
 5. WordPress Username؛
 6. WordPress Application Password.
 
-کد فعلی اپ این Credentialها را در Secure Credential Store نگهداری می‌کند و Store Repository از آن‌ها برای اتصال مستقیم استفاده می‌کند. بنابراین Backend Contract باید همین چهار Customer Credential را به‌عنوان ورودی مقصد در نظر بگیرد و برای V1 نیاز به تغییر بنیادی فرم اتصال نداشته باشد. fileciteturn229file1L23-L29 fileciteturn229file2L42-L55
+Backend Contract باید همین چهار Customer Credential را به‌عنوان ورودی مقصد در نظر بگیرد و برای V1 نیاز به تغییر بنیادی فرم اتصال نداشته باشد.
 
-Client فعلی برای Verification اتصال از WooCommerce REST استفاده می‌کند و در Migration باید همان رفتار قابل تطبیق باقی بماند.
+## ۳. مالکیت تنظیمات Customer
 
-## ۳. دو نوع Credential
+هر Customer Site تنظیمات WooCommerce خودش را روی همان WordPress نگه می‌دارد. این تنظیمات با تنظیمات WooGit Backend یکی نیستند.
+
+```text
+WooGit Backend / Main Plugin
+├── Account
+├── Site Identity
+├── WooGit Session
+├── Subscription
+└── Entitlement
+
+Customer WordPress / WooCommerce
+├── WooCommerce Settings
+├── Products
+├── Orders
+├── Customers
+├── Categories / Variations
+├── Media
+└── سایر Store Data
+```
+
+Backend منبع حقیقت تنظیمات داخلی WooCommerce مشتری نیست؛ Customer WordPress/WooCommerce منبع اصلی داده و تنظیمات فروشگاه است.
+
+Backend فقط از طریق Controlled Forwarding و Credentialهای همان Site به WooCommerce دسترسی می‌گیرد.
+
+## ۴. دو نوع Credential
 
 ```text
 WooGit Session
@@ -70,7 +94,7 @@ Access Token + Refresh Token جزو معماری V1 نیست.
 
 Credential Vault برای هر Request اجباری نیست. در Proxy عادی، Client می‌تواند Customer Credentials را همراه Request ارسال کند.
 
-## ۴. Onboarding / Verification
+## ۵. Onboarding / Verification
 
 در اولین اتصال ممکن است Session هنوز وجود نداشته باشد؛ بنابراین Onboarding یک Flow مستقل است:
 
@@ -94,9 +118,7 @@ Normal requests
 
 Verification باید read-only باشد و هیچ Product/Order/Media mutation صرفاً برای تست انجام نشود.
 
-Verification ناموفق نباید به‌عنوان اتصال موفق ثبت شود و نباید Trial یا Session تجاری نهایی ایجاد کند.
-
-## ۵. Site موجود
+## ۶. Site موجود
 
 برای Site Identity موجود:
 
@@ -114,7 +136,7 @@ WooGit Session
 
 موفقیت اتصال واقعی به همان Site مبنای احراز دسترسی به Site است؛ Login عادی Google/email بخشی از Flow فعلی نیست.
 
-## ۶. Site جدید
+## ۷. Site جدید
 
 برای Site بدون Account قبلی:
 
@@ -134,7 +156,7 @@ WooGit Session
 
 Trial برابر ۱۵ روز است و به Site Identity/دامنه تعلق دارد، نه صرفاً به Email یا Google Account.
 
-## ۷. درخواست عادی
+## ۸. درخواست عادی
 
 ```text
 Android
@@ -163,7 +185,7 @@ Android
 
 در صورت Account بسته/غیرفعال یا Subscription/Trial منقضی، Backend نباید Request را به Customer Site ارسال کند.
 
-## ۸. Controlled Proxy
+## ۹. Controlled Proxy
 
 Backend یک Proxy عمومی URL دلخواه نیست.
 
@@ -175,7 +197,7 @@ Backend یک Proxy عمومی URL دلخواه نیست.
 
 نام `gateway` در API path، در صورت استفاده، فقط نام integration surface داخل Main Plugin است و به `WooGit Gateway Plugin` مشتری اشاره نمی‌کند.
 
-## ۹. Credential Vault
+## ۱۰. Credential Vault
 
 Vault یک قابلیت optional است.
 
@@ -187,11 +209,11 @@ Client → Session + Customer Credentials → Backend → Customer Site
 
 هیچ Vault lookup اجباری برای هر Request وجود ندارد.
 
-Vault فقط در صورت نیاز واقعی به عملیات بدون حضور Client، مانند بعضی Background Job/Webhookها، قابل استفاده است. چنین قابلیتی باید نیاز خود را جداگانه مشخص کند.
+Vault فقط در صورت نیاز واقعی به عملیات بدون حضور Client، مانند بعضی Background Job/Webhookها، قابل استفاده است.
 
 Customer Credentials در هیچ Log، Error Response، Audit Metadata یا Telemetry عمومی ثبت نمی‌شوند.
 
-## ۱۰. Account / Subscription / Entitlement
+## ۱۱. Account / Subscription / Entitlement
 
 Backend مرجع نهایی این موارد است:
 
@@ -204,7 +226,7 @@ Account
 
 Client نمی‌تواند با وضعیت محلی، Flag یا تاریخ محلی این policy را دور بزند.
 
-## ۱۱. Idempotency و Timeout-after-success
+## ۱۲. Idempotency و Timeout-after-success
 
 تمام CREATE mutationهای موردنیاز باید idempotent باشند.
 
@@ -219,11 +241,11 @@ Backend → previous result / reconciliation
 
 Retry نباید CREATE دوم ایجاد کند.
 
-## ۱۲. Currency
+## ۱۳. Currency
 
 Currency از Customer WooCommerce می‌آید. Backend نباید واحد پول را فرض، hard-code یا بی‌دلیل تبدیل کند و باید context مالی موردنیاز Client را حفظ کند.
 
-## ۱۳. عملیات اصلی Client
+## ۱۴. عملیات اصلی Client
 
 V1 باید با حوزه‌های واقعی موجود در Client قابل تطبیق باشد:
 
@@ -238,9 +260,7 @@ V1 باید با حوزه‌های واقعی موجود در Client قابل ت
 - Conflicts / reconciliation؛
 - Product/Order mutations.
 
-در کد Presentation فعلی این Use Caseها و عملیات مستقیماً در Client وجود دارند؛ Backend باید قرارداد آینده را بر اساس همین surface طراحی کند، نه یک API مستقل و بی‌مصرف. fileciteturn226file0L1-L2
-
-## ۱۴. چیزهای خارج از V1 Backend
+## ۱۵. چیزهای خارج از V1 Backend
 
 - بازسازی Android App؛
 - تغییر UI/UX اپ برای سازگار شدن با Backend؛
