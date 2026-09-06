@@ -1,58 +1,85 @@
-# هویت حساب و اتصال WordPress در WooGit
+# هویت حساب و اتصال WordPress در WooGit Backend
 
 ## ۱. وضعیت این سند
 
 این سند مرجع Flow اتصال سایت، احراز Account و Credentialهای مقصد است.
 
-اپ Android موجود WooGit در repository مستقل قرار دارد و صفحه اتصال فعلی آن شامل Credentialهای سایت مشتری است. Backend نباید برای این Flow یک معماری سنگین‌تر از نیاز واقعی اپ تحمیل کند.
+اپ Android موجود WooGit مستقل است و صفحه اتصال فعلی آن Credentialهای Customer Site را دریافت می‌کند. Backend باید با همین سطح اتصال سازگار بماند.
 
-## ۲. Credentialهای اتصال سایت مشتری
+## ۲. تنظیمات هر Customer Site
 
-اپ فعلی این چهار Credential را در اختیار دارد و در مدل V1 آن‌ها را برای درخواست به Backend ارسال می‌کند:
+هر مشتری/فروشگاه یک `Site Identity` مستقل در WooGit دارد. تنظیمات اتصال یک Site نباید با Site دیگر مشترک یا مخلوط شود.
+
+اطلاعات اتصال Customer Site در V1 شامل این چهار Credential است:
 
 - `WordPress Username`
 - `WordPress Application Password`
 - `WooCommerce Consumer Key`
 - `WooCommerce Consumer Secret`
 
-این Credentialها برای احراز هویت **در سایت مقصد** هستند، نه برای احراز هویت مصرف‌کننده در WooGit.
+این Credentialها برای احراز هویت **در سایت مقصد** هستند، نه برای احراز Client در WooGit.
 
-Application Password باید Credential برنامه‌ای WordPress باشد، نه رمز اصلی ورود به `wp-admin`. WordPress آن را برای API و احراز هویت ماشینی طراحی کرده و استفاده از آن برای REST API باید روی HTTPS باشد. citeturn0search0turn0search1turn0search2
-
-مدل مفهومی:
+Application Password باید Credential برنامه‌ای WordPress باشد، نه رمز اصلی ورود به `wp-admin`.
 
 ```text
-WP Username + WP Application Password
-+ WC Consumer Key + WC Consumer Secret
-        ↓
-احراز هویت در Customer WordPress/WooCommerce
+Account
+  └── Site Identity
+       ├── WordPress URL
+       ├── WordPress Username
+       ├── WordPress Application Password
+       ├── WooCommerce Consumer Key
+       └── WooCommerce Consumer Secret
 ```
 
-## ۳. WooGit Session
+## ۳. تنظیمات خود WooCommerce
 
-در کنار Credentialهای مقصد، درخواست عادی یک `WooGit Session` نیز دارد.
+تنظیمات خود WooCommerce متعلق به Customer Site است و روی همان WordPress مشتری باقی می‌ماند.
 
-این Session برای احراز هویت و مجاز بودن مصرف‌کننده در **WooGit Backend** است و هیچ جایگزینی برای Credentialهای سایت مشتری نیست.
+WooGit Backend نباید این تنظیمات را با تنظیمات Account یا Site Identity خود یکی فرض کند.
+
+```text
+WooGit Backend
+├── Account / Subscription / Entitlement
+└── Site Identity + Connection Metadata
+
+Customer WordPress / WooCommerce
+├── WooCommerce Settings
+├── Products
+├── Orders
+├── Customers
+├── Media
+└── سایر داده‌های فروشگاه
+```
+
+Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است.
+
+## ۴. WooGit Session
+
+در کنار چهار Credential مقصد، درخواست عادی یک `WooGit Session` معتبر دارد.
+
+Session برای احراز هویت و مجاز بودن Client در **WooGit Backend** است و جایگزین Credentialهای Customer Site نیست.
+
+Access Token + Refresh Token جزو معماری V1 نیست.
 
 ```text
 WooGit Session
     = هویت/دسترسی در WooGit Backend
 
 Customer Credentials
-    = اعتبار دسترسی به Customer Site
+    = اعتبار دسترسی به Customer WordPress/WooCommerce
 ```
 
-## ۴. Flow درخواست عادی
+## ۵. Flow درخواست عادی
 
 ```text
 WooGit Android
       │
       │ WooGit Session
-      │ + site_id / destination
+      │ + site_id
       │ + 4 Customer Credentials
       │ + همان path/query/body عملیات
       ▼
-WooGit Backend / WooGit Plugin
+WooGit Backend / Main Plugin
       │
       ├─ Session
       ├─ Account status
@@ -60,6 +87,7 @@ WooGit Backend / WooGit Plugin
       ├─ Entitlement
       ├─ Site ownership
       ├─ Version / Rate Limit / Security
+      └─ Idempotency where required
       │
       ▼
 Lightweight Proxy
@@ -77,18 +105,16 @@ WooGit Backend
 WooGit Android
 ```
 
-Backend نباید Request/Response را بی‌دلیل بازسازی یا Mirror کند. Customer WordPress/WooCommerce منبع اصلی داده فروشگاه باقی می‌ماند.
+اگر Account بسته/غیرفعال یا Trial/Subscription منقضی باشد، Request نباید به Customer Site ارسال شود.
 
-## ۵. Verification و Onboarding اولیه
+## ۶. Verification و Onboarding اولیه
 
-اولین اتصال، چون ممکن است هنوز WooGit Session کامل وجود نداشته باشد، یک Bootstrap/Verification Flow جدا از درخواست‌های عادی است.
-
-ترتیب کلی:
+ممکن است در اولین اتصال WooGit Session هنوز وجود نداشته باشد؛ بنابراین Verification یک Bootstrap Flow مستقل دارد:
 
 ```text
 App
   ↓
-Customer Credentials
+4 Customer Credentials + Site URL
   ↓
 WordPress reachability + authentication
   ↓
@@ -96,22 +122,24 @@ WooCommerce verification
   ↓
 Site Identity
   ↓
-Account / Trial lifecycle
+Existing Account OR New Account
+  ↓
+Trial eligibility
   ↓
 WooGit Session
   ↓
 Normal requests
 ```
 
-اگر Verification اولیه شکست بخورد، اتصال موفق، Account/Trial موفق یا Dashboard نباید ثبت/اعلام شود.
+Verification باید read-only باشد و صرفاً برای تست، Product/Order/Media mutation انجام ندهد.
 
-## ۶. Site موجود
+## ۷. Site موجود
 
-برای Site Identity موجود، موفقیت Verification Credentialهای همان سایت اثبات دسترسی به مقصد است. پس از آن Backend می‌تواند Account مربوط به همان Site را شناسایی و Session را ادامه دهد، مطابق Flow نهایی Account Lifecycle.
+برای Site Identity موجود، Verification با Credentialهای همان Site انجام می‌شود و Backend Account مالک آن Site را resolve می‌کند.
 
-ورود عادی به WooGit نباید وابسته به Google Account یا رمز جداگانه‌ای باشد مگر اینکه در یک سؤال معماری بعدی صراحتاً چنین چیزی تصویب شود.
+موفقیت Verification یک Site نباید به معنی دسترسی به Site دیگر باشد.
 
-## ۷. Site جدید
+## ۸. Site جدید
 
 برای Site بدون Account قبلی:
 
@@ -125,44 +153,49 @@ Account creation / completion
 Trial eligibility
    ↓
 WooGit Session
-   ↓
-Dashboard / normal operations
 ```
 
-## ۸. نگهداری Credential در Backend
+Trial برابر ۱۵ روز است و به Site Identity/دامنه تعلق دارد.
 
-در مدل فعلی **Credential Vault اجباری برای هر درخواست نیست**.
+## ۹. نگهداری Credential در Backend
 
-Credentialهای سایت در درخواست عادی از Client می‌آیند و Backend آن‌ها را فقط برای همان مقصد و همان درخواست مصرف می‌کند. Backend نباید برای Forward کردن هر Request به Vault lookup وابسته باشد.
+Credential Vault برای Proxy عادی اجباری نیست.
 
-اگر در آینده قابلیت‌هایی مانند background jobs، webhooks یا عملیات بدون حضور Client به نگهداری امن Credential نیاز داشته باشند، آن موضوع باید به‌عنوان یک تصمیم جداگانه تعیین شود.
+در V1:
 
-## ۹. قوانین امنیتی Credential
+```text
+Client → Session + 4 Customer Credentials → Backend → Customer Site
+```
+
+Backend می‌تواند Credentialهای ارسالی را فقط برای همان Request مصرف کند. اگر در آینده background jobs، webhooks یا عملیات بدون حضور Client نیاز به Credential پایدار داشته باشند، نگهداری رمزنگاری‌شده باید به‌عنوان یک قابلیت جداگانه تصمیم‌گیری شود.
+
+## ۱۰. قوانین امنیتی
 
 Backend باید:
 
-- Credentialها را روی مسیر HTTPS دریافت کند؛
+- Credentialها را فقط از مسیر امن دریافت کند؛
 - آن‌ها را در Log، Analytics، Crash Report یا Audit Metadata ثبت نکند؛
-- آن‌ها را در Error Response یا Response عادی به دیگری برنگرداند؛
-- آن‌ها را به Account یا Site دیگری افشا نکند؛
-- فقط برای Customer Site مقصد استفاده کند؛
-- از Credential ارسالی برای دسترسی به مقصدی غیر از Site مجاز استفاده نکند.
+- آن‌ها را در Error/Response برنگرداند؛
+- آن‌ها را به Account یا Site دیگر افشا نکند؛
+- فقط برای Customer Site مجاز استفاده کند؛
+- از `site_id` برای اعمال Site Isolation استفاده کند.
 
-این تصمیم به این معنی نیست که Credentialها در Client «ممنوع» هستند؛ اپ فعلی همین Flow مستقیم را دارد و V1 عمداً تغییرات Client را حداقلی نگه می‌دارد.
-
-## ۱۰. اصل نهایی
+## ۱۱. اصل نهایی
 
 ```text
 WooGit Session
-        → احراز و مجوز مصرف‌کننده در Backend
+        → احراز و مجوز Client در Backend
 
 Customer Credentials
-        → احراز Backend نزد Customer Site
+        → احراز Backend نزد Customer WordPress/WooCommerce
+
+WooCommerce Settings
+        → متعلق به Customer Site
 
 Backend
-        → کنترل‌های ضروری WooGit
+        → Account / Site / Subscription / Entitlement
         → Lightweight Proxy
         → حداقل تغییر در Request/Response
 ```
 
-Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است و WooGit Backend مرجع Account، Site ownership، Subscription و Entitlement است.
+`WooGit Gateway Plugin` یک Plugin جداگانه روی سایت مشتری است و در Scope فعلی Backend توسعه داده نمی‌شود.
