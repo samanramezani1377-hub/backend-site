@@ -27,6 +27,9 @@ jobs:
             fi
           done < <(find plugin/woogit-backend -type f -name '*.php' -print0)
           exit "$failed"
+      - name: Behavioral lifecycle tests
+        shell: bash
+        run: bash tests/run_behavioral.sh
       - name: Backend security invariants
         shell: bash
         run: bash tests/security_invariants.sh
@@ -36,11 +39,16 @@ jobs:
           set -euo pipefail
           proxy='plugin/woogit-backend/src/WooCommerceProxy.php'
           controller='plugin/woogit-backend/src/RestController.php'
+          billing='plugin/woogit-backend/src/BillingController.php'
+          billing_service='plugin/woogit-backend/src/BillingService.php'
           policy='plugin/woogit-backend/src/ProxyPolicy.php'
           idempotency='plugin/woogit-backend/src/IdempotencyService.php'
           operations='plugin/woogit-backend/src/OperationService.php'
           if grep -Eq 'consumer_(key|secret).*query|query.*consumer_(key|secret)' "$proxy"; then echo 'FAIL: customer consumer credentials must not be placed in query parameters'; exit 1; fi
           grep -Eq 'Idempotency-Key' "$controller"
+          grep -Eq 'Idempotency-Key' "$billing"
+          grep -Eq 'createCheckout\(' "$billing"
+          grep -Eq 'findCheckoutByIdempotencyKey' "$billing_service"
           grep -Eq 'wp_safe_remote_request' "$proxy"
           grep -Eq 'https' "$policy"
           grep -Eq "state.*pending|state.*unknown" "$idempotency"
