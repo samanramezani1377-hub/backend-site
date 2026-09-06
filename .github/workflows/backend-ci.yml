@@ -27,7 +27,14 @@ jobs:
           proxy='plugin/woogit-backend/src/WooCommerceProxy.php'
           controller='plugin/woogit-backend/src/RestController.php'
           policy='plugin/woogit-backend/src/ProxyPolicy.php'
+          idempotency='plugin/woogit-backend/src/IdempotencyService.php'
+          operations='plugin/woogit-backend/src/OperationService.php'
           ! grep -Eq "consumer_(key|secret).*query|query.*consumer_(key|secret)" "$proxy"
           grep -Eq "Idempotency-Key" "$controller"
           grep -Eq "wp_safe_remote_request" "$proxy"
           grep -Eq "https" "$policy"
+          grep -Eq "status.*pending|state.*pending" "$idempotency"
+          grep -Eq "markUnknown" "$operations"
+          grep -Eq "'proxy'" "$controller"
+          ! grep -Eq "operations->create\([^\n]*\$path,[[:space:]]*\$path" "$controller"
+          grep -Eq "ALLOWED_MEDIA_PATH" "$policy"
