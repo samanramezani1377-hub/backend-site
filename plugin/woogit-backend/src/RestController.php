@@ -5,12 +5,13 @@ defined('ABSPATH') || exit;
 
 final class RestController
 {
-    private SessionService $sessions; private AccountService $accounts; private SiteService $sites; private EntitlementService $entitlements; private IdempotencyService $idempotency; private ProxyPolicy $policy; private WooCommerceProxy $proxy;
-    public function __construct(){ $this->sessions=new SessionService();$this->accounts=new AccountService();$this->sites=new SiteService();$this->entitlements=new EntitlementService();$this->idempotency=new IdempotencyService();$this->policy=new ProxyPolicy();$this->proxy=new WooCommerceProxy(); }
+    private SessionService $sessions; private AccountService $accounts; private SiteService $sites; private EntitlementService $entitlements; private IdempotencyService $idempotency; private OperationService $operations; private ProxyPolicy $policy; private WooCommerceProxy $proxy;
+    public function __construct(){ $this->sessions=new SessionService();$this->accounts=new AccountService();$this->sites=new SiteService();$this->entitlements=new EntitlementService();$this->idempotency=new IdempotencyService();$this->operations=new OperationService();$this->policy=new ProxyPolicy();$this->proxy=new WooCommerceProxy(); }
     public function register(): void
     {
         register_rest_route('woogit/v1','/sites/verify',['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'verifySite']]);
         register_rest_route('woogit/v1','/sessions/revoke',['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'revokeSession']]);
+        register_rest_route('woogit/v1','/operations/(?P<operation_id>[A-Za-z0-9_-]+)',['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'getOperation']]);
         register_rest_route('woogit/v1','/forward',['methods'=>['GET','POST','PUT','PATCH','DELETE'],'permission_callback'=>'__return_true','callback'=>[$this,'forward']]);
     }
     public function verifySite(\WP_REST_Request $request): \WP_REST_Response
@@ -29,6 +30,14 @@ final class RestController
     }
     public function revokeSession(\WP_REST_Request $request): \WP_REST_Response
     { return new \WP_REST_Response(['revoked'=>$this->sessions->revoke((string)$request->get_header('X-WooGit-Session'))],200); }
+    public function getOperation(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $session=$this->sessions->authenticate((string)$request->get_header('X-WooGit-Session'));if($session===null)return new \WP_REST_Response(['code'=>'invalid_session'],401);
+        $account=$this->accounts->get((int)$session['account_id']);if(!$account)return new \WP_REST_Response(['code'=>'account_inactive'],403);
+        $site=$this->sites->getOwned((int)$session['account_id'],(int)$session['site_id']);if(!$site)return new \WP_REST_Response(['code'=>'site_not_owned'],403);
+        $operationId=sanitize_text_field((string)$request['operation_id']);$operation=$this->operations->getForAccount((int)$session['account_id'],(int)$session['site_id'],$operationId);if(!$operation)return new \WP_REST_Response(['code'=>'operation_not_found'],404);
+        return new \WP_REST_Response(['operation_id'=>$operation['operation_id'],'status'=>$operation['status'],'resource'=>$operation['resource'],'path'=>$operation['operation_path'],'method'=>$operation['method'],'upstream_status'=>$operation['upstream_status'],'response'=>$operation['response_body'],'created_at'=>$operation['created_at'],'updated_at'=>$operation['updated_at'],'expires_at'=>$operation['expires_at']],200);
+    }
     public function forward(\WP_REST_Request $request): \WP_REST_Response
     {
         $session=$this->sessions->authenticate((string)$request->get_header('X-WooGit-Session'));if($session===null)return new \WP_REST_Response(['code'=>'invalid_session'],401);
@@ -39,10 +48,24 @@ final class RestController
         $method=strtoupper($request->get_method());$key=trim((string)$request->get_header('Idempotency-Key'));if(!$this->policy->validateMethod($method,$key!=='') )return new \WP_REST_Response(['code'=>'invalid_mutation_request'],400);
         $base=$this->policy->resolveSiteUrl($site['canonical_url']);if($base===null)return new \WP_REST_Response(['code'=>'invalid_site_identity'],403);
         $input=$request->get_json_params();$input=is_array($input)?$input:[];foreach(['wordpress_username','wordpress_application_password','consumer_key','consumer_secret'] as $k)if(!isset($input[$k])||!is_string($input[$k])||$input[$k]==='')return new \WP_REST_Response(['code'=>'missing_customer_credentials'],400);
-        $body=isset($input['body'])&&is_array($input['body'])?$input['body']:null;$query=isset($input['query'])&&is_array($input['query'])?$input['query']:[];$fingerprint=$this->idempotency->fingerprint($method,$path,$query,$body);
-        if($key!==''){$previous=$this->idempotency->lookup((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint);if($previous!==null){if($previous['conflict'])return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);return new \WP_REST_Response($previous['body'],$previous['status']);}}
-        $result=$this->proxy->forward($base,$path,$method,$input['wordpress_username'],$input['wordpress_application_password'],$input['consumer_key'],$input['consumer_secret'],$query,$body);
-        if($key!=='')$this->idempotency->store((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint,(int)$result['status'],is_array($result['body'])?$result['body']:[]);
-        return new \WP_REST_Response($result['body'],$result['status']);
+        $body=isset($input['body'])&&is_array($input['body'])?$input['body']:null;$query=isset($input['query'])&&is_array($input['query'])?$input['query']:[];$fingerprint=$this->idempotency->fingerprint($method,$path,$query,$body);$operationId='';
+        if($key!==''){
+            $candidate=$this->operations->create((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint,$resource,$path,$method);
+            if($candidate===null){$existing=$this->idempotency->lookup((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint);if($existing['state']==='conflict')return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);if($existing['state']==='completed')return new \WP_REST_Response($existing['body'],$existing['status']);if($existing['state']==='pending')return new \WP_REST_Response(['code'=>'operation_in_progress','operation_id'=>$existing['operation_id']],202);return new \WP_REST_Response(['code'=>'operation_unavailable'],500);}
+            $operationId=$candidate['operation_id'];$claim=$this->idempotency->claim((int)$session['account_id'],(int)$session['site_id'],$key,$fingerprint,$operationId);
+            if($claim['state']!=='claimed'){
+                $this->operations->deletePending((int)$session['account_id'],(int)$session['site_id'],$operationId);
+                if($claim['state']==='conflict')return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);
+                if($claim['state']==='completed')return new \WP_REST_Response($claim['body'],$claim['status']);
+                if($claim['state']==='pending')return new \WP_REST_Response(['code'=>'operation_in_progress','operation_id'=>$claim['operation_id']],202);
+                return new \WP_REST_Response(['code'=>'operation_unavailable'],500);
+            }
+        }
+        $result=$this->proxy->forward($base,$path,$method,$input['wordpress_username'],$input['wordpress_application_password'],$input['consumer_key'],$input['consumer_secret'],$query,$body);$status=(int)$result['status'];$resultBody=is_array($result['body'])?$result['body']:[];
+        if($key!==''){
+            if(!empty($result['timeout'])){$this->operations->markUnknown((int)$session['account_id'],(int)$session['site_id'],$operationId);return new \WP_REST_Response(['code'=>'upstream_timeout','operation_id'=>$operationId,'status'=>'unknown','retryable'=>true],504);}
+            $operationStatus=$status>=200&&$status<300?'succeeded':'failed';$this->operations->update((int)$session['account_id'],(int)$session['site_id'],$operationId,$operationStatus,$status,$resultBody);$this->idempotency->complete((int)$session['account_id'],(int)$session['site_id'],$key,$status,$resultBody);
+        }
+        return new \WP_REST_Response($resultBody,$status);
     }
 }
