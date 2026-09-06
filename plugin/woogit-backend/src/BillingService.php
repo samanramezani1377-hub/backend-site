@@ -101,6 +101,20 @@ final class BillingService
         if(empty($orders))return ['ok'=>false];$order=$orders[0];return ['ok'=>true,'order_id'=>(int)$order->get_id(),'payment_url'=>(string)$order->get_checkout_payment_url(true),'status'=>(string)$order->get_status()];
     }
 
+    public function getPaymentHistory(int $accountId,int $siteId,int $page=1,int $perPage=20): array
+    {
+        if(!function_exists('wc_get_orders'))return ['orders'=>[],'page'=>max(1,$page),'per_page'=>min(50,max(1,$perPage)),'total'=>0,'total_pages'=>0];
+        $page=max(1,$page);$perPage=min(50,max(1,$perPage));
+        $orders=wc_get_orders(['limit'=>$perPage,'page'=>$page,'paginate'=>true,'return'=>'objects','orderby'=>'date','order'=>'DESC','meta_query'=>[['key'=>self::ACCOUNT_META,'value'=>(string)$accountId,'compare'=>'='],['key'=>self::SITE_META,'value'=>(string)$siteId,'compare'=>'=']]]);
+        $items=[];$products=[];
+        foreach((array)($orders->orders??[]) as $order){
+            $productId=(int)$order->get_meta(self::PRODUCT_META);$planKey=(string)$order->get_meta(self::PLAN_KEY_META);
+            if($productId>0&&$planKey===''){ $product=function_exists('wc_get_product')?wc_get_product($productId):null;$planKey=$product?$this->planKey($product):''; }
+            $items[]=['order_id'=>(int)$order->get_id(),'status'=>(string)$order->get_status(),'total'=>(string)$order->get_total(),'currency'=>(string)$order->get_currency(),'created_at'=>$order->get_date_created()?$order->get_date_created()->date('c'):null,'plan_key'=>$planKey];
+        }
+        return ['orders'=>$items,'page'=>$page,'per_page'=>$perPage,'total'=>(int)($orders->total??count($items)),'total_pages'=>(int)($orders->max_num_pages??($items===[]?0:1))];
+    }
+
     public function getStatus(int $accountId,int $siteId): array
     {
         global $wpdb;$table=$wpdb->prefix.'woogit_entitlements';$row=$wpdb->get_row($wpdb->prepare("SELECT status,starts_at,expires_at,capabilities FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId),ARRAY_A);if(!$row)return ['status'=>'none','starts_at'=>null,'expires_at'=>null,'capabilities'=>[]];$caps=json_decode((string)$row['capabilities'],true);return ['status'=>(string)$row['status'],'starts_at'=>$row['starts_at'],'expires_at'=>$row['expires_at'],'capabilities'=>is_array($caps)?array_values($caps):[]];
