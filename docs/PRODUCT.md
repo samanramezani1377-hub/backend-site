@@ -1,167 +1,167 @@
-# WooGit Product and Commercial Scope
+# محدوده محصول و مدل تجاری WooGit
 
-## 1. Product
+## ۱. محصول
 
-WooGit is a subscription SaaS that lets a customer connect one or more WordPress/WooCommerce sites to the WooGit mobile app. The commercial platform controls access, site credentials, capabilities and optional AI services from a central backend.
+WooGit یک سرویس SaaS اشتراکی است که به مشتری اجازه می‌دهد یک یا چند سایت WordPress/WooCommerce را به اپ موبایل WooGit متصل کند. پلتفرم تجاری دسترسی، اطلاعات اتصال سایت، قابلیت‌ها و سرویس‌های اختیاری هوش مصنوعی را از یک بک‌اند مرکزی کنترل می‌کند.
 
-The product has three surfaces:
+محصول سه سطح اصلی دارد:
 
-1. **WooGit Android app** — customer-facing operational client.
-2. **WooGit Cloud** — authentication, gateway, subscription, AI, chat, analytics and integration services.
-3. **Customer WordPress Bridge** — a small headless integration plugin that exposes WooGit-controlled capabilities to the customer's site.
+1. **اپ اندروید WooGit** — کلاینت عملیاتی مشتری.
+2. **ابر WooGit** — احراز هویت، درگاه، اشتراک، هوش مصنوعی، چت، تحلیل و سرویس‌های یکپارچه‌سازی.
+3. **WordPress Bridge مشتری** — افزونه کوچک و Headless که قابلیت‌های کنترل‌شده توسط WooGit را در سایت مشتری فراهم می‌کند.
 
-A fourth surface is the **WooGit commercial/control website**, built with WordPress. It contains public marketing pages and the internal control plane used by WooGit operators.
+سطح چهارم، **وب‌سایت تجاری/پنل کنترل WooGit** است که با WordPress ساخته می‌شود و صفحات عمومی بازاریابی و پنل کنترل داخلی اپراتورها را در خود دارد.
 
-## 2. Customer journey
+## ۲. مسیر مشتری
 
-### First connection
+### اتصال اولیه
 
 ```text
-Install WooGit
-  -> create WooGit account
-  -> enter customer WordPress domain and credentials
-  -> send credentials only over TLS to WooGit backend
-  -> backend validates the site
-  -> backend creates/links the WooGit account + site record
-  -> backend stores the site credential encrypted
-  -> app receives only connection success + safe site metadata
+نصب WooGit
+  -> ایجاد حساب WooGit
+  -> وارد کردن دامنه و اطلاعات ورود WordPress مشتری
+  -> ارسال اطلاعات فقط از طریق TLS به بک‌اند WooGit
+  -> اعتبارسنجی سایت توسط بک‌اند
+  -> ایجاد/اتصال حساب WooGit و رکورد سایت
+  -> ذخیره رمزنگاری‌شده اطلاعات اتصال
+  -> دریافت فقط موفقیت اتصال + فراداده امن در اپ
 ```
 
-The mobile app must not receive the stored credential back from the backend.
+اپ موبایل نباید اطلاعات اتصال ذخیره‌شده را دوباره از بک‌اند دریافت کند.
 
-### Trial
+### دوره آزمایشی
 
-Default commercial proposal:
+پیشنهاد تجاری پیش‌فرض:
 
-- 15-day free trial.
-- Trial validity is checked only by the backend.
-- Trial can have explicit limits (site count, features, AI credits, request volume).
-- Trial expiration blocks gateway access server-side.
+- ۱۵ روز استفاده رایگان.
+- اعتبار دوره آزمایشی فقط توسط بک‌اند بررسی می‌شود.
+- دوره آزمایشی می‌تواند محدودیت‌هایی مانند تعداد سایت، قابلیت‌ها، اعتبار AI و حجم درخواست داشته باشد.
+- پایان دوره آزمایشی باید دسترسی درگاه را در سمت سرور مسدود کند.
 
-### Paid plans
+### بسته‌های پولی
 
-The first billing model can be duration-based:
+مدل اولیه می‌تواند زمان‌محور باشد:
 
-- 30 days
-- 90 days
-- 180 days
-- 365 days
+- ۳۰ روز
+- ۹۰ روز
+- ۱۸۰ روز
+- ۳۶۵ روز
 
-Exact pricing, limits and currency are configuration, not hard-coded application logic.
+قیمت، محدودیت‌ها و واحد پول باید تنظیمات باشند و نباید در منطق ثابت اپ کدنویسی شوند.
 
-## 3. Entitlements
+## ۳. مجوزها
 
-A plan should describe capabilities rather than only a price:
+هر پلن بهتر است قابلیت‌ها را تعریف کند، نه فقط قیمت را:
 
 ```text
 Plan
-- duration
-- price
-- currency
-- site_limit
-- feature flags
-- request limits
-- analytics retention
-- chat limits
-- AI credit allocation
+- مدت
+- قیمت
+- واحد پول
+- محدودیت سایت
+- پرچم قابلیت‌ها
+- محدودیت درخواست
+- مدت نگهداری تحلیل
+- محدودیت چت
+- اعتبار AI
 ```
 
-Examples of feature flags:
+نمونه قابلیت‌ها:
 
-- products
-- orders
-- customers
-- media
-- plugin management
-- bridge management
-- analytics
-- user tracking
-- chat
-- AI chat
-- AI agent
-- automation
-- exports
+- محصولات
+- سفارش‌ها
+- مشتریان
+- رسانه
+- مدیریت افزونه‌ها
+- مدیریت Bridge
+- تحلیل
+- رهگیری کاربران
+- چت
+- چت هوش مصنوعی
+- عامل هوش مصنوعی
+- خودکارسازی
+- خروجی گرفتن
 
-## 4. Plugin strategy
+## ۴. راهبرد افزونه
 
-The Bridge should be intentionally headless.
+Bridge عمداً باید Headless باشد.
 
-It should not require a WooGit settings page in wp-admin. The customer controls WooGit features from the WooGit app/web control plane.
+نباید برای استفاده از WooGit به صفحه تنظیمات در wp-admin نیاز داشته باشد. مشتری قابلیت‌های WooGit را از اپ یا پنل کنترل وب مدیریت می‌کند.
 
-The Bridge's responsibilities are limited to:
+مسئولیت‌های Bridge محدود به این موارد است:
 
-- authenticated API endpoints;
-- capability discovery;
-- secure outbound communication;
-- optional frontend asset injection for enabled features;
-- WordPress/WooCommerce hooks;
-- command execution requested by WooGit;
-- health/version reporting.
+- نقاط پایانی API احراز‌شده؛
+- اعلام قابلیت‌ها؛
+- ارتباط خروجی امن؛
+- تزریق اختیاری دارایی‌های سمت کاربر برای قابلیت‌های فعال؛
+- Hookهای WordPress/WooCommerce؛
+- اجرای فرمان‌هایی که WooGit درخواست می‌کند؛
+- گزارش سلامت و نسخه.
 
-## 5. Commercial AI
+## ۵. هوش مصنوعی تجاری
 
-WooGit may offer AI as an included feature or separate credit package.
+WooGit می‌تواند AI را به‌عنوان قابلیت همراه اشتراک یا بسته اعتبار جداگانه ارائه کند.
 
-Two supported models:
+دو مدل اصلی پشتیبانی می‌شوند:
 
-### WooGit-managed credits
+### اعتبارهای مدیریت‌شده توسط WooGit
 
 ```text
-Customer -> WooGit payment
-          -> AI credits
-          -> WooGit AI Gateway
-          -> provider
+مشتری -> پرداخت به WooGit
+       -> اعتبار AI
+       -> درگاه AI ووگیت
+       -> ارائه‌دهنده
 ```
 
 ### BYOK
 
 ```text
-Customer provider key
-        -> encrypted WooGit vault
-        -> AI Gateway
-        -> provider billed to customer account
+کلید ارائه‌دهنده مشتری
+        -> خزانه رمزنگاری‌شده WooGit
+        -> درگاه AI
+        -> ارائه‌دهنده با هزینه حساب مشتری
 ```
 
-Provider-specific commercial/resale terms must be reviewed before selling provider consumption as a WooGit package.
+قبل از فروش مصرف ارائه‌دهنده به‌عنوان بسته WooGit باید شرایط تجاری و فروش مجدد هر ارائه‌دهنده بررسی شود.
 
-## 6. Chat
+## ۶. چت
 
-A customer site can expose a WooGit chat widget through the Bridge. The widget sends messages to WooGit rather than directly to an AI provider.
+سایت مشتری می‌تواند از طریق Bridge یک ابزارک چت WooGit داشته باشد. ابزارک پیام‌ها را به WooGit می‌فرستد، نه مستقیماً به ارائه‌دهنده AI.
 
 ```text
-Visitor
-  -> Chat Widget
+بازدیدکننده
+  -> ابزارک چت
   -> Bridge
-  -> WooGit Chat API
-  -> Human or AI
+  -> API چت WooGit
+  -> انسان یا AI
   -> Bridge
-  -> Visitor
+  -> بازدیدکننده
 ```
 
-This allows AI/human handoff, conversation history, customer/order context, rate limiting and subscription enforcement without placing AI credentials on the customer site.
+این معماری امکان انتقال بین انسان و AI، تاریخچه مکالمه، زمینه مشتری/سفارش، محدودسازی نرخ و اعمال اشتراک را فراهم می‌کند، بدون اینکه اطلاعات ورود AI روی سایت مشتری قرار بگیرد.
 
-## 7. Analytics and tracking
+## ۷. تحلیل و رهگیری
 
-The Bridge should emit compact events to WooGit rather than turn the customer's WordPress database into an analytics warehouse.
+Bridge باید رویدادهای کوچک را به WooGit ارسال کند و نباید پایگاه داده WordPress مشتری را به انبار تحلیل تبدیل کند.
 
-Example events:
+نمونه رویدادها:
 
-- page_view
-- product_view
-- search
-- add_to_cart
-- checkout_started
-- order_completed
-- chat_started
-- chat_message
-- user_login
+- `page_view`
+- `product_view`
+- `search`
+- `add_to_cart`
+- `checkout_started`
+- `order_completed`
+- `chat_started`
+- `chat_message`
+- `user_login`
 
-Privacy rules, retention and consent requirements must be configurable per jurisdiction and product mode.
+قوانین حریم خصوصی، نگهداری داده و رضایت باید متناسب با حوزه قضایی و حالت محصول قابل تنظیم باشند.
 
-## 8. Non-goals for the first commercial release
+## ۸. موارد خارج از هدف نسخه تجاری اول
 
-- Running a large AI model on customer WordPress hosting.
-- Making WordPress wp-admin the primary WooGit UX.
-- Storing raw WordPress passwords in the mobile app.
-- Making subscription enforcement client-side.
-- Building an unnecessarily distributed infrastructure before traffic requires it.
+- اجرای یک مدل بزرگ AI روی هاست WordPress مشتری.
+- تبدیل wp-admin وردپرس به رابط اصلی WooGit.
+- ذخیره رمز عبور خام WordPress در اپ موبایل.
+- اعمال اشتراک فقط در سمت کلاینت.
+- ساخت زیرساخت بیش از حد توزیع‌شده پیش از نیاز واقعی ترافیک.
