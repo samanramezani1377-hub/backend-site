@@ -31,7 +31,13 @@ final class IdempotencyService
     public function markVerifyUnknown(string $key): bool{return $this->markUnknown(0,0,$key);}
     public function completeVerify(string $key,int $status,array $body): bool
     {
-        global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';$stored=$this->encryptVerifyResponse($body);if($stored===null)return false;return false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=0 AND site_id=0 AND idempotency_key=%s AND state='pending'",$state,$status,$stored,current_time('mysql',true),$key));
+        global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';$stored=$this->encryptVerifyResponse($body);if($stored===null)return false;
+        $saved=false;
+        $row=$wpdb->get_row($wpdb->prepare("SELECT operation_id FROM {$wpdb->prefix}woogit_idempotency WHERE account_id=0 AND site_id=0 AND idempotency_key=%s AND state='pending' LIMIT 1",$key),ARRAY_A);
+        if(!$row)return false;
+        $saved=false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=0 AND site_id=0 AND idempotency_key=%s AND state='pending'",$state,$status,$stored,current_time('mysql',true),$key));
+        if($saved&&$state==='failed')$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET status='failed',upstream_status=%d,response_body=%s,updated_at=%s WHERE operation_id=%s AND status='pending'",$status,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),(string)$row['operation_id']));
+        return $saved;
     }
 
     private function lookupScoped(int $accountId,int $siteId,string $key,string $fingerprint,bool $verify): array
