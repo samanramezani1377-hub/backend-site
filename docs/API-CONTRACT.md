@@ -58,11 +58,15 @@ WooGit Session
 
 Verification read-only است و قبل از استفاده از gateway انجام می‌شود.
 
+Verification موفق حتی وقتی Entitlement منقضی است، Account + Site را resolve کرده و Session صادر می‌کند؛ اما در این حالت Session فقط برای Account/Billing UI است و مجوز gateway ایجاد نمی‌کند. Response شامل `access_enabled=false` و `billing_required=true` خواهد بود.
+
 ## ۴. WooGit Session
 
 Session باید قابل اعتبارسنجی، expiration و revoke باشد و به Account و Site متصل باشد. Session منقضی‌شده معتبر نیست و locally revive نمی‌شود.
 
 Automatic re-login یک Session Creation جدید است؛ Backend در آن دوباره Account + Site Ownership + Entitlement را بررسی می‌کند.
+
+Session بدون Entitlement معتبر می‌تواند برای ورود به حساب و مسیرهای Billing استفاده شود، اما هر endpoint محافظت‌شده Customer-site باید Entitlement را جداگانه enforce کند.
 
 ## ۵. درخواست عادی Gateway
 
@@ -136,7 +140,41 @@ Idempotency recordهای `pending` و `unknown` نباید توسط retention jo
 
 Subscription و Entitlement مرجع Backend هستند و Account/Plan منقضی نباید outbound request داشته باشد.
 
-## ۹. Currency / Collections / Errors
+## ۹. Billing API
+
+Billing در V1 روی WordPress اصلی WooGit و WooCommerce/WooCommerce Subscriptions انجام می‌شود. App نباید وضعیت پرداخت را خودش تعیین کند.
+
+Endpoints:
+
+```text
+GET  /api/v1/billing/plans
+GET  /api/v1/billing/status
+POST /api/v1/billing/checkout
+```
+
+`billing/plans` فقط پلن‌های Subscription قابل فروش و منتشرشده WooCommerce را برمی‌گرداند؛ قیمت و مدت در App hard-code نمی‌شود.
+
+`billing/checkout` فقط با WooGit Session معتبر اجرا می‌شود و Account/Site را از Session می‌گیرد، نه از مقادیر قابل جعل Client. Backend یک WooCommerce order مرتبط با همان Account/Site می‌سازد و `payment_url` را برمی‌گرداند تا App صفحه پرداخت وب را باز کند.
+
+پرداخت مستقیماً به Account/Site متصل به Order ثبت می‌شود. موفقیت پرداخت از Client پذیرفته نمی‌شود. WooCommerce/WooCommerce Subscriptions مرجع وضعیت پرداخت و Subscription هستند و Backend از hookهای سروری وضعیت را به Entitlement داخلی همگام می‌کند.
+
+پس از فعال‌شدن Subscription:
+
+```text
+WooCommerce Subscription
+        ↓
+server-side billing event
+        ↓
+Account + Site from immutable order metadata
+        ↓
+Entitlement status=active
+        ↓
+forward becomes authorized
+```
+
+در حالت Plan منقضی یا Trial تمام‌شده، App همچنان می‌تواند وارد Account و Billing شود، اما `/forward` باید قبل از هر outbound request با `Entitlement` رد شود.
+
+## ۱۰. Currency / Collections / Errors
 
 Backend مقدار response و query semantics Customer WooCommerce را حفظ می‌کند و currency را hard-code یا بی‌دلیل تبدیل نمی‌کند.
 
@@ -144,7 +182,7 @@ Pagination/filter/sort متعلق به upstream WooCommerce است و gateway ب
 
 Errorها machine-readable هستند و Secret، SQL، Stack Trace یا Customer Credential در Response عمومی قرار نمی‌گیرد.
 
-## ۱۰. Customer Credential Storage
+## ۱۱. Customer Credential Storage
 
 در V1:
 
