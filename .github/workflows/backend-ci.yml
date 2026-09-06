@@ -19,7 +19,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find plugin/woogit-backend -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find plugin/woogit-backend -type f -name '*.php' -print0)
       - name: Proxy security invariants
         shell: bash
         run: |
@@ -29,12 +31,19 @@ jobs:
           policy='plugin/woogit-backend/src/ProxyPolicy.php'
           idempotency='plugin/woogit-backend/src/IdempotencyService.php'
           operations='plugin/woogit-backend/src/OperationService.php'
-          ! grep -Eq "consumer_(key|secret).*query|query.*consumer_(key|secret)" "$proxy"
-          grep -Eq "Idempotency-Key" "$controller"
-          grep -Eq "wp_safe_remote_request" "$proxy"
-          grep -Eq "https" "$policy"
+
+          if grep -Eq 'consumer_(key|secret).*query|query.*consumer_(key|secret)' "$proxy"; then
+            echo 'FAIL: customer consumer credentials must not be placed in query parameters'
+            exit 1
+          fi
+          grep -Eq 'Idempotency-Key' "$controller"
+          grep -Eq 'wp_safe_remote_request' "$proxy"
+          grep -Eq 'https' "$policy"
           grep -Eq "status.*pending|state.*pending" "$idempotency"
-          grep -Eq "markUnknown" "$operations"
+          grep -Eq 'markUnknown' "$operations"
           grep -Eq "'proxy'" "$controller"
-          ! grep -Eq "operations->create\([^\n]*\$path,[[:space:]]*\$path" "$controller"
-          grep -Eq "ALLOWED_MEDIA_PATH" "$policy"
+          if grep -Eq 'operations->create\([^$]*\$path,[[:space:]]*\$path' "$controller"; then
+            echo 'FAIL: operation resource/path arguments are duplicated'
+            exit 1
+          fi
+          grep -Eq 'ALLOWED_MEDIA_PATH' "$policy"
