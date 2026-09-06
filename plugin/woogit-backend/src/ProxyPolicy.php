@@ -21,7 +21,7 @@ final class ProxyPolicy
         $parts = wp_parse_url(trim($canonicalUrl));
         if (!$parts || empty($parts['scheme']) || empty($parts['host'])) return null;
         if (strtolower((string)$parts['scheme']) !== 'https') return null;
-        if (!empty($parts['user']) || !empty($parts['pass']) || !empty($parts['port']) && (int)$parts['port'] !== 443) return null;
+        if (!empty($parts['user']) || !empty($parts['pass']) || (!empty($parts['port']) && (int)$parts['port'] !== 443)) return null;
 
         $host = strtolower((string)$parts['host']);
         if ($this->isPrivateHost($host)) return null;
