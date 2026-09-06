@@ -1,23 +1,23 @@
-# AI, Chat and Analytics
+# هوش مصنوعی، چت و تحلیل
 
-## 1. Chat
+## ۱. چت
 
-The chat system has three actors:
+سیستم چت سه بازیگر اصلی دارد:
 
 ```text
-Visitor
-  <-> Widget
-  <-> WooGit Chat Gateway
-  <-> AI Agent OR Human Operator
+بازدیدکننده
+  <-> ابزارک
+  <-> درگاه چت WooGit
+  <-> عامل AI یا اپراتور انسانی
 ```
 
-Conversation state belongs to WooGit, not to the WordPress page.
+وضعیت مکالمه متعلق به WooGit است، نه صفحه WordPress.
 
-## 2. AI agent
+## ۲. عامل هوش مصنوعی
 
-The AI agent must operate through typed tools.
+عامل AI باید فقط از طریق ابزارهای Typed کار کند.
 
-Example tools:
+نمونه ابزارها:
 
 ```text
 get_site()
@@ -29,7 +29,7 @@ search_products()
 get_inventory()
 ```
 
-For mutations:
+برای تغییرات:
 
 ```text
 create_order()
@@ -37,51 +37,51 @@ update_customer()
 change_order_status()
 ```
 
-require explicit authorization and, for customer-facing high-impact operations, explicit user confirmation.
+نیازمند مجوز صریح هستند و برای عملیات پراثر در سمت مشتری، تأیید صریح کاربر نیز لازم است.
 
-The model cannot call arbitrary URLs.
+مدل نباید URL دلخواه فراخوانی کند.
 
-## 3. Provider abstraction
+## ۳. انتزاع ارائه‌دهنده
 
 ```text
-AI Gateway
+درگاه AI
   |
-  +-- OpenAI adapter
-  +-- OpenRouter adapter
-  +-- Gemini adapter
-  +-- future provider adapters
+  +-- رابط OpenAI
+  +-- رابط OpenRouter
+  +-- رابط Gemini
+  +-- رابط‌های آینده
 ```
 
-The rest of WooGit calls a stable internal interface such as:
+بقیه WooGit باید از یک رابط داخلی پایدار مانند این استفاده کند:
 
 ```text
 chat(model_alias, messages, tools, limits)
 ```
 
-The backend chooses the concrete provider.
+بک‌اند ارائه‌دهنده واقعی را انتخاب می‌کند.
 
-## 4. AI credits
+## ۴. اعتبارهای AI
 
-Track usage in a ledger.
+مصرف باید در Ledger ثبت شود.
 
-A request should create a usage record with:
+هر درخواست باید رکورد مصرفی شامل این موارد ایجاد کند:
 
-- account_id;
-- site_id if applicable;
-- provider;
-- model;
-- input units/tokens if available;
-- output units/tokens if available;
-- estimated cost;
-- charged WooGit credits;
-- request ID;
-- timestamp.
+- account_id؛
+- site_id در صورت نیاز؛
+- provider؛
+- model؛
+- واحد/توکن ورودی در صورت موجود بودن؛
+- واحد/توکن خروجی در صورت موجود بودن؛
+- هزینه تخمینی؛
+- اعتبار WooGit کسرشده؛
+- Request ID؛
+- زمان.
 
-Do not rely on client-reported token usage for billing.
+برای صورتحساب به مصرف توکن اعلام‌شده توسط کلاینت اعتماد نکنید.
 
-## 5. Human handoff
+## ۵. انتقال به انسان
 
-Conversation states:
+وضعیت مکالمه:
 
 ```text
 ai
@@ -90,71 +90,71 @@ human
 closed
 ```
 
-AI should be able to transfer a conversation to a human queue based on configured rules or an explicit customer request.
+AI باید بتواند طبق قوانین تنظیم‌شده یا درخواست صریح مشتری، مکالمه را به صف اپراتور انسانی منتقل کند.
 
-## 6. Customer context
+## ۶. زمینه مشتری
 
-For questions such as “Where is my order?”, the AI receives authoritative tool output:
-
-```text
-Customer: opaque-id
-Order: #1234
-Status: processing
-Items: ...
-```
-
-The model should not infer current order state from stale chat text.
-
-## 7. Analytics
-
-Events should be small, typed and queued.
-
-Recommended pipeline:
+برای پرسش‌هایی مانند «سفارشم کجاست؟»، AI باید خروجی معتبر ابزار را دریافت کند:
 
 ```text
-Bridge/browser
-    -> ingestion API
-    -> validation
-    -> dedupe
-    -> Redis queue
-    -> worker
-    -> analytics DB
+مشتری: شناسه غیرقابل شناسایی
+سفارش: #1234
+وضعیت: processing
+اقلام: ...
 ```
 
-Core dashboard metrics:
+مدل نباید وضعیت فعلی سفارش را از متن قدیمی مکالمه حدس بزند.
 
-- visitors;
-- sessions;
-- product views;
-- add-to-cart;
-- checkout started;
-- orders;
-- conversion rate;
-- chat starts;
-- AI conversations;
-- human handoffs.
+## ۷. تحلیل
 
-## 8. User identity
+رویدادها باید کوچک، Typed و صف‌بندی‌شده باشند.
 
-Use separate concepts:
-
-- anonymous visitor ID;
-- authenticated WordPress customer reference;
-- WooGit account ID.
-
-Do not expose the internal WooGit account ID to the browser as a secret-bearing identifier.
-
-## 9. Retention
-
-Define retention by event class.
-
-Example policy to configure later:
+خط لوله پیشنهادی:
 
 ```text
-raw events       -> short retention
-aggregates       -> longer retention
-chat messages    -> configurable
-security audit   -> longer retention
+Bridge/مرورگر
+    -> API دریافت
+    -> اعتبارسنجی
+    -> حذف تکراری‌ها
+    -> صف Redis
+    -> Worker
+    -> پایگاه داده تحلیل
 ```
 
-Exact retention must be selected based on legal, product and storage requirements.
+شاخص‌های اصلی داشبورد:
+
+- بازدیدکننده؛
+- نشست؛
+- مشاهده محصول؛
+- افزودن به سبد؛
+- شروع پرداخت؛
+- سفارش؛
+- نرخ تبدیل؛
+- شروع چت؛
+- مکالمات AI؛
+- انتقال به انسان.
+
+## ۸. هویت کاربر
+
+این مفاهیم را جدا نگه دارید:
+
+- شناسه بازدیدکننده ناشناس؛
+- مرجع مشتری احراز‌شده WordPress؛
+- شناسه حساب WooGit.
+
+شناسه داخلی حساب WooGit را به‌عنوان یک شناسه حاوی راز در مرورگر افشا نکنید.
+
+## ۹. نگهداری داده
+
+مدت نگهداری را بر اساس کلاس رویداد تعریف کنید.
+
+نمونه سیاست قابل تنظیم در آینده:
+
+```text
+رویداد خام       -> نگهداری کوتاه
+تجمیع‌ها         -> نگهداری طولانی‌تر
+پیام‌های چت      -> قابل تنظیم
+حسابرسی امنیتی   -> نگهداری طولانی‌تر
+```
+
+مدت دقیق نگهداری باید بر اساس الزامات حقوقی، محصول و هزینه ذخیره‌سازی انتخاب شود.
