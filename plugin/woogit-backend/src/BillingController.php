@@ -47,9 +47,9 @@ final class BillingController
     {
         $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
         $context=$this->authenticateAccountContext($request);if($context instanceof \WP_REST_Response)return $context;
-        $input=$request->get_json_params();$productId=is_array($input)?(int)($input['plan_id']??0):0;
+        $input=$request->get_json_params();$productId=is_array($input)?(int)($input['plan_id']??0):0;$variationId=is_array($input)?(int)($input['variation_id']??0):0;
         if($productId<=0)return new \WP_REST_Response(['code'=>'missing_plan'],400);
-        $result=$this->billing->createCheckout((int)$context['account_id'],(int)$context['site_id'],$productId);
+        $result=$this->billing->createCheckout((int)$context['account_id'],(int)$context['site_id'],$productId,$variationId);
         if(!$result['ok'])return new \WP_REST_Response(['code'=>$result['code']],400);
         return new \WP_REST_Response(['order_id'=>$result['order_id'],'payment_url'=>$result['payment_url'],'status'=>$result['status']],201);
     }
@@ -63,9 +63,8 @@ final class BillingController
         if(!$this->entitlements->isAllowed($accountId,$siteId,'commerce'))return new \WP_REST_Response(['code'=>'not_entitled'],403);
         $expires=$this->entitlements->getExpiresAt($accountId,$siteId);
         if($expires===null||$expires<=time()+300)return new \WP_REST_Response(['code'=>'entitlement_expiring'],403);
-        $token=$this->sessions->issueOperational($accountId,$siteId,$expires);
+        $token=$this->sessions->activateOperationalFromBilling($accountId,$siteId,$expires);
         if(!$token)return new \WP_REST_Response(['code'=>'session_creation_failed'],500);
-        $this->sessions->revokeScope($accountId,$siteId,SessionService::SCOPE_BILLING);
         return new \WP_REST_Response(['session'=>$token,'scope'=>SessionService::SCOPE_OPERATIONAL,'expires_at'=>gmdate('Y-m-d H:i:s',$expires)],200);
     }
 
