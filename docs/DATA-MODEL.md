@@ -1,12 +1,10 @@
 # مدل داده WooGit
 
-طرح زیر منطقی است. نوع دقیق SQL، ایندکس‌ها و Partitioning جزئیات پیاده‌سازی هستند.
+طرح زیر منطقی است. نوع دقیق SQL و جزئیات پیاده‌سازی بعداً تعیین می‌شوند.
+
+اصل مهم V1: Customer WordPress/WooCommerce منبع اصلی داده فروشگاه است. Backend برای درخواست‌های عادی Customer Credentials را از Client دریافت می‌کند و برای Forward همان Request مصرف می‌کند؛ بنابراین `site_credentials` برای Proxy عادی منبع اجباری Credential نیست.
 
 ## ۱. accounts
-
-حساب مشتری WooGit را نشان می‌دهد.
-
-فیلدها:
 
 - id (UUID)
 - email
@@ -17,20 +15,21 @@
 
 ## ۲. account_sessions
 
+نماینده WooGit Session است.
+
 - id
 - account_id
-- device_id
-- refresh_token_hash
+- session_reference / token_hash (بسته به مدل Session نهایی)
 - expires_at
 - revoked_at
 - last_seen_at
 - created_at
 
-Refresh Token خام هرگز ذخیره نشود.
+جزئیات نوع Token/Session در این سند هنوز به‌عنوان تصمیم مستقل قفل نشده است؛ مهم این است که Session برای احراز مصرف‌کننده در Backend استفاده شود.
 
 ## ۳. sites
 
-یک سایت WordPress مشتری را نشان می‌دهد.
+Site Identity مستقل Backend:
 
 - id (UUID)
 - account_id
@@ -45,9 +44,13 @@ Refresh Token خام هرگز ذخیره نشود.
 - created_at
 - updated_at
 
-محدودیت یکتا: `(account_id, canonical_url)`.
+محدودیت یکتا باید از ایجاد Site Identity تکراری برای یک Account جلوگیری کند.
 
-## ۴. site_credentials
+## ۴. site_credentials — اختیاری/سناریویی
+
+در Proxy عادی Credentialها از Client در همان Request می‌آیند و این جدول برای هر Request خوانده نمی‌شود.
+
+اگر قابلیت‌هایی مانند background jobs، webhooks یا عملیات بدون حضور Client نیاز به Credential پایدار داشته باشند، می‌توان در این جدول Credential را به‌صورت رمزنگاری‌شده نگهداری کرد:
 
 - id
 - site_id
@@ -60,7 +63,7 @@ Refresh Token خام هرگز ذخیره نشود.
 - created_at
 - updated_at
 
-Secret رمزنگاری‌شده هرگز از طریق API برگردانده نمی‌شود.
+این جدول **جزء مسیر اجباری Lightweight Proxy عادی نیست**.
 
 ## ۵. plans
 
@@ -82,15 +85,6 @@ Secret رمزنگاری‌شده هرگز از طریق API برگردانده �
 - limit_value (nullable)
 - configuration_json (nullable)
 
-نمونه:
-
-```text
-chat.enabled = true
-analytics.retention_days = 30
-sites.max = 3
-ai.credits = 1000000
-```
-
 ## ۷. subscriptions
 
 - id
@@ -105,11 +99,11 @@ ai.credits = 1000000
 - created_at
 - updated_at
 
-بک‌اند از این جدول به‌عنوان مرجع اصلی تصمیم‌گیری درباره مجوز استفاده می‌کند.
+این داده مرجع تصمیم‌گیری درباره دسترسی Backend است.
 
 ## ۸. site_entitlements
 
-برای Overrideهای اختصاصی هر سایت:
+برای Overrideهای اختصاصی Site:
 
 - id
 - account_id
@@ -119,9 +113,9 @@ ai.credits = 1000000
 - limit_value
 - expires_at
 
-وقتی یک حساب چند سایت با قابلیت‌های متفاوت دارد مفید است.
-
 ## ۹. idempotency_operations
+
+برای mutationهای نیازمند Idempotency:
 
 - id
 - account_id
@@ -135,9 +129,11 @@ ai.credits = 1000000
 - created_at
 - updated_at
 
-محدودیت یکتا باید دامنه لازم برای قرارداد API را پوشش دهد؛ معمولاً account/site + idempotency key.
+محدودیت یکتا باید حداقل Account + Site + Idempotency Key را پوشش دهد.
 
 ## ۱۰. bridge_registrations
+
+در صورت فعال بودن Bridge:
 
 - id
 - site_id
@@ -150,74 +146,11 @@ ai.credits = 1000000
 - created_at
 - rotated_at
 
-در صورت امکان فقط Hash توکن Bearer ذخیره شود؛ توکن متنی فقط هنگام Provisioning نمایش/استفاده شود.
+## ۱۱. chat / analytics / AI
 
-## ۱۱. chat_conversations
+مدل‌های Chat، Analytics و AI در صورت فعال بودن این قابلیت‌ها می‌توانند در جدول‌های مستقل نگهداری شوند؛ این قابلیت‌ها نباید برای مسیر اصلی Lightweight Proxy وابستگی اجباری ایجاد کنند.
 
-- id
-- account_id
-- site_id
-- visitor_reference (حداقل‌سازی‌شده از نظر حریم خصوصی)
-- customer_reference (nullable)
-- state: open / waiting / human / ai / closed
-- assigned_operator_id (nullable)
-- created_at
-- updated_at
-
-## ۱۲. chat_messages
-
-- id
-- conversation_id
-- sender_type
-- content
-- model/provider metadata (nullable)
-- created_at
-
-مدت نگهداری باید قابل تنظیم باشد.
-
-## ۱۳. analytics_events
-
-- id
-- account_id
-- site_id
-- event_type
-- anonymous_visitor_id (nullable)
-- customer_reference (nullable)
-- properties_json
-- occurred_at
-- received_at
-
-نصب‌های پرترافیک ممکن است بعداً به Partitioning یا انبار تحلیل اختصاصی نیاز داشته باشند.
-
-## ۱۴. ai_accounts / ai_credits
-
-تفکیک پیشنهادی:
-
-`ai_accounts`
-
-- id
-- account_id
-- mode: woogit / byok
-- provider (nullable)
-- encrypted_provider_key (nullable)
-- key_version
-- status
-
-`ai_credit_ledger`
-
-- id
-- account_id
-- transaction_type
-- amount
-- balance_after
-- provider
-- model
-- request_reference
-- created_at
-
-به‌جای تغییر فقط یک فیلد موجودی، از Ledger استفاده کنید تا مصرف قابل حسابرسی و تطبیق باشد.
-
-## ۱۵. audit_events
+## ۱۲. audit_events
 
 - id
 - account_id
@@ -230,22 +163,21 @@ ai.credits = 1000000
 - metadata_json
 - created_at
 
-هیچ اعتبار خامی را داخل متادیتای حسابرسی قرار ندهید.
+هیچ Customer Credential خامی در metadata ذخیره نشود.
 
-## ۱۶. نمای روابط
+## ۱۳. نمای روابط
 
 ```text
 Account
   |
   +-- Sessions
   +-- Sites
-  |     +-- Credentials
+  |     +-- optional Credential Storage
   |     +-- Bridge Registration
   |     +-- Site Entitlements
-  |     +-- Conversations
-  |     +-- Analytics Events
   |
-  +-- Subscriptions -> Plan -> Plan Entitlements
-  +-- AI Account -> AI Credit Ledger
+  +-- Subscriptions -> Plans -> Entitlements
+  +-- Idempotency Operations
   +-- Audit Events
+  +-- optional Chat / Analytics / AI
 ```
