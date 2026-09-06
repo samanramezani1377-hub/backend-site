@@ -1,324 +1,538 @@
-# معماری سیستم WooGit
+# معماری نهایی Backend ووگیت
 
-## ۱. توپولوژی سطح بالا
+> وضعیت: **V1 Architecture — Locked**
+>
+> این سند معماری Backend را بر اساس اپ Android موجود WooGit و تصمیم نهایی V1 تعریف می‌کند. اپ در repository مستقل `samanramezani1377-hub/woogit` قرار دارد و این repository فقط Backend آن را می‌سازد.
 
-```text
-                         اینترنت
-                            |
-             +--------------+--------------+
-             |                             |
-        وب‌سایت WooGit                 اپ WooGit
-        سامانه WordPress                  |
-             |                       HTTPS / توکن کوتاه‌عمر
-       پنل کنترل / مدیریت                  |
-             |                             |
-             +-------------+---------------+
-                           |
-                    API / درگاه WooGit
-                           |
-       +-------------------+-------------------+
-       |          |          |         |        |
-    احراز هویت  مجوزها   سایت/خزانه   چت     درگاه AI
-       |          |          |         |        |
-       +----------+----------+---------+--------+
-                           |
-                    Redis / صف
-                           |
-                       PostgreSQL
-                           |
-                    HTTPS خروجی
-                           |
-                  WordPress مشتری
-                           |
-                    WooGit Bridge
-```
+## ۱. تصمیم اصلی
 
-## ۲. پنل کنترل در برابر لایه داده
+Backend ووگیت در V1 نباید یک Backend سنگین با دیتامدل کامل WooCommerce، Mirror دائمی محصولات و سفارش‌ها، یا معماری Microservice باشد.
 
-### پنل کنترل
-
-WordPress می‌تواند این موارد را مدیریت کند:
-
-- حساب‌های WooGit؛
-- تعریف پلن‌ها؛
-- اشتراک‌ها؛
-- مجوزها؛
-- رکوردهای مشتری و سایت؛
-- تنظیمات عملیاتی؛
-- نماهای پشتیبانی و مدیریت؛
-- محتوای عمومی وب‌سایت.
-
-### لایه داده
-
-درگاه مسئول این موارد است:
-
-- درخواست‌های احراز‌شده موبایل؛
-- بررسی مجوز؛
-- بازیابی اطلاعات اتصال سایت؛
-- درخواست‌های خروجی به WordPress مشتری؛
-- استانداردسازی پاسخ؛
-- محدودسازی نرخ؛
-- Idempotency؛
-- ترافیک چت؛
-- ترافیک بلادرنگ؛
-- دریافت Webhook و رویداد.
-
-این جداسازی باعث می‌شود پنل مدیریت WordPress برای هر درخواست API به‌عنوان یک واسط اجباری عمل نکند.
-
-## ۳. چرا WordPress همچنان مرکزی است؟
-
-سایت تجاری می‌تواند WordPress باشد چون WordPress سیستم کاربران، نقش‌ها/قابلیت‌ها، مدیریت محتوا، REST API و اکوسیستم بالغ افزونه‌ها را در اختیار دارد. همچنین می‌تواند از طریق افزونه مدیریت WooGit نقش پنل کنترل اپراتورها را داشته باشد.
-
-تصمیم «WordPress یا بک‌اند» نیست؛ تصمیم این است:
+مدل انتخاب‌شده:
 
 ```text
-WordPress = CMS + پنل کنترل
-Gateway    = لایه اجرا
+WordPress
++ WooGit Backend Plugin
++ REST API / Gateway
++ Subscription Check
++ Site Identity
++ Secure Credential Storage
++ Controlled Proxy
 ```
 
-## ۴. جریان اتصال و حساب مبتنی بر دامنه
+اصل کلیدی:
 
-صفحه اول اپ WooGit **قفل‌شده و قطعی** است و برای این معماری تغییر نمی‌کند. این صفحه فقط اطلاعات لازم برای اتصال واقعی فروشگاه را می‌گیرد:
+> **Customer WordPress + WooCommerce منبع اصلی داده فروشگاه است؛ Backend ووگیت عمدتاً Gateway/Proxy و مرجع دسترسی و Subscription است.**
+
+---
+
+## ۲. مبنای معماری: اپ فعلی
+
+اپ فعلی WooGit مستقیماً با سایت مشتری ارتباط برقرار می‌کند:
 
 ```text
-پروتکل اتصال: HTTPS / HTTP
-آدرس فروشگاه
-WooCommerce Consumer Key
-WooCommerce Consumer Secret
-نام کاربری WordPress
-رمز عبور WordPress
+WooGit Android
+      │
+      │ HTTPS / HTTP
+      │ WooCommerce REST
+      │ WordPress REST
+      ▼
+Customer WordPress + WooCommerce
 ```
 
-پیش‌فرض HTTPS است و ورودی دامنه باید قبل از استفاده استاندارد شود؛ `https://` و `http://` از ابتدای ورودی حذف می‌شوند و پروتکل انتخاب‌شده توسط اپ اعمال می‌شود.
+صفحه اتصال فعلی اپ اطلاعات زیر را می‌گیرد:
 
-### ۴.۱ اتصال اولیه
+- HTTP/HTTPS
+- دامنه فروشگاه
+- WooCommerce Consumer Key
+- WooCommerce Consumer Secret
+- WordPress Username
+- WordPress Application Password
+
+در وضعیت فعلی App-to-Backend authentication، Access Token/Refresh Token و Session مربوط به Backend در اپ وجود ندارند. این‌ها فقط در صورت نیاز، بخشی از Migration به Backend خواهند بود و نباید به‌عنوان قابلیت فعلی گزارش شوند.
+
+---
+
+## ۳. توپولوژی هدف
+
+```text
+┌──────────────────────┐
+│     WooGit Android   │
+│    Existing Client   │
+└──────────┬───────────┘
+           │ HTTPS
+           ▼
+┌────────────────────────────┐
+│       WooGit Backend       │
+│          WordPress         │
+│                            │
+│  WooGit Backend Plugin     │
+│  Site Identity             │
+│  Authentication            │
+│  Subscription              │
+│  Access Control             │
+│  Credential Storage         │
+│  Controlled Proxy           │
+│  Rate Limit / Security     │
+└────────────┬───────────────┘
+             │ HTTPS
+             ▼
+┌────────────────────────────┐
+│ Customer WordPress         │
+│ + WooCommerce              │
+└────────────────────────────┘
+```
+
+هدف این نیست که WooCommerce دوباره در Backend ساخته شود؛ هدف این است که Backend یک مسیر کنترل‌شده بین اپ و سایت مشتری ایجاد کند.
+
+---
+
+## ۴. WordPress به‌عنوان هسته مدیریتی Backend
+
+Backend V1 بر پایه WordPress ساخته می‌شود.
+
+WordPress مسئول:
+
+- کاربران Backend؛
+- نقش‌ها و دسترسی‌های مدیریتی؛
+- Site Identity records؛
+- پلن‌ها؛
+- Subscription؛
+- Trial؛
+- تنظیمات؛
+- پنل مدیریت؛
+- داده‌های موردنیاز عملیاتی Backend.
+
+افزونه اختصاصی WooGit مسئول منطق سرویس است:
+
+- REST API؛
+- Gateway؛
+- Proxy؛
+- بررسی Subscription؛
+- کنترل Site Ownership؛
+- Credential handling؛
+- Rate Limit؛
+- Security controls؛
+- Operation/Idempotency handling در موارد لازم.
+
+در نتیجه برای V1 نیازی به ساخت یک Admin Panel مستقل از WordPress نیست.
+
+---
+
+## ۵. اصل عدم Mirror دائمی
+
+Backend در V1 نباید دیتابیس دوم WooCommerce بسازد.
+
+موارد زیر منبع اصلی خود را در سایت مشتری حفظ می‌کنند:
+
+- Products
+- Orders
+- Customers
+- Categories
+- Variations
+- Media
+- سایر داده‌های WooCommerce
+
+برای مثال:
 
 ```text
 App
- -> اطلاعات اتصال صفحه اول
- -> TLS
- -> WooGit Gateway
- -> اعتبارسنجی WordPress/WooCommerce
+ ↓
+Backend
+ ↓
+Customer WooCommerce
+ ↓
+Backend
+ ↓
+App
 ```
 
-اگر اعتبارسنجی شکست بخورد:
+نه:
 
 ```text
-Gateway -> خطای اتصال
-       -> App
-       -> بدون ایجاد حساب
-       -> بدون Trial
-       -> بدون Dashboard
+App
+ ↓
+Backend Database
+ ↓
+Products/Orders Mirror
 ```
 
-اگر اعتبارسنجی موفق باشد، Gateway باید Site Identity استانداردشده را پیدا یا ایجاد کند و بررسی کند که دامنه قبلاً حساب WooGit داشته است یا خیر.
+عبارت «Mirror» در این معماری به عبور کنترل‌شده درخواست و پاسخ اشاره دارد، نه ذخیره دائمی تمام داده‌های فروشگاه.
 
-### ۴.۲ دامنه دارای حساب قبلی
+---
+
+## ۶. جریان اصلی درخواست
+
+هر درخواست تجاری در V1 تقریباً این مسیر را طی می‌کند:
 
 ```text
-اتصال موفق
-   ↓
-Site Identity موجود
-   ↓
-حساب WooGit موجود
-   ↓
-تأیید اتصال به همان سایت
-   ↓
-احراز حساب متناظر با Site Identity
-   ↓
-ایجاد نشست WooGit
-   ↓
-Dashboard
+App
+ ↓
+Authentication / Session
+ ↓
+Site Identity
+ ↓
+Subscription Check
+ ↓
+Entitlement / Permission
+ ↓
+Rate Limit / Security
+ ↓
+Controlled Proxy
+ ↓
+Customer WordPress/WooCommerce
+ ↓
+Response filtering
+ ↓
+App
 ```
 
-در این مدل، **موفقیت اتصال واقعی به همان دامنه Credential ورود حساب آن دامنه است**. بنابراین ورود عادی نباید به ایمیل یا Google Account وابسته باشد.
+اگر Subscription یا دسترسی مجاز نباشد، Backend نباید درخواست را به سایت مشتری ارسال کند.
 
-اپ فقط نشست/توکن WooGit را دریافت می‌کند؛ اعتبار خام سایت پس از onboarding نباید برای عملیات عادی از Gateway به اپ برگردد.
+---
 
-### ۴.۳ دامنه بدون حساب قبلی
+## ۷. Proxy آزاد ممنوع
+
+Backend نباید endpointی داشته باشد که Client بتواند URL دلخواه اینترنتی به آن بدهد:
 
 ```text
-اتصال موفق
-   ↓
-Site Identity جدید
-   ↓
-ثبت دامنه/سایت جدید
-   ↓
-صفحه تکمیل اطلاعات حساب داخل اپ
-   ↓
-Email + نام + نام خانوادگی
-   ↓
-ایجاد حساب WooGit
-   ↓
-ایجاد Trial ۱۵ روزه، در صورت واجدشرایط بودن
-   ↓
-ایجاد نشست WooGit
-   ↓
-Dashboard
+/proxy?url=https://anything.com
 ```
 
-ایمیل برای هویت و ارتباطات حساب ذخیره می‌شود و می‌تواند تأیید شود، اما کلید اصلی Flow ورود عادی، Site Identity و موفقیت اتصال سایت است.
+این مدل می‌تواند باعث SSRF و سوءاستفاده به‌عنوان Proxy عمومی شود.
 
-### ۴.۴ قانون Trial
+مقصد باید از Site Identity ثبت‌شده تعیین شود:
 
-Trial باید به Site Identity/دامنه متصل باشد، نه به Google Account یا ایمیل به‌تنهایی:
+```text
+/v1/sites/{site_id}/wc/products
+```
+
+Backend خودش مقصد واقعی Site را resolve می‌کند:
+
+```text
+site_id
+   ↓
+registered customer domain
+   ↓
+https://customer-site.com/wp-json/wc/...
+```
+
+---
+
+## ۸. Site Identity
+
+Backend باید Site Identity مستقل و authoritative داشته باشد.
+
+Store ID فعلی اپ که از URL فروشگاه به‌صورت local hash ساخته می‌شود، نباید مستقیماً به‌عنوان `site_id` Backend پذیرفته شود.
+
+در Migration باید mapping صریح انجام شود:
+
+```text
+Client Store ID
+      ↓
+Migration Mapping
+      ↓
+Backend Site Identity
+```
+
+مالکیت Site Identity با موفقیت احراز اتصال واقعی به همان سایت اثبات می‌شود.
+
+---
+
+## ۹. Subscription و Trial
+
+مهم‌ترین منطق تجاری Gateway در V1 بررسی وضعیت دسترسی است:
+
+```text
+Request
+ ↓
+Site Identity
+ ↓
+Subscription active?
+ ├── YES → Proxy
+ └── NO  → Reject
+```
+
+Trial به Site Identity/دامنه وابسته است، نه صرفاً Email یا Google Account.
 
 ```text
 Site Identity
-   ↓
+ ↓
 Trial history
-   ↓
-قبلاً Trial مصرف شده؟
-   ├── بله -> Trial جدید ممنوع
-   └── خیر -> Trial ۱۵ روزه
+ ↓
+Already used?
+ ├── YES → no new trial
+ └── NO  → eligible for trial
 ```
 
-تغییر ایمیل، استفاده از حساب Google جدید یا ثبت مجدد اطلاعات شخصی نباید برای همان Site Identity یک Trial جدید ایجاد کند.
+تغییر ایمیل یا حساب Google نباید برای همان Site Identity Trial جدید ایجاد کند.
 
-### ۴.۵ مدل نشست
+---
 
-بعد از احراز اتصال موفق:
+## ۱۰. Credentials
+
+در معماری فعلی اپ، WooCommerce Consumer Key/Secret و WordPress Application Password برای اتصال مستقیم استفاده می‌شوند.
+
+در Migration هدف این است که Credentialهای سایت به Backend منتقل و در Credential Storage امن نگهداری شوند و برای عملیات عادی دوباره به App برگردانده نشوند.
+
+WordPress Application Password یک credential برنامه‌ای قابل ابطال است و برای REST API طراحی شده است؛ در ارتباط خارجی باید HTTPS استفاده شود. urlWordPress Application Passwordshttps://developer.wordpress.org/rest-api/reference/application-passwords/ urlWordPress REST API Authenticationhttps://developer.wordpress.org/rest-api/using-the-rest-api/authentication/
+
+WooCommerce نیز REST API و Consumer Key/Consumer Secret برای دسترسی به API ارائه می‌کند. urlWooCommerce REST API Authenticationhttps://woocommerce.github.io/woocommerce-rest-api-docs/wp-api-v2.html
+
+قواعد امنیتی:
+
+- Secret در response عادی برنگردد.
+- Secret در log ثبت نشود.
+- دسترسی به Credential حداقلی باشد.
+- Credential rotation/revocation قابل مدیریت باشد.
+- HTTPS در Production الزامی باشد.
+
+---
+
+## ۱۱. عملیات WooCommerce
+
+Backend باید عملیات واقعی مورد استفاده Client را پوشش دهد، اما آن‌ها را دوباره در دیتابیس خودش مدل نکند.
+
+حوزه‌های اصلی:
+
+- Products
+- Orders
+- Customers در صورت استفاده
+- Categories
+- Variations
+- Media
+- Product mutations
+- Order mutations
+- Sync/reconciliation موردنیاز Client
+
+API می‌تواند typed باشد و مسیرهای شناخته‌شده مانند موارد زیر داشته باشد:
 
 ```text
-Site credentials
-      ↓
-Gateway verification
-      ↓
-WooGit account authentication
-      ↓
-Short-lived Access Token
-      +
-Rotating Refresh Token
-      ↓
-App
+/v1/sites/{site_id}/products
+/v1/sites/{site_id}/orders
+/v1/sites/{site_id}/customers
+/v1/sites/{site_id}/media
 ```
 
-سرور مرجع نهایی وضعیت حساب، Site Identity، اشتراک و Entitlement است. توکن یا وضعیت محلی اپ نباید امکان دور زدن Gateway را ایجاد کند.
+اما پیاده‌سازی داخلی همچنان می‌تواند Proxy کنترل‌شده به WordPress/WooCommerce باشد.
 
-## ۵. جریان عادی درخواست
+---
+
+## ۱۲. Media
+
+Media نیز نباید در Backend به یک مخزن دائمی از فایل‌های فروشگاه تبدیل شود، مگر جایی که یک قابلیت مشخص چنین چیزی را لازم کند.
+
+Flow هدف:
 
 ```text
-App
- -> توکن دسترسی
- -> Gateway
- -> احراز حساب/نشست
- -> بررسی اشتراک
- -> بررسی مجوز سایت
- -> بررسی قابلیت
- -> بررسی محدودیت نرخ
- -> بازیابی اعتبار رمزنگاری‌شده
- -> تماس با WordPress مشتری
- -> پاک‌سازی پاسخ
- -> App
+App image
+ ↓
+Backend
+ ↓
+Customer WordPress Media
+ ↓
+Media ID + URL
+ ↓
+Product/media association
 ```
 
-اگر هر مرحله مجوز شکست بخورد، به WordPress مشتری هیچ درخواستی ارسال نمی‌شود.
+Upload باید در برابر retry و timeout ایمن باشد تا یک درخواست تکراری باعث ایجاد Media تکراری نشود.
 
-## ۶. جریان حساب منقضی‌شده
+---
+
+## ۱۳. Idempotency و Timeout-after-success
+
+Proxy بودن Backend مشکلات ambiguity در mutationها را حذف نمی‌کند.
+
+سناریوی اجباری:
 
 ```text
-App -> Gateway
-          |
-          +-- حساب فعال است؟ خیر
-          |
-          +-- خطای تجاری 402/403
-          |
-          X بدون درخواست خروجی
+App → CREATE
+Backend → Customer WooCommerce
+Customer WooCommerce → SUCCESS
+Backend → response lost
+App → retry
+Backend → detect same operation
+Backend → return previous result
 ```
 
-کد دقیق HTTP باید در مرحله پیاده‌سازی نهایی شود؛ اما اصل ثابت این است که پس از تشخیص عدم مجوز، سایت مشتری هرگز مورد درخواست قرار نگیرد.
+برای CREATE mutationها و سایر عملیات non-idempotent باید Operation Identity/Idempotency داشته باشیم.
 
-## ۷. کشف Bridge
+هدف این است که timeout شبکه هرگز به‌صورت خودکار به معنی «عملیات انجام نشده» تفسیر نشود.
 
-پس از نصب و فعال‌سازی، Bridge باید یک نقطه کشف کوچک داشته باشد که این موارد را برگرداند:
+---
+
+## ۱۴. Reconciliation
+
+برای عملیات ambiguous باید امکان پیدا کردن نتیجه واقعی وجود داشته باشد:
+
+```text
+operation_id
+ ↓
+operation state
+ ↓
+remote result / resource lookup
+ ↓
+canonical final state
+```
+
+این بخش باید حداقلی و هدفمند باشد و نباید Backend را به یک سیستم Sync دائمی تبدیل کند.
+
+---
+
+## ۱۵. Error Contract
+
+Backend باید خطاهای استاندارد برای Client تولید کند و Client نباید مجبور باشد متن خام PHP/WordPress را parse کند.
+
+نمونه:
 
 ```json
 {
-  "bridge": "woogit",
-  "protocol_version": 1,
-  "plugin_version": "x.y.z",
-  "site_id": "opaque-id",
-  "capabilities": ["chat", "analytics", "commerce"],
-  "status": "ready"
+  "code": "STORE_CONNECTION_FAILED",
+  "message": "اتصال به فروشگاه انجام نشد.",
+  "request_id": "...",
+  "operation_id": "...",
+  "retryable": false
 }
 ```
 
-هیچ راز یا اعتبار محرمانه‌ای نباید در پاسخ کشف قرار گیرد.
+Secret، Application Password، Consumer Secret و stack trace نباید در پاسخ عمومی قرار بگیرند.
 
-## ۸. معماری چت
+---
 
-```text
-مرورگر
-  -> ابزارک تزریق‌شده توسط Bridge
-  -> API چت Gateway
-  -> ذخیره مکالمه
-  -> مسیریاب AI یا صف اپراتور انسانی
-  -> جریان پاسخ
-  -> ابزارک
-```
+## ۱۶. Currency و داده‌های مالی
 
-برای AI آگاه از سفارش، لایه ابزار AI باید از سرویس مجاز سایت در WooGit داده بگیرد و نباید اجازه دهد مدل وضعیت سفارش را حدس بزند.
+Backend نباید context مالی را حذف کند.
 
-## ۹. معماری تحلیل
+برای Products، Orders و سایر داده‌های مالی، currency/currency context موردنیاز Client باید از داده canonical فروشگاه حفظ و منتقل شود.
 
-```text
-مرورگر / Hookهای WordPress
-  -> جمع‌آوری سبک رویداد
-  -> دریافت در Gateway
-  -> صف
-  -> پردازشگر تحلیل
-  -> PostgreSQL / ذخیره تحلیل
-```
+Backend نباید فرض کند واحد پول همیشه USD، EUR یا مقدار ثابت دیگری است.
 
-پایگاه داده WordPress مشتری نباید انبار اصلی رویدادها باشد.
+---
 
-## ۱۰. مسیر مقیاس‌پذیری
+## ۱۷. منابع و زیرساخت V1
 
-### MVP
+هدف V1 کمترین منابع عملیاتی ممکن است.
 
-یک VPS می‌تواند این موارد را میزبانی کند:
-
-- پنل کنترل WordPress؛
-- سرویس API؛
-- PostgreSQL؛
-- Redis.
-
-### رشد
-
-نمونه‌های API پشت Load Balancer افزایش می‌یابند و در صورت نیاز PostgreSQL و Redis به سرویس‌های مدیریت‌شده منتقل می‌شوند.
+مدل پایه:
 
 ```text
-Load Balancer
-  -> API 1
-  -> API 2
-  -> API N
-       |
-   PostgreSQL
-   Redis
-   Workers
+WordPress
+ + WooGit Plugin
+ + Database
+ + REST API
+ + Proxy
+ + Subscription Check
 ```
 
-### حجم بالا
+در V1 موارد زیر الزام معماری نیستند:
 
-دریافت رویداد، چت/بلادرنگ، درگاه و پردازشگرها از هم جدا می‌شوند و فقط در صورت توجیه بار واقعی، ذخیره‌سازی اختصاصی تحلیل اضافه می‌شود.
+- Microservices
+- Kubernetes
+- دیتابیس جدا برای هر سایت
+- Mirror کامل WooCommerce
+- Full Sync دائمی
+- Workerهای سنگین بدون نیاز واقعی
+- Admin Panel مستقل
 
-## ۱۱. مرزهای خرابی
+اگر در آینده بار واقعی ایجاد شود، اجزای خاص می‌توانند جدا شوند.
 
-اگر سایت مشتری در دسترس نباشد:
+---
 
-- حساب WooGit را نامعتبر نکنید؛
-- سلامت سایت را جداگانه ثبت کنید؛
-- فقط عملیات Idempotent یا عملیات دارای تطبیق امن را مجدداً تلاش کنید؛
-- خطای اتصال سایت را واضح نمایش دهید.
+## ۱۸. مرزهای خرابی
 
-اگر API ووگیت در دسترس نباشد:
+اگر سایت مشتری Down باشد:
 
-- اپ نباید بتواند درگاه را دور بزند؛
-- رابط محلی می‌تواند داده کش‌شده و غیرحساس را نشان دهد؛
-- برای ترافیک تجاری نباید مسیر مستقیم جایگزین به سایت مشتری وجود داشته باشد.
+- Subscription ووگیت نباید خودکار invalid شود.
+- خطای اتصال سایت باید جداگانه گزارش شود.
+- Retry فقط طبق policy امن انجام شود.
 
-اگر اعتبار در WordPress لغو شود:
+اگر Backend Down باشد:
 
-- اعتبار سایت را نامعتبر کنید؛
-- اتصال مجدد/چرخش اعتبار را لازم کنید؛
-- از ارسال مکرر درخواست به سایت جلوگیری کنید.
+- App نباید مسیر تجاری مستقیم و مخفی برای دور زدن Gateway داشته باشد.
+- Cache محلی غیرحساس می‌تواند توسط App نمایش داده شود.
+- عملیات جدید وابسته به Backend باید طبق contract fail شود.
+
+---
+
+## ۱۹. Migration از معماری فعلی App
+
+وضعیت فعلی:
+
+```text
+App → Customer WordPress/WooCommerce
+```
+
+هدف:
+
+```text
+App → WooGit Backend → Customer WordPress/WooCommerce
+```
+
+Migration نباید باعث بازنویسی UI، Navigation یا معماری داخلی Android شود.
+
+هر endpoint Backend باید با مصرف واقعی Client تطبیق داده شود و قبل از cutover، رفتار direct API فعلی با contract test پوشش داده شود.
+
+---
+
+## ۲۰. چیزهایی که در V1 انجام نمی‌دهیم
+
+برای جلوگیری از Scope Creep:
+
+- بازسازی Product/Order database در Backend
+- Mirror دائمی تمام فروشگاه‌ها
+- Full Store Sync
+- Proxy آزاد برای URL دلخواه
+- Microservice architecture
+- Kubernetes
+- Admin Panel جدا از WordPress
+- بازطراحی Android
+- بازسازی WooGit Client
+- انتقال مالکیت داده WooCommerce از سایت مشتری به Backend
+
+---
+
+## ۲۱. تعریف نهایی معماری V1
+
+```text
+                    ┌──────────────────────┐
+                    │     WooGit App       │
+                    │   Existing Android   │
+                    └──────────┬───────────┘
+                               │
+                               │ HTTPS
+                               ▼
+                    ┌──────────────────────┐
+                    │   WooGit Backend     │
+                    │      WordPress       │
+                    │                      │
+                    │ WooGit Plugin        │
+                    │ Site Identity        │
+                    │ Subscription         │
+                    │ Authentication       │
+                    │ Credential Storage   │
+                    │ Controlled Proxy     │
+                    │ Rate Limit/Security  │
+                    └──────────┬───────────┘
+                               │
+                               │ HTTPS
+                               ▼
+                    ┌──────────────────────┐
+                    │ Customer WordPress   │
+                    │ + WooCommerce        │
+                    └──────────────────────┘
+```
+
+اصل نهایی:
+
+> **Backend ووگیت نباید WooCommerce را دوباره بسازد؛ باید آن را به‌صورت کنترل‌شده، امن و وابسته به Subscription به اپ متصل کند.**
+
+در V1، Gateway عمدتاً سه سؤال را پاسخ می‌دهد:
+
+```text
+1. این درخواست برای کدام Site Identity است؟
+2. آیا این سایت/حساب اجازه استفاده دارد؟
+3. اگر اجازه دارد، درخواست را امن و کنترل‌شده به همان سایت ارسال کن.
+```
+
+هر قابلیت سنگین‌تر فقط زمانی وارد معماری می‌شود که نیاز واقعی، بار واقعی یا قرارداد محصول آن را توجیه کند.
