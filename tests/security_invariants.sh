@@ -9,7 +9,7 @@ while IFS= read -r -d '' file; do
   echo "CHECK PHP: $file"
   php -l "$file" >/dev/null || fail "PHP syntax: $file"
 done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"
 
 echo "CHECK controller ownership"; contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 echo "CHECK controller session"; contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
@@ -54,11 +54,33 @@ echo "CHECK redirect disabled"; contains "$proxy" "'redirection'=>0" 'proxy must
 echo "CHECK origin-only site identity"; contains "$policy" 'site identity is the origin' 'site identity must be normalized to origin'
 if grep -Eq 'consumer_(key|secret).*query|query.*consumer_(key|secret)' "$proxy"; then fail 'credentials must not be query parameters'; fi
 echo "CHECK global site host uniqueness"; contains "$database" 'UNIQUE KEY host \(host\)' 'Site host must be globally unique'
+echo "CHECK one account one site"; contains "$database" 'UNIQUE KEY account_id \(account_id\)' 'Account must have exactly one Site relationship'
+contains "$site" 'one-to-one with the connected site' 'SiteService must enforce one-site-per-account invariant'
 echo "CHECK explicit account creation"; contains "$account" 'function create' 'Account must be created explicitly'
 echo "CHECK contact email update"; contains "$account" 'function updateContactEmail' 'Account contact email update must be explicit'
+contains "$account" 'web_password_hash' 'Account must store only the web password hash'
+contains "$account" 'PASSWORD_ARGON2ID' 'web password must use Argon2id hashing'
+contains "$account" 'password_verify' 'web password login must verify a hash'
 if grep -Eq 'findOrCreate\([^)]*email|findOrCreate\(\$email' "$account" "$controller"; then fail 'email must never resolve Account identity'; fi
+echo "CHECK web session separation"; contains "$database" 'web_sessions' 'web authentication must use a separate session table'
+contains "$webSession" 'token_hash' 'web sessions must store token hashes'
+contains "$webSession" 'random_bytes' 'web session tokens must be cryptographically random'
+contains "$webAuth" "'/web/login'" 'web login endpoint must exist'
+contains "$webAuth" "'/web/logout'" 'web logout endpoint must exist'
+contains "$webAuth" "'/web/me'" 'web session identity endpoint must exist'
+contains "$webAuth" "'/account/requirements'" 'account requirements endpoint must exist'
+contains "$webAuth" "'/account/setup-web-credentials'" 'web credential setup endpoint must exist'
+contains "$webAuth" "site_url" 'web login identity must use Site URL'
+contains "$webAuth" "password" 'web login must use password'
+contains "$webAuth" 'invalid_web_credentials' 'web login failures must be generic'
+contains "$webAuth" 'web_login_ip' 'web login must be IP rate limited'
+contains "$webAuth" 'web_login_site' 'web login must be Site/host rate limited'
+contains "$webAuth" 'X-WooGit-Web-Session' 'web API must use a separate session credential'
+contains "$bootstrap" 'WebSessionService' 'web session service must be bootstrapped'
+contains "$bootstrap" 'WebAuthController' 'web auth controller must be registered'
 echo "CHECK idempotency retention"; contains "$bootstrap" "woogit_idempotency WHERE updated_at < .*AND state IN \('succeeded','failed'\)" 'retention must never delete pending/unknown idempotency rows'
 echo "CHECK operation retention"; contains "$bootstrap" "woogit_operations WHERE expires_at IS NOT NULL .*status IN \('succeeded','failed'\)" 'operation retention must preserve unknown operations'
+echo "CHECK web session retention"; contains "$bootstrap" 'woogit_web_sessions WHERE expires_at <' 'expired web sessions must be cleaned up'
 echo "CHECK pending state"; contains "$idempotency" 'state.*pending' 'idempotency must support pending state'
 echo "CHECK unknown persistence"; contains "$operations" 'markUnknown' 'operation service must persist unknown state'
 echo "CHECK atomic rate limit"; contains "$rate" 'ON DUPLICATE KEY UPDATE' 'rate limit counter must be atomic'
