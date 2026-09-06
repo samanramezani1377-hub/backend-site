@@ -26,7 +26,10 @@ final class WooCommerceProxy
         $args=['method'=>strtoupper($method),'timeout'=>20,'redirection'=>0,'headers'=>$headers,'data_format'=>'body'];if($rawBody!==''&&in_array(strtoupper($method),['POST','PUT','PATCH'],true))$args['body']=$rawBody;
         $response=wp_safe_remote_request($url,$args);
         if(is_wp_error($response)){$message=strtolower((string)$response->get_error_message());$timeout=str_contains($message,'timed out')||str_contains($message,'timeout')||str_contains($message,'operation timed out');return ['status'=>$timeout?504:502,'body'=>'','headers'=>[],'timeout'=>$timeout];}
-        $responseHeaders=[];foreach(['content-type','x-wp-total','x-wp-totalpages','location'] as $name){$value=wp_remote_retrieve_header($response,$name);if($value!=='')$responseHeaders[$name]=$value;}
+        // Never expose an upstream Location header. Following it from the client would
+        // bypass this gateway's host/path/authorization policy and could redirect to an
+        // arbitrary external destination controlled by the customer site.
+        $responseHeaders=[];foreach(['content-type','x-wp-total','x-wp-totalpages'] as $name){$value=wp_remote_retrieve_header($response,$name);if($value!=='')$responseHeaders[$name]=$value;}
         return ['status'=>wp_remote_retrieve_response_code($response),'body'=>wp_remote_retrieve_body($response),'headers'=>$responseHeaders,'timeout'=>false];
     }
 
