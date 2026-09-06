@@ -1,8 +1,8 @@
-# WooGit API Contract
+# قرارداد API ووگیت
 
-This document defines the intended public boundaries. It is deliberately framework-neutral so the contract can be implemented in Laravel without coupling the Android client to internal classes.
+این سند مرزهای عمومی موردنظر را تعریف می‌کند. قرارداد عمداً مستقل از فریم‌ورک است تا بتوان آن را در Laravel پیاده‌سازی کرد، بدون اینکه کلاینت اندروید به کلاس‌های داخلی وابسته شود.
 
-## 1. API groups
+## ۱. گروه‌های API
 
 ```text
 /api/v1/auth
@@ -16,27 +16,27 @@ This document defines the intended public boundaries. It is deliberately framewo
 /api/v1/ai
 ```
 
-## 2. Authentication
+## ۲. احراز هویت
 
 ### POST `/api/v1/auth/login`
 
-Authenticates a WooGit account.
+حساب WooGit را احراز هویت می‌کند.
 
 ### POST `/api/v1/auth/refresh`
 
-Rotates/refreshes a session. Raw refresh tokens are never returned to logs.
+نشست را تازه‌سازی/چرخش می‌دهد. Refresh Token خام هرگز در لاگ ثبت نمی‌شود.
 
 ### POST `/api/v1/auth/logout`
 
-Revokes the current session.
+نشست فعلی را لغو می‌کند.
 
-## 3. Site connection
+## ۳. اتصال سایت
 
 ### POST `/api/v1/sites`
 
-Creates a site connection operation.
+یک عملیات اتصال سایت ایجاد می‌کند.
 
-Request concept:
+نمونه مفهومی درخواست:
 
 ```json
 {
@@ -46,16 +46,16 @@ Request concept:
 }
 ```
 
-Requirements:
+الزامات:
 
-- HTTPS to WooGit.
-- never log the request body.
-- canonicalize and validate URL.
-- use an idempotency key.
-- validate before persisting.
-- return only safe metadata.
+- ارتباط با WooGit از طریق HTTPS.
+- هرگز بدنه درخواست را لاگ نکنید.
+- URL را استاندارد و اعتبارسنجی کنید.
+- از Idempotency Key استفاده کنید.
+- پیش از ذخیره نهایی اعتبارسنجی کنید.
+- فقط فراداده امن را برگردانید.
 
-Response concept:
+نمونه پاسخ:
 
 ```json
 {
@@ -69,33 +69,33 @@ Response concept:
 }
 ```
 
-The credential itself must never appear in the response.
+خود اعتبار هرگز نباید در پاسخ ظاهر شود.
 
-## 4. Site listing
+## ۴. فهرست سایت‌ها
 
 ### GET `/api/v1/sites`
 
-Returns sites owned by the authenticated account.
+سایت‌های متعلق به حساب احراز‌شده را برمی‌گرداند.
 
 ### GET `/api/v1/sites/{site_id}`
 
-Returns safe connection and entitlement metadata.
+فراداده امن اتصال و مجوز سایت را برمی‌گرداند.
 
 ### DELETE `/api/v1/sites/{site_id}`
 
-Disconnects the site. This should revoke/delete the stored credential and invalidate Bridge credentials according to the disconnect policy.
+سایت را قطع اتصال می‌کند. این عملیات باید اعتبار ذخیره‌شده را لغو/حذف و طبق سیاست قطع اتصال، اعتبارهای Bridge را نیز نامعتبر کند.
 
-## 5. Gateway
+## ۵. Gateway
 
-A generic gateway endpoint should not become an unrestricted proxy. Prefer typed operations.
+نقطه پایانی عمومی Gateway نباید به یک Proxy بدون محدودیت تبدیل شود. عملیات Typed ترجیح دارند.
 
-Bad:
+بد:
 
 ```text
-POST /gateway?url=https://customer-site/... 
+POST /gateway?url=https://customer-site/...
 ```
 
-Good:
+خوب:
 
 ```text
 POST /api/v1/gateway/sites/{site_id}/products/list
@@ -103,19 +103,19 @@ POST /api/v1/gateway/sites/{site_id}/orders/get
 POST /api/v1/gateway/sites/{site_id}/media/upload
 ```
 
-Typed operations make authorization, auditing, rate limiting and idempotency explicit.
+عملیات Typed امکان اعمال صریح مجوز، حسابرسی، محدودسازی نرخ و Idempotency را فراهم می‌کنند.
 
-For an initial migration from the existing WooGit app, a constrained internal proxy may be used, but it must enforce an allowlist of WooCommerce/WordPress paths and HTTP methods. Arbitrary outbound URL forwarding is prohibited.
+برای مهاجرت اولیه از اپ فعلی WooGit می‌توان از یک Proxy داخلی محدود استفاده کرد، اما باید فهرست مجاز مسیرهای WooCommerce/WordPress و متدهای HTTP را اعمال کند. ارسال URL دلخواه به مقصدهای خارجی ممنوع است.
 
-## 6. Mutation contract
+## ۶. قرارداد تغییرات
 
-Every CREATE/activation/provisioning mutation accepts:
+هر عملیات CREATE/فعال‌سازی/Provisioning این هدر را می‌پذیرد:
 
 ```http
 Idempotency-Key: 9c2c...
 ```
 
-The response should include:
+پاسخ باید شامل این ساختار باشد:
 
 ```json
 {
@@ -124,7 +124,7 @@ The response should include:
 }
 ```
 
-For asynchronous operations:
+برای عملیات غیرهمزمان:
 
 ```json
 {
@@ -133,11 +133,11 @@ For asynchronous operations:
 }
 ```
 
-Client retries with the same key must return the existing operation state.
+Retry کلاینت با همان کلید باید همان وضعیت عملیات قبلی را برگرداند.
 
-## 7. Bridge endpoints
+## ۷. نقاط پایانی Bridge
 
-Proposed namespace on the customer site:
+Namespace پیشنهادی در سایت مشتری:
 
 ```text
 /wp-json/woogit/v1/discovery
@@ -147,47 +147,47 @@ Proposed namespace on the customer site:
 /wp-json/woogit/v1/chat/config
 ```
 
-The exact endpoint set should be reduced to the minimum needed by the feature set.
+فهرست نهایی باید به حداقل موردنیاز قابلیت‌های فعال کاهش یابد.
 
-## 8. Chat
+## ۸. چت
 
 ### POST `/api/v1/sites/{site_id}/chat/conversations`
 
-Creates a conversation subject to entitlement.
+یک مکالمه را با توجه به مجوز حساب ایجاد می‌کند.
 
 ### POST `/api/v1/chat/conversations/{conversation_id}/messages`
 
-Adds a message.
+یک پیام اضافه می‌کند.
 
 ### GET `/api/v1/chat/conversations/{conversation_id}`
 
-Returns authorized conversation data.
+داده مکالمه مجاز را برمی‌گرداند.
 
-For streaming, use SSE/WebSocket with a short-lived chat session token. Do not expose privileged site credentials to the browser.
+برای Streaming از SSE/WebSocket با یک توکن نشست چت کوتاه‌عمر استفاده کنید. اطلاعات ورود حساس سایت نباید در اختیار مرورگر قرار گیرد.
 
-## 9. Analytics ingestion
+## ۹. دریافت رویدادهای تحلیل
 
 ### POST `/api/v1/sites/{site_id}/events`
 
-Accepts a bounded batch of typed events.
+یک Batch محدود از رویدادهای Typed را می‌پذیرد.
 
-Requirements:
+الزامات:
 
-- strict schema;
-- maximum batch size;
-- maximum event size;
-- rate limit;
-- deduplication/event ID;
-- privacy filtering;
-- asynchronous processing.
+- Schema سخت‌گیرانه؛
+- حداکثر اندازه Batch؛
+- حداکثر اندازه رویداد؛
+- Rate Limit؛
+- Deduplication/Event ID؛
+- فیلتر حریم خصوصی؛
+- پردازش غیرهمزمان.
 
-## 10. AI
+## ۱۰. هوش مصنوعی
 
 ### POST `/api/v1/ai/chat`
 
-Routes an authorized AI request through WooGit's provider abstraction.
+درخواست AI مجاز را از طریق انتزاع ارائه‌دهندگان WooGit مسیریابی می‌کند.
 
-The request should identify a logical model, not an arbitrary provider URL.
+درخواست باید یک مدل منطقی را مشخص کند، نه URL دلخواه یک ارائه‌دهنده.
 
 ```json
 {
@@ -199,11 +199,11 @@ The request should identify a logical model, not an arbitrary provider URL.
 }
 ```
 
-The backend resolves provider/model configuration server-side.
+بک‌اند پیکربندی واقعی ارائه‌دهنده و مدل را در سمت سرور تعیین می‌کند.
 
-## 11. Error contract
+## ۱۱. قرارداد خطا
 
-Use a stable machine-readable shape:
+از یک ساختار پایدار و قابل پردازش توسط ماشین استفاده کنید:
 
 ```json
 {
@@ -215,16 +215,16 @@ Use a stable machine-readable shape:
 }
 ```
 
-Never put credentials, SQL, stack traces or provider secrets in production error responses.
+در پاسخ خطای محیط عملیاتی هرگز اعتبار، SQL، Stack Trace یا اسرار ارائه‌دهنده قرار ندهید.
 
-## 12. Request IDs
+## ۱۲. شناسه درخواست
 
-Every request receives a server-generated request ID. Propagate it to internal logs and, where safe, return it to the client for support diagnostics.
+هر درخواست یک Request ID تولیدشده توسط سرور دریافت می‌کند. در صورت امن بودن، این شناسه به لاگ داخلی منتقل و برای عیب‌یابی به کلاینت برگردانده می‌شود.
 
-## 13. Idempotency reconciliation endpoint
+## ۱۳. نقطه تطبیق Idempotency
 
-Recommended internal/public-to-app endpoint:
+نقطه پیشنهادی برای اپ:
 
 `GET /api/v1/operations/{operation_id}`
 
-This lets a client recover from a timeout without repeating the underlying mutation.
+این نقطه به کلاینت اجازه می‌دهد بعد از Timeout وضعیت عملیات را بازیابی کند، بدون اینکه Mutation اصلی را دوباره اجرا کند.
