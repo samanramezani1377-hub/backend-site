@@ -10,19 +10,122 @@
 
 ## وضعیت کلی
 
-- پاسخ داده‌شده: **۰ / ۲۰**
-- باقی‌مانده: **۲۰ / ۲۰**
-- سؤال فعلی: **۱**
+- پاسخ داده‌شده: **۱ / ۲۰**
+- باقی‌مانده: **۱۹ / ۲۰**
+- سؤال فعلی: **۲**
 
 ---
 
-## سؤال 01 — مدل احراز هویت App ↔ Backend
+## سؤال 01 — مدل احراز هویت App ↔ Backend و مدل Proxy
 
-**وضعیت:** ⬜ بی‌پاسخ
+**وضعیت:** ✅ پاسخ داده شد
 
-**سؤال:** بعد از مهاجرت اپ از اتصال مستقیم به WordPress/WooCommerce، احراز هویت App ↔ Backend را دقیقاً چگونه می‌خواهیم؟ آیا مدل نهایی همان `Access Token کوتاه‌عمر + Refresh Token چرخشی و قابل ابطال` باشد؟
+**تصمیم نهایی:**
 
-**پاسخ:** _هنوز ثبت نشده_
+برای کمترین تغییر در Android App و کمترین محاسبات غیرضروری در Backend، مسیر عادی عملیات WooCommerce باید یک **Proxy سبک** باشد. Backend نباید برای هر درخواست داده‌های WooCommerce را بازسازی، Mirror یا بی‌دلیل تبدیل کند؛ باید تا حد ممکن همان درخواست App را به سایت مشتری Forward کند و Response سایت مشتری را تقریباً همان‌طور به App برگرداند.
+
+App در درخواست خود دو دسته اطلاعات می‌فرستد:
+
+### ۱. اعتبار اتصال به سایت مشتری
+
+- `WordPress Username`
+- `WordPress Application Password`
+- `WooCommerce Consumer Key`
+- `WooCommerce Consumer Secret`
+
+این چهار مقدار برای اتصال Backend به WordPress/WooCommerce سایت مقصد استفاده می‌شوند.
+
+### ۲. اعتبار مصرف Backend
+
+- `WooGit Session`
+
+این Session برای شناسایی و اعتبارسنجی کاربر/حساب در خود WooGit Backend استفاده می‌شود و با Credentialهای سایت مشتری تفاوت دارد.
+
+مدل مفهومی:
+
+```text
+WooGit Session
+    = هویت و دسترسی مصرف‌کننده در Backend
+
+WP Username + WP Application Password
++ WC Consumer Key + WC Consumer Secret
+    = اعتبار Backend برای دسترسی به سایت مشتری
+```
+
+### مدل درخواست عادی
+
+```text
+WooGit Android App
+        │
+        │ WooGit Session
+        │ site_id / destination
+        │ WP Username
+        │ WP Application Password
+        │ WC Consumer Key
+        │ WC Consumer Secret
+        │ + path/query/body همان عملیات
+        ▼
+WooGit Backend
+        │
+        ├─ بررسی WooGit Session
+        ├─ بررسی وضعیت Account
+        ├─ بررسی بسته/غیرفعال نبودن Account
+        ├─ بررسی اعتبار زمانی Trial / Subscription
+        ├─ بررسی Subscription / Entitlement
+        ├─ بررسی دسترسی Account به Site
+        ├─ Version / Rate Limit / Security checks
+        │
+        │ سپس حداقل پردازش لازم:
+        │ Forward همان Request
+        ▼
+Customer WordPress / WooCommerce
+        │
+        │ Response
+        ▼
+WooGit Backend
+        │
+        │ حداقل تغییر ممکن
+        ▼
+WooGit Android App
+```
+
+### مسئولیت‌های اجباری Backend قبل از Forward
+
+Proxy سبک به معنی Proxy بدون کنترل نیست. Backend باید قبل از مصرف منابع سایت مشتری حداقل این کنترل‌ها را انجام دهد:
+
+1. اعتبار `WooGit Session` را بررسی کند.
+2. بررسی کند حساب کاربر **بسته یا غیرفعال** نشده باشد.
+3. بررسی کند زمان دسترسی حساب، Trial یا Subscription **تمام نشده** باشد.
+4. وضعیت Subscription و Entitlement لازم برای عملیات را بررسی کند.
+5. بررسی کند `site_id` متعلق به همان Account باشد.
+6. Version Gate، Rate Limit و کنترل‌های امنیتی لازم را اعمال کند.
+7. فقط در صورت عبور از این کنترل‌ها درخواست را به WordPress/WooCommerce مقصد Forward کند.
+
+بنابراین یکی از وظایف اصلی Backend این است که **وضعیت حیات حساب و اعتبار زمانی دسترسی کاربر را برای هر درخواست کنترل کند**. اگر حساب بسته/غیرفعال باشد یا Trial/Subscription/زمان مجاز دسترسی تمام شده باشد، درخواست نباید به سایت مشتری ارسال شود.
+
+### هدف معماری
+
+این تصمیم عمداً Backend را سبک نگه می‌دارد:
+
+- کمترین تغییر ممکن در Android App؛
+- حفظ تا حد امکان مدل فعلی ارسال/دریافت داده در App؛
+- کمترین محاسبات و پردازش غیرضروری در Backend؛
+- عدم Mirror کردن دائمی Product/Order/Customer و سایر داده‌های WooCommerce؛
+- عدم تبدیل بی‌دلیل Request/Response؛
+- تمرکز Backend روی Authentication، Account validity، Authorization، Subscription/Entitlement، Security و Proxy کردن درخواست.
+
+### Credential Security
+
+Credentialهای سایت مشتری:
+
+- باید فقط روی HTTPS منتقل شوند؛
+- نباید در Log ثبت شوند؛
+- نباید در Error Response یا Response عادی افشا شوند؛
+- نباید توسط Backend به App برگردانده شوند مگر در یک Flow صریح و امن که بعداً برای آن تصمیم‌گیری شود.
+
+### محدوده این تصمیم
+
+این مدل برای **درخواست‌های عادی بعد از وجود WooGit Session معتبر** است. Flow اولین اتصال/Onboarding که ممکن است قبل از ایجاد Session کامل انجام شود، در سؤال‌های مربوط به Connection Verification و Account Lifecycle تعیین تکلیف خواهد شد.
 
 ---
 
