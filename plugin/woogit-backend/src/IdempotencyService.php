@@ -34,15 +34,15 @@ final class IdempotencyService
         return $this->lookup($accountId,$siteId,$key,$fingerprint);
     }
 
-    public function markUnknown(int $accountId,int $siteId,string $key): void
+    public function markUnknown(int $accountId,int $siteId,string $key): bool
     {
         global $wpdb;
-        $wpdb->update($wpdb->prefix.'woogit_idempotency',['state'=>'unknown','updated_at'=>current_time('mysql',true)],['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%s','%s'],['%d','%d','%s']);
+        return false !== $wpdb->update($wpdb->prefix.'woogit_idempotency',['state'=>'unknown','updated_at'=>current_time('mysql',true)],['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%s','%s'],['%d','%d','%s']);
     }
 
-    public function complete(int $accountId,int $siteId,string $key,int $status,array $body): void
+    public function complete(int $accountId,int $siteId,string $key,int $status,array $body): bool
     {
         global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';
-        $wpdb->update($wpdb->prefix.'woogit_idempotency',['state'=>$state,'status_code'=>$status,'response_body'=>wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'updated_at'=>current_time('mysql',true)],['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%s','%d','%s','%s'],['%d','%d','%s']);
+        return false !== $wpdb->update($wpdb->prefix.'woogit_idempotency',['state'=>$state,'status_code'=>$status,'response_body'=>wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'updated_at'=>current_time('mysql',true)],['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%s','%d','%s','%s'],['%d','%d','%s']);
     }
 }
