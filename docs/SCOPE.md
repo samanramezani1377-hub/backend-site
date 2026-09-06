@@ -1,41 +1,16 @@
 # مرز قطعی پروژه WooGit Backend
 
-## ۱. هدف
+> وضعیت: V1 — Locked
 
-این مخزن برای **ساخت Backend اپ موجود WooGit** است.
+این مخزن برای ساخت Backend اپ موجود WooGit است. اپ Android مستقل است و در وضعیت فعلی مستقیماً با Customer WordPress/WooCommerce کار می‌کند؛ اتصال تجاری آینده از مسیر Backend انجام می‌شود.
 
-اپ Android WooGit یک پروژه مستقل و از قبل ساخته‌شده است. در وضعیت فعلی مستقیماً با Customer WordPress/WooCommerce کار می‌کند؛ پس از آماده شدن Backend، مسیر تجاری آن به Backend منتقل می‌شود.
+## مرز کامپوننت‌ها
 
-```text
-Android App موجود
-      ↓
-WooGit Backend / WooGit Main Plugin
-      ↓
-Customer WordPress / WooCommerce
-```
+- `WooGit Main Plugin`: Backend روی WordPress اصلی WooGit.
+- `WooGit Gateway Plugin`: کامپوننت مستقل روی سایت مشتری و خارج از Scope فاز فعلی.
+- Android App: Client مستقل در repository جداگانه.
 
-این مخزن نباید Android App، UI/UX یا معماری داخلی آن را بازسازی کند.
-
-## ۲. تفکیک قطعی کامپوننت‌ها
-
-### WooGit Main Plugin
-
-پلاگین روی **WordPress اصلی WooGit** است و Backend اصلی این repository را اجرا می‌کند.
-
-### WooGit Gateway Plugin
-
-پلاگین مستقل روی **WordPress/WooCommerce سایت مشتری** است.
-
-```text
-Customer WordPress/WooCommerce
-        └── WooGit Gateway Plugin
-```
-
-این کامپوننت در فاز فعلی **خارج از scope توسعه** است و نباید در این repository پیاده‌سازی، refactor یا migrate شود.
-
-وجود `Gateway` در نام یک API یا internal integration به معنی این Plugin مشتری نیست.
-
-## ۳. مسئولیت Backend V1
+## مسئولیت Backend V1
 
 - WooGit Session؛
 - Account lifecycle؛
@@ -52,9 +27,24 @@ Customer WordPress/WooCommerce
 - Audit و Operations؛
 - persistence در WordPress DB.
 
-Credential Vault یک قابلیت **اختیاری** است و برای Proxy عادی اجباری نیست.
+### Customer Credentials — اصل قطعی V1
 
-## ۴. زیرساخت V1
+Backend V1 **هیچ Customer Credentialای را ذخیره نمی‌کند**.
+
+چهار Credential مقصد:
+
+1. WooCommerce Consumer Key؛
+2. WooCommerce Consumer Secret؛
+3. WordPress Username؛
+4. WordPress Application Password.
+
+این Credentialها در صورت نیاز همراه همان Request از Client ارسال می‌شوند و فقط برای همان Request مصرف می‌شوند.
+
+Backend نباید آن‌ها را در DB، Vault، Cache پایدار، Log، Telemetry، Audit یا Response نگهداری/افشا کند. هیچ `site_credentials` table یا Credential Vault برای V1 وجود ندارد.
+
+هر قابلیت آینده‌ای که به Credential پایدار نیاز داشته باشد خارج از Scope V1 است و نیازمند تصمیم معماری مستقل است.
+
+## زیرساخت V1
 
 ```text
 WordPress
@@ -62,35 +52,9 @@ WordPress
   + WordPress Database
 ```
 
-PostgreSQL، Redis، Queue مستقل یا Backend distributed جداگانه برای V1 الزامی نیستند و فقط با نیاز اثبات‌شده و تصمیم معماری جدید اضافه می‌شوند.
+PostgreSQL، Redis، Queue مستقل یا Backend distributed جداگانه برای V1 الزامی نیستند و فقط با تصمیم معماری جدید اضافه می‌شوند.
 
-## ۵. قرارداد با Android Client موجود
-
-Client فعلی این Customer Credentials را دارد:
-
-1. Store URL / protocol؛
-2. WooCommerce Consumer Key؛
-3. WooCommerce Consumer Secret؛
-4. WordPress Username؛
-5. WordPress Application Password.
-
-Client فعلی این Credentialها را به‌صورت امن محلی نگهداری می‌کند و برای اتصال مستقیم به Customer Site استفاده می‌کند. Backend باید Migration را طوری طراحی کند که همین Credential surface تا حد ممکن حفظ شود. fileciteturn229file1L23-L29 fileciteturn229file2L42-L55
-
-در معماری هدف:
-
-```text
-WooGit Session
-  → Backend authentication/authorization
-
-4 Customer Credentials
-  → Customer Site authentication
-```
-
-Access/Refresh Token مدل Backend نیست.
-
-## ۶. Onboarding
-
-اولین اتصال ممکن است بدون Session کامل باشد:
+## Onboarding
 
 ```text
 Customer Credentials
@@ -108,14 +72,14 @@ Trial eligibility
 WooGit Session
 ```
 
-Verification باید قبل از هر عملیات تجاری انجام شود و read-only باشد.
+Verification قبل از هر عملیات تجاری و read-only است.
 
-## ۷. Normal Request
+## Normal Request
 
 ```text
 WooGit Session
 + site_id
-+ Customer Credentials
++ Customer Credentials (request-scoped)
 + controlled operation
        ↓
 Session / Account / Subscription / Entitlement
@@ -128,46 +92,23 @@ Customer WordPress/WooCommerce
 
 Account بسته/غیرفعال یا دسترسی منقضی نباید به Customer Site outbound request بفرستد.
 
-## ۸. Controlled Proxy و SSRF
+## Controlled Proxy و SSRF
 
 URL مقصد دلخواه ممنوع است. مقصد از Site Identity ثبت‌شده resolve می‌شود و فقط operation/pathهای مجاز قابل Forward هستند.
 
-```text
-/proxy?url=https://anything.com  ❌
-```
+## Idempotency و Timeout-after-success
 
-## ۹. Idempotency و Timeout-after-success
+CREATE mutationهای موردنیاز باید idempotent باشند و retry پس از response-loss باید نتیجه قبلی یا وضعیت canonical را بازیابی کند؛ retry نباید resource تکراری بسازد.
 
-CREATE mutationهای موردنیاز باید idempotent باشند و Backend باید سناریوی زیر را پوشش دهد:
+## Currency و داده فروشگاه
 
-```text
-Customer SUCCESS
-      ↓
-response lost / timeout
-      ↓
-Client retry same operation identity
-      ↓
-previous result / reconciliation
-```
+Customer WordPress/WooCommerce منبع حقیقت Products، Orders، Customers، Categories، Variations و Media است. Backend نباید Currency را hard-code یا بی‌دلیل تبدیل کند و نباید Mirror دائمی WooCommerce بسازد.
 
-## ۱۰. Currency و داده فروشگاه
-
-Customer WordPress/WooCommerce منبع حقیقت Products، Orders، Customers، Categories، Variations و Media است.
-
-Backend نباید داده را بی‌دلیل Mirror کند و نباید Currency را hard-code یا بی‌دلیل تبدیل کند.
-
-## ۱۱. خارج از Scope
+## خارج از Scope
 
 - ساخت/بازطراحی Android App؛
 - UI/UX اپ؛
-- Compose/Navigation/State اپ؛
 - APK و CI مخصوص Android؛
-- پیاده‌سازی `WooGit Gateway Plugin` روی سایت مشتری؛
+- پیاده‌سازی `WooGit Gateway Plugin` سایت مشتری؛
 - الزام PostgreSQL/Redis/Queue مستقل؛
 - Mirror دائمی WooCommerce.
-
-## ۱۲. اصل نهایی
-
-**این repository Backend اپ موجود است؛ WooGit Main Plugin مغز Backend روی سایت اصلی WooGit است؛ WooGit Gateway Plugin یک کامپوننت مستقل روی سایت مشتری و خارج از فاز فعلی است.**
-
-تمام تصمیم‌های API، Data Model، Security و Operations باید با این مرزها و با Client واقعی موجود سازگار باشند.

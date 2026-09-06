@@ -1,114 +1,41 @@
 # ساختار پیشنهادی مخزن
 
-با شروع پیاده‌سازی، مخزن باید به‌تدریج به ساختار زیر نزدیک شود:
+با شروع پیاده‌سازی، ساختار واقعی باید با معماری WordPress V1 هماهنگ باشد و Placeholder صرفاً برای کامل شدن درخت ایجاد نشود.
 
 ```text
 backend-site/
-├── app/
-│   ├── Domain/
+├── plugin/woogit-backend/
+│   ├── src/
+│   │   ├── API/
+│   │   ├── Auth/
 │   │   ├── Accounts/
 │   │   ├── Sites/
 │   │   ├── Subscriptions/
-│   │   ├── Gateway/
-│   │   ├── Bridge/
-│   │   ├── Chat/
-│   │   ├── Analytics/
-│   │   └── AI/
-│   ├── Application/
-│   ├── Infrastructure/
-│   └── Http/
-├── bootstrap/
-├── config/
-├── database/
-│   ├── migrations/
-│   ├── seeders/
-│   └── factories/
-├── routes/
-│   ├── api.php
-│   └── web.php
-├── tests/
-│   ├── Unit/
-│   ├── Feature/
-│   ├── Integration/
-│   └── Security/
-├── wordpress-control-plane/
-│   └── woogit-admin/
-├── docker/
+│   │   ├── Entitlements/
+│   │   ├── CustomerSite/
+│   │   ├── Operations/
+│   │   ├── Idempotency/
+│   │   ├── Reconciliation/
+│   │   ├── Audit/
+│   │   └── Security/
+│   ├── admin/
+│   ├── database/
+│   └── tests/
+├── theme/woogit/
 ├── docs/
-└── .github/
-    └── workflows/
+└── .github/workflows/
 ```
 
-## مرزهای دامنه
+## مرز دامنه
 
-### Accounts
+`Sites` مالکیت و Connection Metadata غیرحساس را مدیریت می‌کند؛ Customer Credentials در Domain Model یا Persistence نگهداری نمی‌شوند و فقط در Request مصرف می‌شوند.
 
-هویت، نشست‌ها، چرخه عمر حساب و مدیریت دستگاه/نشست.
+## Persistence و تست
 
-### Sites
+V1 از WordPress Database استفاده می‌کند. PostgreSQL/Redis/Queue مستقل بخشی از پیش‌فرض V1 نیستند.
 
-مالکیت سایت، وضعیت اتصال، سلامت و مراجع اعتبارها.
+تست‌ها باید شامل Unit، Feature، Integration و Security باشند؛ از جمله Account/Site isolation، Session expiration، Credential non-storage، SSRF، Idempotency و Timeout-after-success.
 
-### Subscriptions
+## Reliability
 
-پلن‌ها، اشتراک‌ها، مجوزها و انقضا.
-
-### Gateway
-
-زنجیره مجوز و عملیات خروجی Typed.
-
-### Bridge
-
-Provisioning، مذاکره قابلیت‌ها و پروتکل Bridge.
-
-### Chat
-
-مکالمه‌ها، پیام‌ها، تخصیص اپراتور و نشست‌های بلادرنگ.
-
-### Analytics
-
-اعتبارسنجی رویداد، دریافت و تجمیع.
-
-### AI
-
-انتزاع ارائه‌دهنده، اندازه‌گیری مصرف، اعتبارها و ابزارها.
-
-## لایه‌های تست
-
-### Unit
-
-منطق خالص مجوز، Entitlement، Idempotency و منطق دامنه.
-
-### Feature
-
-قراردادهای درخواست/پاسخ API و احراز هویت.
-
-### Integration
-
-PostgreSQL/Redis واقعی و یک نمونه کنترل‌شده WordPress برای تست.
-
-### Security
-
-- تلاش برای دسترسی بین حساب‌ها؛
-- دور زدن اشتراک منقضی‌شده؛
-- Site ID جعلی؛
-- Replay درخواست‌های Bridge؛
-- Payload بیش از حد بزرگ؛
-- تلاش Proxy دلخواه/SSRF؛
-- بررسی نشت اعتبارها.
-
-### Reliability
-
-تست‌های صریح برای:
-
-- Timeout بعد از موفقیت مقصد؛
-- درخواست تکراری؛
-- پاسخ گمشده Webhook؛
-- Retry پردازشگر؛
-- از دسترس خارج شدن WordPress مشتری؛
-- Restart شدن Redis؛
-- Restart شدن فرایند API.
-
-## قانون پیاده‌سازی
-
-صرفاً برای کامل به‌نظر رسیدن درخت پروژه، ماژول‌های Placeholder خالی نسازید. یک پوشه زمانی اضافه شود که اولین پیاده‌سازی واقعی یا تست واقعی آن وجود داشته باشد.
+سناریوهای response-loss، retry، reconciliation و از دسترس خارج شدن Customer WordPress باید تست شوند. هیچ تست V1 نباید فرض کند Redis یا Credential Vault وجود دارد.
