@@ -15,6 +15,16 @@ final class EntitlementService
         $capabilities=json_decode((string)$row['capabilities'],true);return is_array($capabilities)&&in_array($capability,$capabilities,true);
     }
 
+    public function getExpiresAt(int $accountId, int $siteId): ?int
+    {
+        global $wpdb;
+        $table=$wpdb->prefix.'woogit_entitlements';
+        $value=$wpdb->get_var($wpdb->prepare("SELECT expires_at FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId));
+        if(!$value)return null;
+        $timestamp=strtotime((string)$value.' UTC');
+        return $timestamp===false?null:$timestamp;
+    }
+
     public function grantTrial(int $accountId,int $siteId,int $days=15): bool
     {
         global $wpdb;$table=$wpdb->prefix.'woogit_entitlements';
@@ -22,7 +32,6 @@ final class EntitlementService
         $start=current_time('mysql',true);$end=gmdate('Y-m-d H:i:s',time()+($days*DAY_IN_SECONDS));
         $ok=$wpdb->insert($table,['account_id'=>$accountId,'site_id'=>$siteId,'status'=>'trial','starts_at'=>$start,'expires_at'=>$end,'capabilities'=>wp_json_encode(['commerce'])],['%d','%d','%s','%s','%s','%s']);
         if($ok)return true;
-        // Another request may have inserted the unique account/site row concurrently.
         return (bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId));
     }
 }
