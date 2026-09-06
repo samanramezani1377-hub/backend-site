@@ -34,7 +34,7 @@ contains "$billingController" "billing_activate_session_ip" 'billing activation 
 contains "$billingController" 'ACTIVATE_SESSION_LIMIT = 5' 'billing activation limit must be 5/min'
 contains "$billingController" 'WINDOW_SECONDS = 60' 'billing billing window must be 60 seconds'
 echo "CHECK billing rate limit response"; contains "$billingController" 'Retry-After' 'billing rate limiting must expose Retry-After'
-echo "CHECK billing session key hashing"; contains "$billingController" "hash('sha256'" 'billing must not persist raw session tokens as rate-limit keys'
+echo "CHECK billing session key hashing"; grep -Fq "hash('sha256'" "$billingController" || fail 'billing must not persist raw session tokens as rate-limit keys'
 echo "CHECK idempotency states"; contains "$idempotency" 'state.*unknown' 'idempotency must support unknown state'
 echo "CHECK safe HTTP"; contains "$proxy" 'wp_safe_remote_request' 'proxy must use safe WordPress HTTP request'
 echo "CHECK resolved destination"; contains "$proxy" 'resolvePublicDestination' 'proxy must validate resolved public destination'
