@@ -18,10 +18,15 @@ jobs:
       - name: PHP syntax check
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          failed=0
           while IFS= read -r -d '' file; do
-            php -l "$file"
+            echo "CHECK PHP: $file"
+            if ! php -l "$file"; then
+              failed=1
+            fi
           done < <(find plugin/woogit-backend -type f -name '*.php' -print0)
+          exit "$failed"
       - name: Backend security invariants
         shell: bash
         run: bash tests/security_invariants.sh
