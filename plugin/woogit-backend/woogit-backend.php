@@ -13,11 +13,12 @@ define('WOOGIT_BACKEND_VERSION','0.2.3');
 define('WOOGIT_BACKEND_FILE',__FILE__);
 define('WOOGIT_BACKEND_DIR',plugin_dir_path(__FILE__));
 
-foreach(['Database','AccountService','SiteService','EntitlementService','SessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','RestController'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
+foreach(['Database','AccountService','SiteService','EntitlementService','SessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','BillingService','RestController','BillingController'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
 
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{
     if((string)get_option('woogit_backend_db_version','') !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install();
+    (new \WooGit\Backend\BillingService())->registerHooks();
 });
 add_action('init',static function():void{
     if(!wp_next_scheduled('woogit_backend_cleanup')) wp_schedule_event(time()+300,'daily','woogit_backend_cleanup');
@@ -33,4 +34,7 @@ add_action('woogit_backend_cleanup',static function():void{
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_operations WHERE expires_at IS NOT NULL AND expires_at < %s AND status IN ('succeeded','failed')",$now));
     $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_rate_limits WHERE updated_at < %s",$old2));
 });
-add_action('rest_api_init',static function():void{(new WooGit\\Backend\\RestController())->register();});
+add_action('rest_api_init',static function():void{
+    (new WooGit\\Backend\\RestController())->register();
+    (new WooGit\\Backend\\BillingController())->register();
+});
