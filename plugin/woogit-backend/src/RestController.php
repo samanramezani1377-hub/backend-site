@@ -43,7 +43,7 @@ final class RestController
         $path=$this->policy->validatePath((string)$request->get_param('path'));if($path===null)return new \WP_REST_Response(['code'=>'operation_not_allowed'],404);
         $method=strtoupper($request->get_method());$key=trim((string)$request->get_header('Idempotency-Key'));if(!$this->policy->validateMethod($method,$key!=='') )return new \WP_REST_Response(['code'=>'invalid_mutation_request'],400);
         $base=$this->policy->resolveSiteUrl($session['site']['canonical_url']);if($base===null)return new \WP_REST_Response(['code'=>'invalid_site_identity'],403);
-        $credentials=$this->credentials($request);if($credentials===null)return new \WP_REST_Response(['code'=>'missing_customer_credentials'],400);
+        $credentials=$this->credentials($request,$path);if($credentials===null)return new \WP_REST_Response(['code'=>'missing_customer_credentials'],400);
         $query=$request->get_query_params();unset($query['path']);$rawBody=(string)$request->get_body();$contentType=(string)$request->get_header('content-type');
         $fingerprint=$this->idempotency->fingerprint($method,$path,$query,$rawBody);$operationId='';
         if($key!==''){
@@ -71,9 +71,13 @@ final class RestController
         if(!$this->entitlements->isAllowed((int)$session['account_id'],(int)$session['site_id'],'commerce'))return new \WP_REST_Response(['code'=>'not_entitled'],403);
         $session['site']=$site;return $session;
     }
-    private function credentials(\WP_REST_Request $request): ?array
+    private function credentials(\WP_REST_Request $request,string $path): ?array
     {
-        $headers=['X-WooGit-Wordpress-Username'=>'wordpress_username','X-WooGit-Wordpress-Application-Password'=>'wordpress_application_password','X-WooGit-Consumer-Key'=>'consumer_key','X-WooGit-Consumer-Secret'=>'consumer_secret'];$result=[];
+        $isWordPressMedia=$path==='/wp-json/wp/v2/media'||str_starts_with($path,'/wp-json/wp/v2/media/');
+        $headers=$isWordPressMedia
+            ? ['X-WooGit-Wordpress-Username'=>'wordpress_username','X-WooGit-Wordpress-Application-Password'=>'wordpress_application_password']
+            : ['X-WooGit-Consumer-Key'=>'consumer_key','X-WooGit-Consumer-Secret'=>'consumer_secret'];
+        $result=['wordpress_username'=>'','wordpress_application_password'=>'','consumer_key'=>'','consumer_secret'=>''];
         foreach($headers as $header=>$key){$value=(string)$request->get_header($header);if($value==='')return null;$result[$key]=$value;}
         return $result;
     }
