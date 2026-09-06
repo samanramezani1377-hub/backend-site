@@ -1,4 +1,3 @@
-# Keep this file intentionally strict: these are source-level invariants for the V1 security contract.
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,7 +48,7 @@ echo "CHECK private ranges"; contains "$proxy" 'NO_PRIV_RANGE' 'proxy must rejec
 echo "CHECK IPv4/IPv6 DNS"; contains "$proxy" 'DNS_AAAA' 'proxy must inspect IPv6 DNS records'
 echo "CHECK DNS fail closed"; contains "$proxy" 'records===\[\]' 'proxy must fail closed when DNS does not resolve'
 echo "CHECK DNS multi-IP pinning"; contains "$proxy" 'foreach\(\$this->pinnedIps' 'proxy must pin all validated public IPs'
-echo "CHECK per-request resolution"; contains "$proxy" 'immediately before the HTTP call' 'proxy must resolve immediately before connecting' || true
+echo "CHECK per-request resolution"; contains "$proxy" 'immediately before the HTTP call' 'proxy must resolve immediately before connecting'
 echo "CHECK HTTPS"; contains "$policy" 'https' 'policy must enforce HTTPS'
 echo "CHECK redirect disabled"; contains "$proxy" "'redirection'=>0" 'proxy must not follow upstream redirects'
 echo "CHECK origin-only site identity"; contains "$policy" 'site identity is the origin' 'site identity must be normalized to origin'
