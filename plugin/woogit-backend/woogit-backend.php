@@ -2,14 +2,14 @@
 /**
  * Plugin Name: WooGit Backend
  * Description: WooGit V1 secure transparent gateway/proxy.
- * Version: 0.3.1
+ * Version: 0.3.2
  * Requires at least: 6.4
  * Requires PHP: 8.1
  */
 
 defined('ABSPATH') || exit;
 
-define('WOOGIT_BACKEND_VERSION','0.3.1');
+define('WOOGIT_BACKEND_VERSION','0.3.2');
 define('WOOGIT_BACKEND_FILE',__FILE__);
 define('WOOGIT_BACKEND_DIR',plugin_dir_path(__FILE__));
 
