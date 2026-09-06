@@ -10,28 +10,31 @@
 
 - Android App = Client
 - WooGit Backend = این repository
+- WooGit Main Plugin = پلاگین Backend روی WordPress اصلی خود WooGit
 - WordPress/WooCommerce مشتری = منبع داده فروشگاه
 - WooGit Gateway Plugin = پلاگین مستقل روی سایت مشتری، خارج از scope فعلی
-- WooGit Main Plugin = پلاگین مستقل سایت اصلی WooGit
-- وب‌سایت/پنل تجاری WooGit = سرویس جدا در صورت وجود
+- وب‌سایت/پنل تجاری WooGit = همان محیط WordPress اصلی و در صورت نیاز قابلیت‌های مستقل روی آن
 
 **خارج از هدف:** ساخت UI اپ، Compose، Navigation، Dashboard اپ، ConnectionScreen اپ، APK و CI مخصوص Android.
 
-## ADR-001 — WordPress پنل تجاری/کنترل است
+## ADR-001 — WordPress + WooGit Main Plugin زیرساخت Backend V1 است
 
-**تصمیم:** از WordPress برای وب‌سایت عمومی WooGit و رابط مدیریت داخلی استفاده شود.
+**تصمیم:** Backend V1 روی WordPress اصلی WooGit و `WooGit Main Plugin` اجرا می‌شود. `WooGit Main Plugin` مغز Backend است و API، Account، Session، Trial، Subscription، Entitlement، Site Identity، Security و Lightweight Proxy/controlled integration را فراهم می‌کند.
 
-**دلیل:** توسعه سریع محتوا و مدیریت، سیستم بالغ کاربر/نقش و تناسب مناسب برای بازاریابی، مستندات و فرایندهای پنل کنترل.
+**دلیل:** این مدل برای V1 سبک است، اجزای عملیاتی کمتری دارد و نیاز به سرویس Backend جداگانه را حذف می‌کند.
 
-**مرز:** این سامانه و `WooGit Main Plugin` با `WooGit Gateway Plugin` روی سایت مشتری یکی نیستند. Gateway Plugin کامپوننت مستقلی است و فعلاً توسعه آن در scope این پروژه نیست.
+**مرز:** `WooGit Main Plugin` روی سایت اصلی WooGit با `WooGit Gateway Plugin` روی سایت مشتری یکی نیستند.
 
-## ADR-002 — مرز Backend و Gateway Plugin
+## ADR-002 — تفکیک قطعی Main Plugin و Gateway Plugin
 
-**تصمیم:** `WooGit Gateway Plugin` یک پلاگین مستقل است که روی WordPress/WooCommerce سایت مشتری نصب می‌شود. `WooGit Main Plugin` نیز پلاگین مستقلی است که روی سایت اصلی WooGit نصب می‌شود. این دو نباید با یکدیگر قاطی شوند.
+**تصمیم:** دو Plugin کاملاً مستقل هستند:
 
-**وضعیت:** در فاز فعلی روی `WooGit Gateway Plugin` کار نمی‌کنیم. طراحی جزئیات، پیاده‌سازی، refactor و migration آن به فاز مستقل بعدی موکول است.
+- `WooGit Main Plugin` روی WordPress اصلی خود WooGit نصب می‌شود و Backend اصلی WooGit است.
+- `WooGit Gateway Plugin` روی WordPress/WooCommerce سایت مشتری نصب می‌شود و یک کامپوننت مستقل برای integration سمت مشتری است.
 
-**نتیجه:** Backend فعلی نباید برای تکمیل Gateway Plugin متوقف شود و نباید منطق Gateway را در این repository بازسازی کند. هر قراردادی که در Backend به Gateway اشاره دارد صرفاً باید مرز integration را مشخص کند.
+**وضعیت:** در فاز فعلی فقط `WooGit Main Plugin` و Backend آن توسعه داده می‌شود. روی `WooGit Gateway Plugin` هیچ پیاده‌سازی، refactor یا migration انجام نمی‌شود.
+
+**نتیجه:** هرجا در اسناد عبارت «Plugin» مبهم است باید مشخص شود منظور `Main Plugin` است یا `Gateway Plugin`. عبارت `Gateway/Proxy` در Backend به معنی Gateway Plugin مشتری نیست؛ منظور integration/proxy logic داخل Main Plugin است.
 
 ## ADR-003 — Backend V1 سبک است
 
@@ -59,7 +62,7 @@
 
 ## ADR-006 — Bridge به‌صورت Headless
 
-**تصمیم:** WooGit Bridge صفحه تنظیمات اجباری در WordPress نداشته باشد.
+**تصمیم:** هر integration سمت سایت مشتری که در آینده به عنوان `WooGit Gateway Plugin` ساخته شود، مستقل از `WooGit Main Plugin` خواهد بود و صفحه تنظیمات اجباری در WordPress مشتری نخواهد داشت مگر اینکه نیاز محصولی مشخصی ثابت شود.
 
 **دلیل:** WooGit باید یک تجربه کاربری واحد و کنترل مرکزی اشتراک/قابلیت ارائه دهد.
 
@@ -69,11 +72,11 @@
 
 **دلیل:** Backend محل اعمال اشتراک، مجوزها، حسابرسی، مقابله با سوءاستفاده و جداسازی اعتبارها است.
 
-**نکته:** این تصمیم به معنی پیاده‌سازی فعلی `WooGit Gateway Plugin` نیست. Gateway Plugin یک کامپوننت مستقل و خارج از فاز فعلی است.
+**نکته:** این تصمیم به معنی فعال بودن یا نصب `WooGit Gateway Plugin` روی سایت مشتری نیست. Gateway Plugin یک کامپوننت مستقل و خارج از فاز فعلی است.
 
 ## ADR-008 — عملیات کنترل‌شده به‌جای Proxy دلخواه
 
-**تصمیم:** API عمومی باید مسیرها و عملیات کنترل‌شده داشته باشد و Proxy عمومی URL دلخواه مجاز نیست. پیاده‌سازی داخلی می‌تواند Lightweight Forwarding باشد.
+**تصمیم:** API عمومی باید مسیرها و عملیات کنترل‌شده داشته باشد و Proxy عمومی URL دلخواه مجاز نیست. پیاده‌سازی داخلی در `WooGit Main Plugin` می‌تواند Lightweight Forwarding باشد.
 
 **دلیل:** Proxy دلخواه ریسک SSRF، خطای مجوز و سوءاستفاده را افزایش می‌دهد، در حالی که Forwarding کنترل‌شده هزینه معماری را پایین نگه می‌دارد.
 
