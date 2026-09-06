@@ -1,147 +1,147 @@
-# WooGit Operations and Deployment
+# عملیات و استقرار WooGit
 
-## 1. Initial deployment
+## ۱. استقرار اولیه
 
-A cost-conscious MVP can run on one VPS:
+یک MVP کم‌هزینه می‌تواند روی یک VPS اجرا شود:
 
 ```text
 VPS
-├── Reverse proxy / TLS
-├── WooGit WordPress control plane
-├── WooGit API service
+├── Reverse Proxy / TLS
+├── پنل کنترل WordPress ووگیت
+├── سرویس API ووگیت
 ├── PostgreSQL
 └── Redis
 ```
 
-Do not run a large AI model on this server for the initial commercial architecture. Use external providers or a separately managed inference service.
+برای معماری تجاری اولیه، مدل بزرگ AI را روی این سرور اجرا نکنید. از ارائه‌دهندگان خارجی یا سرویس استنتاج جداگانه و مدیریت‌شده استفاده کنید.
 
-## 2. Production separation
+## ۲. جداسازی محیط عملیاتی
 
-As traffic grows:
+با رشد ترافیک:
 
 ```text
 Internet
   -> Load Balancer
-      -> API instances
-      -> WebSocket/chat instances
-      -> Worker instances
+      -> نمونه‌های API
+      -> نمونه‌های WebSocket/Chat
+      -> نمونه‌های Worker
 
-Managed PostgreSQL
-Managed Redis
-Object Storage
-Secret/KMS service
+PostgreSQL مدیریت‌شده
+Redis مدیریت‌شده
+ذخیره‌سازی فایل
+سرویس Secret/KMS
 ```
 
-## 3. Configuration
+## ۳. پیکربندی
 
-Environment variables should hold non-secret configuration and references to secret storage.
+متغیرهای محیطی باید تنظیمات غیرمحرمانه و ارجاع به محل نگهداری اسرار را نگه دارند.
 
-Never commit:
+هرگز این موارد را Commit نکنید:
 
-- database passwords;
-- application encryption keys;
-- WordPress credentials;
-- AI provider keys;
-- payment provider secrets;
-- JWT signing keys.
+- رمز پایگاه داده؛
+- کلیدهای رمزنگاری برنامه؛
+- اطلاعات ورود WordPress؛
+- کلیدهای ارائه‌دهندگان AI؛
+- اسرار درگاه پرداخت؛
+- کلیدهای امضای JWT.
 
-## 4. Backups
+## ۴. پشتیبان‌گیری
 
-Minimum policy:
+حداقل سیاست:
 
-- automated PostgreSQL backups;
-- encrypted backup storage;
-- tested restore procedure;
-- credential encryption key backup/recovery procedure kept separately;
-- defined recovery point objective (RPO);
-- defined recovery time objective (RTO).
+- پشتیبان خودکار PostgreSQL؛
+- ذخیره‌سازی رمزنگاری‌شده پشتیبان؛
+- فرایند Restore آزمایش‌شده؛
+- فرایند پشتیبان/بازیابی کلید رمزنگاری اعتبارها به‌صورت جداگانه؛
+- تعریف RPO؛
+- تعریف RTO.
 
-A backup that cannot be restored is not a tested backup.
+پشتیبانی که امکان Restore آن آزمایش نشده، پشتیبان تست‌شده محسوب نمی‌شود.
 
-## 5. Observability
+## ۵. مشاهده‌پذیری
 
-Every request should have:
+هر درخواست باید این موارد را داشته باشد:
 
-- request ID;
-- account ID where safe;
-- site ID where safe;
-- operation ID where applicable;
-- latency;
-- result category;
-- upstream latency/status without secret headers.
+- Request ID؛
+- Account ID در صورت امن بودن؛
+- Site ID در صورت امن بودن؛
+- Operation ID در صورت نیاز؛
+- تأخیر؛
+- دسته نتیجه؛
+- تأخیر/وضعیت سرویس مقصد بدون هدرهای محرمانه.
 
-Metrics:
+شاخص‌ها:
 
-- API request rate;
-- error rate;
-- p50/p95/p99 latency;
-- outbound WordPress latency;
-- WordPress failure rate;
-- queue depth;
-- worker failures;
-- AI spend/usage;
-- active subscriptions;
-- bridge health.
+- نرخ درخواست API؛
+- نرخ خطا؛
+- تأخیر p50/p95/p99؛
+- تأخیر خروجی WordPress؛
+- نرخ خطای WordPress؛
+- عمق صف؛
+- خطای Worker؛
+- مصرف/هزینه AI؛
+- اشتراک‌های فعال؛
+- سلامت Bridge.
 
-## 6. Circuit breakers
+## ۶. Circuit Breaker
 
-If a customer site is failing repeatedly, stop aggressive retries and mark it degraded. Prevent one broken site from consuming all gateway resources.
+اگر یک سایت مشتری مکرراً خطا می‌دهد، Retry تهاجمی را متوقف و سایت را Degraded علامت‌گذاری کنید. یک سایت خراب نباید همه منابع Gateway را مصرف کند.
 
-## 7. Rate limiting
+## ۷. محدودسازی نرخ
 
-At minimum:
+حداقل در این سطوح:
 
-- account-level;
-- site-level;
-- endpoint-level;
-- IP-level for public endpoints;
-- chat-level;
-- AI spend/requests.
+- حساب؛
+- سایت؛
+- Endpoint؛
+- IP برای نقاط عمومی؛
+- چت؛
+- هزینه/تعداد درخواست AI.
 
-## 8. Deployment strategy
+## ۸. راهبرد استقرار
 
-Use:
+از این مسیر استفاده کنید:
 
 ```text
-commit
- -> automated tests
- -> security/static checks
- -> staging
- -> smoke tests
- -> production
+Commit
+ -> تست خودکار
+ -> بررسی امنیتی/ایستا
+ -> محیط Staging
+ -> Smoke Test
+ -> Production
 ```
 
-Database migrations must be backward-compatible with the currently deployed application during rolling deploys.
+Migrationهای پایگاه داده باید در هنگام استقرار تدریجی با نسخه فعلی برنامه سازگار باشند.
 
-## 9. Incident handling
+## ۹. مدیریت رخداد
 
-For credential exposure:
+برای افشای اعتبار:
 
-1. revoke affected credential;
-2. invalidate bridge/session tokens if needed;
-3. inspect audit logs;
-4. rotate encryption/provider credentials when required;
-5. notify affected customers according to policy;
-6. document root cause.
+۱. اعتبار تحت تأثیر را لغو کنید؛
+۲. در صورت نیاز توکن‌های Bridge/نشست را نامعتبر کنید؛
+۳. لاگ‌های حسابرسی را بررسی کنید؛
+۴. در صورت نیاز کلیدهای رمزنگاری/ارائه‌دهنده را بچرخانید؛
+۵. طبق سیاست، مشتریان تحت تأثیر را مطلع کنید؛
+۶. علت ریشه‌ای را مستند کنید.
 
-For a subscription enforcement bug:
+برای خطای اعمال اشتراک:
 
-1. disable the affected capability at the gateway;
-2. preserve evidence;
-3. fix authorization logic;
-4. run regression tests;
-5. redeploy;
-6. verify with a test account and an expired account.
+۱. قابلیت تحت تأثیر را در Gateway غیرفعال کنید؛
+۲. شواهد را حفظ کنید؛
+۳. منطق مجوز را اصلاح کنید؛
+۴. تست‌های Regression را اجرا کنید؛
+۵. دوباره Deploy کنید؛
+۶. با حساب آزمایشی و حساب منقضی‌شده بررسی کنید.
 
-## 10. Cost control
+## ۱۰. کنترل هزینه
 
-Do not overbuild early.
+در ابتدای کار بیش از نیاز معماری نسازید.
 
-The first architecture should be able to run cheaply while preserving these boundaries:
+معماری اولیه باید ارزان اجرا شود و این مرزها را حفظ کند:
 
-- PostgreSQL is the durable source of application state;
-- Redis is disposable acceleration/queue state;
-- API instances are stateless;
-- workers are horizontally scalable;
-- AI is externalized;
-- WordPress control plane can be scaled separately.
+- PostgreSQL منبع پایدار وضعیت برنامه باشد؛
+- Redis برای Cache/صف یک لایه قابل جایگزینی باشد؛
+- نمونه‌های API Stateless باشند؛
+- Workerها قابلیت Scale افقی داشته باشند؛
+- AI تا حد امکان بیرونی باشد؛
+- پنل کنترل WordPress بتواند مستقل مقیاس شود.
