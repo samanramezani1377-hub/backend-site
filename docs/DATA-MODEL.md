@@ -15,17 +15,17 @@
 
 ## ۲. account_sessions
 
-نماینده WooGit Session است.
+نماینده **WooGit Session** است. در قرارداد V1 یک Session معتبر، مکانیزم احراز هویت Client در Backend است؛ مدل جداگانه Access/Refresh Token وجود ندارد.
 
 - id
 - account_id
-- session_reference / token_hash (بسته به مدل Session نهایی)
+- session_reference / token_hash
 - expires_at
 - revoked_at
 - last_seen_at
 - created_at
 
-جزئیات نوع Token/Session در این سند هنوز به‌عنوان تصمیم مستقل قفل نشده است؛ مهم این است که Session برای احراز مصرف‌کننده در Backend استفاده شود.
+مقدار خام Session نباید در دیتابیس یا Log ثبت شود؛ فقط representation امن موردنیاز برای اعتبارسنجی نگهداری می‌شود. Session باید قابل انقضا و قابل ابطال باشد.
 
 ## ۳. sites
 
@@ -170,7 +170,7 @@ Site Identity مستقل Backend:
 ```text
 Account
   |
-  +-- Sessions
+  +-- Sessions (WooGit Session)
   +-- Sites
   |     +-- optional Credential Storage
   |     +-- Bridge Registration
