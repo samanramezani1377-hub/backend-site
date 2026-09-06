@@ -1,169 +1,169 @@
-# WooGit Backend Roadmap
+# نقشه‌راه بک‌اند WooGit
 
-## Phase 0 — Foundation
+## مرحله ۰ — زیرساخت پایه
 
-Goal: make the architecture executable without exposing commercial traffic.
+هدف: قابل اجرا کردن معماری بدون قرار دادن ترافیک تجاری در معرض استفاده واقعی.
 
-- repository documentation;
-- environment/config contract;
-- database schema/migrations;
-- account/auth service;
-- structured errors/request IDs;
-- CI;
-- local Docker development environment.
+- مستندات مخزن؛
+- قرارداد محیط و پیکربندی؛
+- Schema و Migration پایگاه داده؛
+- سرویس حساب/احراز هویت؛
+- خطاهای ساختاریافته و Request ID؛
+- CI؛
+- محیط توسعه محلی Docker.
 
-Acceptance:
+معیار پذیرش:
 
-- fresh environment boots from documented steps;
-- tests run in CI;
-- no secrets in repository.
+- محیط تازه طبق مراحل مستندشده بالا می‌آید؛
+- تست‌ها در CI اجرا می‌شوند؛
+- هیچ Secretی در مخزن وجود ندارد.
 
-## Phase 1 — Site connection
+## مرحله ۱ — اتصال سایت
 
-- site model;
-- credential vault;
-- WordPress connection validation;
-- site health;
-- secure disconnect;
-- session/token management.
+- مدل سایت؛
+- خزانه اعتبار؛
+- اعتبارسنجی اتصال WordPress؛
+- سلامت سایت؛
+- قطع اتصال امن؛
+- مدیریت نشست/توکن.
 
-Acceptance:
+معیار پذیرش:
 
-- valid site connects;
-- invalid credential fails cleanly;
-- credential never appears in API response/logs;
-- revoked WordPress credential is detected.
+- سایت معتبر متصل می‌شود؛
+- اعتبار نامعتبر به‌صورت صحیح رد می‌شود؛
+- اعتبار در API/لاگ ظاهر نمی‌شود؛
+- لغو اعتبار WordPress تشخیص داده می‌شود.
 
-## Phase 2 — Gateway
+## مرحله ۲ — Gateway
 
-- typed site operations;
-- authorization pipeline;
-- subscription check;
-- site ownership check;
-- rate limiting;
-- outbound timeout/circuit breaker.
+- عملیات Typed سایت؛
+- زنجیره مجوز؛
+- بررسی اشتراک؛
+- بررسی مالکیت سایت؛
+- محدودسازی نرخ؛
+- Timeout خروجی/Circuit Breaker.
 
-Acceptance:
+معیار پذیرش:
 
-- active account can reach entitled site operation;
-- expired account cannot reach customer WordPress;
-- another account cannot address the site by guessing an ID;
-- modified app cannot bypass entitlement.
+- حساب فعال می‌تواند به عملیات مجاز سایت دسترسی پیدا کند؛
+- حساب منقضی‌شده نمی‌تواند به WordPress مشتری برسد؛
+- حساب دیگر نمی‌تواند با حدس شناسه به سایت دسترسی پیدا کند؛
+- اپ دستکاری‌شده نمی‌تواند مجوز را دور بزند.
 
-## Phase 3 — Idempotency and reliability
+## مرحله ۳ — Idempotency و قابلیت اطمینان
 
-- idempotency table;
-- operation status API;
-- retry policy;
-- reconciliation strategy;
-- timeout-after-success integration tests.
+- جدول Idempotency؛
+- API وضعیت عملیات؛
+- سیاست Retry؛
+- راهبرد Reconciliation؛
+- تست‌های یکپارچه Timeout بعد از موفقیت.
 
-Acceptance:
+معیار پذیرش:
 
-- every CREATE mutation is idempotent;
-- simulated lost response after remote success creates one resource only;
-- retry returns the original operation result.
+- همه Mutationهای CREATE Idempotent هستند؛
+- پاسخ گمشده پس از موفقیت مقصد، فقط یک منبع ایجاد می‌کند؛
+- Retry نتیجه عملیات اصلی را برمی‌گرداند.
 
-## Phase 4 — Bridge
+## مرحله ۴ — Bridge
 
-- headless plugin;
-- discovery;
-- scoped Bridge authentication;
-- capability negotiation;
-- health/version endpoint;
-- event ingestion.
+- افزونه Headless؛
+- Discovery؛
+- احراز هویت محدود Bridge؛
+- مذاکره قابلیت‌ها؛
+- Endpoint سلامت/نسخه؛
+- دریافت رویداد.
 
-Acceptance:
+معیار پذیرش:
 
-- plugin activates without manual configuration;
-- WooGit can configure supported features;
-- unsupported protocol versions fail safely.
+- افزونه بدون پیکربندی دستی فعال می‌شود؛
+- WooGit می‌تواند قابلیت‌های پشتیبانی‌شده را پیکربندی کند؛
+- نسخه‌های ناسازگار پروتکل به‌صورت امن رد می‌شوند.
 
-## Phase 5 — Commercial billing
+## مرحله ۵ — صورتحساب تجاری
 
-- 15-day trial;
-- plans;
-- subscriptions;
-- payment provider integration;
-- webhook verification;
-- renewals/extensions;
-- expiration enforcement.
+- دوره آزمایشی ۱۵ روزه؛
+- پلن‌ها؛
+- اشتراک‌ها؛
+- یکپارچه‌سازی درگاه پرداخت؛
+- تأیید Webhook؛
+- تمدید/افزایش مدت؛
+- اعمال انقضا.
 
-Acceptance:
+معیار پذیرش:
 
-- trial is server-controlled;
-- paid period is server-controlled;
-- payment webhooks are idempotent;
-- expired accounts are blocked before outbound site calls.
+- دوره آزمایشی توسط سرور کنترل می‌شود؛
+- مدت پولی توسط سرور کنترل می‌شود؛
+- Webhookهای پرداخت Idempotent هستند؛
+- حساب منقضی‌شده قبل از تماس خروجی با سایت مسدود می‌شود.
 
-## Phase 6 — Chat
+## مرحله ۶ — چت
 
-- conversations;
-- messages;
-- widget session;
-- operator inbox;
-- realtime transport;
-- human handoff.
+- مکالمه‌ها؛
+- پیام‌ها؛
+- نشست ابزارک؛
+- صندوق اپراتور؛
+- انتقال بلادرنگ؛
+- انتقال به انسان.
 
-Acceptance:
+معیار پذیرش:
 
-- widget works without privileged credentials in browser;
-- chat traffic is subscription-gated;
-- abusive clients are rate-limited.
+- ابزارک بدون اعتبار حساس در مرورگر کار می‌کند؛
+- ترافیک چت تحت مجوز اشتراک است؛
+- کلاینت سوءاستفاده‌گر Rate Limit می‌شود.
 
-## Phase 7 — Analytics
+## مرحله ۷ — تحلیل
 
-- typed event schema;
-- ingestion;
-- queue;
-- aggregation;
-- dashboards;
-- retention/deletion controls.
+- Schema رویدادهای Typed؛
+- دریافت؛
+- صف؛
+- تجمیع؛
+- داشبورد؛
+- کنترل نگهداری/حذف.
 
-Acceptance:
+معیار پذیرش:
 
-- event ingestion is bounded and validated;
-- duplicate event IDs do not double-count;
-- retention policy is enforced.
+- دریافت رویداد محدود و اعتبارسنجی می‌شود؛
+- Event ID تکراری دوباره شمارش نمی‌شود؛
+- سیاست نگهداری اعمال می‌شود.
 
-## Phase 8 — AI Gateway
+## مرحله ۸ — درگاه AI
 
-- provider abstraction;
-- provider credentials;
-- WooGit credits;
-- BYOK;
-- tool execution;
-- cost/usage ledger;
-- chat integration.
+- انتزاع ارائه‌دهنده؛
+- اعتبارهای ارائه‌دهندگان؛
+- اعتبار WooGit؛
+- BYOK؛
+- اجرای ابزارها؛
+- Ledger هزینه/مصرف؛
+- یکپارچه‌سازی چت.
 
-Acceptance:
+معیار پذیرش:
 
-- provider keys never reach customer WordPress/browser;
-- AI cannot call arbitrary URLs;
-- usage is server-measured;
-- credits cannot be forged by the client.
+- کلید ارائه‌دهنده هرگز به WordPress مشتری/مرورگر نمی‌رسد؛
+- AI نمی‌تواند URL دلخواه فراخوانی کند؛
+- مصرف توسط سرور اندازه‌گیری می‌شود؛
+- اعتبارها توسط کلاینت قابل جعل نیستند.
 
-## Phase 9 — Scale and hardening
+## مرحله ۹ — مقیاس و سخت‌سازی
 
-- managed database/Redis;
-- horizontal API scaling;
-- dedicated workers;
-- advanced monitoring;
-- disaster recovery drills;
-- penetration/security testing;
-- privacy/legal review.
+- پایگاه داده/Redis مدیریت‌شده؛
+- مقیاس افقی API؛
+- Workerهای اختصاصی؛
+- مانیتورینگ پیشرفته؛
+- تمرین بازیابی از فاجعه؛
+- تست نفوذ/امنیت؛
+- بررسی حریم خصوصی و حقوقی.
 
-## V1 commercial gate
+## دروازه تجاری V1
 
-Do not call the platform commercially ready until these are proven:
+تا زمانی که موارد زیر اثبات نشده‌اند، پلتفرم را برای استفاده تجاری آماده اعلام نکنید:
 
-1. authentication and site ownership isolation;
-2. encrypted credential storage;
-3. server-side subscription enforcement;
-4. idempotency for all CREATE mutations;
-5. timeout-after-success proof;
-6. Bridge authentication and versioning;
-7. audit logging for privileged actions;
-8. backup/restore test;
-9. production monitoring;
-10. no critical secrets in client or repository.
+۱. احراز هویت و جداسازی مالکیت سایت؛
+۲. ذخیره رمزنگاری‌شده اعتبارها؛
+۳. اعمال اشتراک در سمت سرور؛
+۴. Idempotency برای همه Mutationهای CREATE؛
+۵. اثبات Timeout بعد از موفقیت؛
+۶. احراز هویت و نسخه‌بندی Bridge؛
+۷. حسابرسی عملیات حساس؛
+۸. تست Backup/Restore؛
+۹. مانیتورینگ محیط عملیاتی؛
+۱۰. نبود Secretهای بحرانی در کلاینت یا مخزن.
