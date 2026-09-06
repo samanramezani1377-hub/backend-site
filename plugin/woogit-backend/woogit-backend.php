@@ -38,6 +38,6 @@ add_action('woogit_backend_cleanup',static function():void{
     $wpdb->query($wpdb->prepare("DELETE FROM {$rateLimitTable} WHERE window_start < %s LIMIT 1000",$old2));
 });
 add_action('rest_api_init',static function():void{
-    (new WooGit\\Backend\\RestController())->register();
-    (new WooGit\\Backend\\BillingController())->register();
+    (new \WooGit\Backend\RestController())->register();
+    (new \WooGit\Backend\BillingController())->register();
 });
