@@ -9,7 +9,7 @@ while IFS= read -r -d '' file; do
   echo "CHECK PHP: $file"
   php -l "$file" >/dev/null || fail "PHP syntax: $file"
 done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"
 
 echo "CHECK controller ownership"; contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 echo "CHECK controller session"; contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
@@ -19,6 +19,17 @@ echo "CHECK controller body limit"; contains "$controller" 'request_body_too_lar
 echo "CHECK controller mutation validation"; contains "$controller" 'validateMethod' 'controller must validate mutation method/idempotency'
 echo "CHECK controller unknown operation"; contains "$controller" 'operation_status_unknown' 'controller must expose unknown operation state'
 echo "CHECK controller reconciliation"; contains "$controller" 'requires_reconciliation' 'controller must mark unknown operations as requiring reconciliation'
+echo "CHECK billing rate limit service"; contains "$billingController" 'RateLimitService' 'billing controller must use shared RateLimitService'
+echo "CHECK billing plans IP limit"; contains "$billingController" "billing_plans_ip" 'billing plans must be IP rate limited'
+echo "CHECK billing status identity limits"; contains "$billingController" "billing_status_account_site" 'billing status must be Account/Site rate limited'
+contains "$billingController" "billing_status_session" 'billing status must be Session rate limited'
+echo "CHECK billing checkout limits"; contains "$billingController" "billing_checkout_account_site" 'billing checkout must be Account/Site rate limited'
+contains "$billingController" "billing_checkout_ip" 'billing checkout must be IP rate limited'
+echo "CHECK billing activation limits"; contains "$billingController" "billing_activate_session_account_site" 'billing activation must be Account/Site rate limited'
+contains "$billingController" "billing_activate_session_session" 'billing activation must be Session rate limited'
+contains "$billingController" "billing_activate_session_ip" 'billing activation must be IP rate limited'
+echo "CHECK billing rate limit response"; contains "$billingController" 'Retry-After' 'billing rate limiting must expose Retry-After'
+echo "CHECK billing session key hashing"; contains "$billingController" "hash('sha256'" 'billing must not persist raw session tokens as rate-limit keys'
 echo "CHECK idempotency states"; contains "$idempotency" 'state.*unknown' 'idempotency must support unknown state'
 echo "CHECK safe HTTP"; contains "$proxy" 'wp_safe_remote_request' 'proxy must use safe WordPress HTTP request'
 echo "CHECK resolved destination"; contains "$proxy" 'publicDestination' 'proxy must validate resolved public destination'
