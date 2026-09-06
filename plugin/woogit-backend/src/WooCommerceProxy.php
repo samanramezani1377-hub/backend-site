@@ -31,45 +31,25 @@ final class WooCommerceProxy
         return ['status'=>wp_remote_retrieve_response_code($response),'body'=>wp_remote_retrieve_body($response),'headers'=>$responseHeaders,'timeout'=>false];
     }
 
-    private function request(string $url,string $username,string $applicationPassword)
-    {
-        return $this->safePinnedRequest($url,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($username.':'.$applicationPassword),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
-    }
+    private function request(string $url,string $username,string $applicationPassword){return $this->safePinnedRequest($url,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($username.':'.$applicationPassword),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);}
+    private function requestWooCommerce(string $url,string $consumerKey,string $consumerSecret){return $this->safePinnedRequest($url,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);}
 
-    private function requestWooCommerce(string $url,string $consumerKey,string $consumerSecret)
-    {
-        return $this->safePinnedRequest($url,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
-    }
-
+    /** Resolve and validate the destination immediately before the HTTP call, then pin every validated public IP. */
     private function safePinnedRequest(string $url,array $args)
     {
         $destination=$this->resolvePublicDestination($url);
         if($destination===null)return new \WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
         if(!function_exists('curl_init'))return new \WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
-        $this->pinnedHost=$destination['host'];
-        $this->pinnedIps=$destination['ips'];
-        add_action('http_api_curl',[$this,'pinCurl'],10,3);
+        $this->pinnedHost=$destination['host'];$this->pinnedIps=$destination['ips'];add_action('http_api_curl',[$this,'pinCurl'],10,3);
         try{return wp_safe_remote_request($url,$args);}finally{remove_action('http_api_curl',[$this,'pinCurl'],10);$this->pinnedHost=null;$this->pinnedIps=[];}
     }
 
-    public function pinCurl($handle,array $parsedArgs,string $url): void
-    {
-        if($this->pinnedHost===null||$this->pinnedIps===[]||!defined('CURLOPT_RESOLVE'))return;
-        $entries=[];foreach($this->pinnedIps as $ip)$entries[]=$this->pinnedHost.':443:'.$ip;
-        curl_setopt($handle,CURLOPT_RESOLVE,$entries);
-    }
-
+    public function pinCurl($handle,array $parsedArgs,string $url): void{if($this->pinnedHost===null||$this->pinnedIps===[]||!defined('CURLOPT_RESOLVE'))return;$entries=[];foreach($this->pinnedIps as $ip)$entries[]=$this->pinnedHost.':443:'.$ip;curl_setopt($handle,CURLOPT_RESOLVE,$entries);}
     private function resolvePublicDestination(string $url): ?array
     {
-        $parts=wp_parse_url($url);if(!$parts||strtolower((string)($parts['scheme']??''))!=='https')return null;
-        $host=strtolower(rtrim((string)($parts['host']??''),'.'));if($host==='')return null;
-        if(!empty($parts['user'])||!empty($parts['pass'])||(!empty($parts['port'])&&(int)$parts['port']!==443))return null;
+        $parts=wp_parse_url($url);if(!$parts||strtolower((string)($parts['scheme']??''))!=='https')return null;$host=strtolower(rtrim((string)($parts['host']??''),'.'));if($host==='')return null;if(!empty($parts['user'])||!empty($parts['pass'])||(!empty($parts['port'])&&(int)$parts['port']!==443))return null;
         if(filter_var($host,FILTER_VALIDATE_IP)){if(!filter_var($host,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE))return null;return ['host'=>$host,'ips'=>[$host]];}
-        if($host==='localhost'||str_ends_with($host,'.localhost')||str_ends_with($host,'.local'))return null;
-        $records=[];foreach([DNS_A,DNS_AAAA] as $type){$resolved=@dns_get_record($host,$type);if(is_array($resolved))$records=array_merge($records,$resolved);}
-        if($records===[])return null;
-        $safe=[];foreach($records as $record){$ip=$record['ip']??($record['ipv6']??'');if($ip===''||!filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE))return null;$safe[]=$ip;}
-        $safe=array_values(array_unique($safe));if($safe===[])return null;
-        return ['host'=>$host,'ips'=>$safe];
+        if($host==='localhost'||str_ends_with($host,'.localhost')||str_ends_with($host,'.local'))return null;$records=[];foreach([DNS_A,DNS_AAAA] as $type){$resolved=@dns_get_record($host,$type);if(is_array($resolved))$records=array_merge($records,$resolved);}if($records===[])return null;
+        $safe=[];foreach($records as $record){$ip=$record['ip']??($record['ipv6']??'');if($ip===''||!filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE))return null;$safe[]=$ip;}$safe=array_values(array_unique($safe));if($safe===[])return null;return ['host'=>$host,'ips'=>$safe];
     }
 }
