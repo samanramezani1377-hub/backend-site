@@ -162,6 +162,16 @@ Customer query: page=1&per_page=20&search=phone
 
 برای `POST`, `PUT`, `PATCH`، body واقعی Customer API باید بدون envelope ساختگی ارسال شود و `Content-Type` صحیح حفظ شود.
 
+### محدودیت‌های V1
+
+App باید قبل از ارسال request این محدودیت‌ها را رعایت کند:
+
+- request body معمولی Customer: حداکثر حدود 5 MiB
+- Media request body: حداکثر حدود 10 MiB
+- timeout سمت Proxy برای درخواست Customer: حدود 20 ثانیه
+
+App نباید timeout را به‌تنهایی failure قطعی mutation تلقی کند؛ قواعد بخش Unknown باید اعمال شوند.
+
 JSON زیر wire contract نیست و فقط می‌تواند مدل داخلی App باشد:
 
 ```json
@@ -209,13 +219,21 @@ unknown
 
 `unknown` نباید خودکار به `failed` تبدیل شود.
 
-## 11. App Version Gate
+## 11. App Version Gate — الزامی برای App جدید
 
-App باید نسخه خود را در Backend requestها ارسال کند:
+**هر requestی که App به Backend می‌فرستد و مشمول API قرارداد WooGit است باید header زیر را داشته باشد:**
 
 ```http
 X-WooGit-App-Version: <app-version>
 ```
+
+ارسال نسخه در implementation اپ **اجباری** است و نباید به‌صورت optional یا nullable در transport تعریف شود.
+
+منبع version باید version واقعی build اپ باشد؛ در V1 مقدار مورد انتظار همان `versionName` release/build است و نباید دستی در چند محل تکرار شود.
+
+Backend در V1 فعلاً ممکن است نبودن این header را برای سازگاری با Appهای قدیمی قبول کند. این رفتار legacy compatibility است و به معنی optional بودن header در App جدید نیست.
+
+در آینده می‌توان Backend را نیز fail-closed کرد تا نبودن `X-WooGit-App-Version` رد شود؛ App نباید برای آن تغییر منتظر بماند و از همین V1 باید همیشه header را ارسال کند.
 
 در صورت deprecated/unsupported بودن نسخه، Backend ممکن است بدهد:
 
@@ -291,8 +309,14 @@ billing_required
 idempotency_conflict
 operation_in_progress
 operation_status_unknown
+operation_pending
+operation_unknown
 RATE_LIMITED
 ```
+
+`operation_in_progress` و `operation_pending` از `/forward` و Billing lifecycle می‌توانند معادل مفهومی داشته باشند؛ App باید هر دو را به state داخلی `pending` نگاشت کند.
+
+`operation_status_unknown` و `operation_unknown` نیز باید هر دو به state داخلی `unknown` نگاشت شوند و هرگز به failure قطعی تبدیل نشوند.
 
 برای Rate Limit، retry تهاجمی ممنوع است. در صورت وجود `Retry-After` باید رعایت شود و backoff مناسب اعمال شود.
 
@@ -306,6 +330,8 @@ App باید headerهای pagination برگشتی Customer را در حد نیا
 X-WP-Total
 X-WP-TotalPages
 ```
+
+نام headerها باید case-insensitive مصرف شوند.
 
 Pagination نباید از تعداد آیتم‌های صفحه فعلی حدس زده شود.
 
@@ -350,7 +376,7 @@ WooCommerce API abstraction
  ↓
 Backend Transport
  ├─ X-WooGit-Session
- ├─ X-WooGit-App-Version
+ ├─ X-WooGit-App-Version  ← REQUIRED
  ├─ Idempotency-Key
  ├─ Customer path
  ├─ Customer credential headers
@@ -383,36 +409,28 @@ Backend API
 - [ ] Session در `X-WooGit-Session` ارسال شود.
 - [ ] Billing و Operational Session جدا باشند.
 - [ ] `/forward` تنها مسیر عملیاتی Customer باشد.
-- [ ] `path` در query باشد، نه body envelope.
-- [ ] HTTP method از خود request تعیین شود.
-- [ ] Customer queryها بدون `path` به Customer forward شوند.
-- [ ] تمام mutationها Idempotency-Key پایدار داشته باشند.
-- [ ] retry همان mutation همان Idempotency-Key را حفظ کند.
-- [ ] timeout-after-success به‌عنوان failure قطعی فرض نشود.
-- [ ] `operation_id` و `unknown` قابل reconciliation باشند.
-- [ ] `X-WooGit-App-Version` ارسال شود.
-- [ ] `426 APP_VERSION_DEPRECATED` typed handling داشته باشد.
-- [ ] `/announcements` پشتیبانی شود.
-- [ ] `display_type` opaque numeric باشد.
-- [ ] action ناشناخته safely نادیده گرفته شود.
-- [ ] `X-WP-Total` و `X-WP-TotalPages` حفظ و مصرف شوند.
-- [ ] Customer credentials در URL Backend قرار نگیرند.
-- [ ] Customer credentials در log/telemetry ثبت نشوند.
-- [ ] Web Account flow وارد Android App نشود.
+- [ ] تمام mutationهای Customer `Idempotency-Key` پایدار داشته باشند.
+- [ ] timeout/unknown بدون ایجاد mutation دوم reconcile شود.
+- [ ] `X-WooGit-App-Version` در implementation اپ همیشه ارسال شود.
+- [ ] `426 APP_VERSION_DEPRECATED` به typed update-required state تبدیل شود.
+- [ ] `/announcements` به‌عنوان In-App UI پشتیبانی شود، نه Push.
+- [ ] `display_type` فقط به‌عنوان عدد opaque مصرف شود.
+- [ ] `operation_pending`/`operation_in_progress` به pending و `operation_unknown`/`operation_status_unknown` به unknown نگاشت شوند.
+- [ ] `X-WP-Total` و `X-WP-TotalPages` برای pagination مصرف شوند.
+- [ ] Customer credentialها در URL یا log/telemetry قرار نگیرند.
+- [ ] Web Account password وارد App flow نشود.
+- [ ] body/timeout limits رعایت شوند.
 
-## 18. خارج از App CHANGE
+## 18. خارج از Scope App CHANGE
 
-این موارد مربوط به Backend Website/Admin هستند و نباید در Android App پیاده شوند:
+موارد زیر عمداً در این سند نیستند:
 
-```text
-/web/login
-/web/logout
-/web/me
-/web/account/contact-email
-/web/account/password
-/web/billing/history
-/account/requirements
-/account/setup-web-credentials
-```
+- Web Account login
+- Web Account password
+- contact email management
+- payment history UI در وب
+- Admin UI
+- مدیریت Version Policy در WordPress Admin
+- مدیریت Announcement در WordPress Admin
 
-Web Account authentication یک flow مستقل از Android App است.
+این‌ها متعلق به WooGit Backend Website/Admin هستند و نباید به Android App credential/auth flow اضافه شوند.
