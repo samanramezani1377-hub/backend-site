@@ -216,8 +216,7 @@ App Session و Web Session کاملاً جدا هستند. Theme نباید App 
 - Billing؛
 - Payments؛
 - Connected Site؛
-- Security؛
-- Account.
+- Account / Security.
 
 این لایه فقط state authoritative دریافتی از API را برای presentation آماده می‌کند و Business Logic Backend را تکرار نمی‌کند.
 
@@ -284,8 +283,7 @@ Template مسئول **صفحه کامل** است، نه business logic.
 - Billing؛
 - Payments؛
 - Connected Site؛
-- Security؛
-- Account؛
+- Account / Security؛
 - Payment Result در صورت نیاز به template مستقل.
 
 Template می‌تواند adapter/orchestrator مناسب را مصرف کند، اما نباید مستقیماً transport HTTP، Database یا WooCommerce را اجرا کند.
@@ -409,8 +407,7 @@ Presentation نباید dependency معکوس به Backend internals داشته 
 | Payment Result | `templates/portal/payment-result.php` | payment state | Billing Status |
 | Payments | `templates/portal/payments.php` | payment list | Billing History |
 | Connected Site | `templates/portal/connected-site.php` | site summary | Account/Site contract |
-| Security | `templates/portal/security.php` | session/security UI | Web Account/Auth |
-| Account | `templates/portal/account.php` | account form | Web Account |
+| Account / Security | `templates/portal/account.php` | account + security UI | Web Account/Auth |
 
 مسیر و نام فایل می‌تواند فقط در چارچوب همین قرارداد تغییر کند؛ اضافه کردن domain جدید نیازمند تصمیم معماری است.
 
