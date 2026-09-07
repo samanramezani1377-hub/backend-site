@@ -23,12 +23,13 @@ final class AnnouncementController
         $ip=$_SERVER['REMOTE_ADDR']??'unknown';
         if(!$this->rateLimits->allow('announcement:ip:'.hash('sha256',$ip),30,60))return new \WP_REST_Response(['code'=>'RATE_LIMITED'],429);
         $version=sanitize_text_field((string)$request->get_header('X-WooGit-App-Version'));
+        $gate=$this->versionGate->check($version);
+        if(!$gate['allowed']&&$gate['code']==='APP_VERSION_REQUIRED')return new \WP_REST_Response(['code'=>'APP_VERSION_REQUIRED','message'=>'نسخه اپ باید ارسال شود.','minimum_supported_version'=>$gate['policy']['minimum_supported_version'],'latest_version'=>$gate['policy']['latest_version'],'recommended_version'=>$gate['policy']['recommended_version'],'update_required'=>false,'retryable'=>false],400);
         $accountId=0;$siteId=0;$session=null;
         $token=trim((string)$request->get_header('X-WooGit-Session'));
         if($token!==''){$session=$this->sessions->authenticate($token);if($session){$accountId=(int)$session['account_id'];$siteId=(int)$session['site_id'];}}
-        $items=$this->announcements->active($version!==''?$version:null,$accountId,$siteId);
-        // VersionGate is intentionally not enforced here: deprecated clients must be able to retrieve the update banner.
-        $gate=$this->versionGate->check($version);
+        $items=$this->announcements->active($version,$accountId,$siteId);
+        // Deprecated clients must still receive the update banner; missing versions are rejected above.
         if(!$gate['allowed']){
             $items[]=['id'=>'system-app-version-deprecated','type'=>'critical','title'=>'نسخه اپ منسوخ شده است','message'=>'برای ادامه استفاده، اپ را به نسخه جدیدتر بروزرسانی کنید.','priority'=>100000,'display_type'=>1,'action'=>['type'=>'update','label'=>'بروزرسانی'],'dismissible'=>false,'starts_at'=>null,'expires_at'=>null];
         }
