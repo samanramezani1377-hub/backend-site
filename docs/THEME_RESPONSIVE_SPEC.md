@@ -1,53 +1,15 @@
 # مشخصات واکنش‌گرایی تم WooGit
 
-## ۱. اصل کلی
+> سند متمرکز Responsive در [docs/theme/RESPONSIVE.md](theme/RESPONSIVE.md) قرار دارد. این فایل خلاصه و مسیر سازگاری قبلی است.
 
-Theme باید از موبایل تا دسکتاپ کامل و بدون تغییر معماری محتوا کار کند.
+## قرارداد V1
 
-## ۲. موبایل
-
-- ناوبری فشرده و قابل دسترس
-- یک ستون برای کارت‌های اصلی
-- جدول Billing به کارت/لیست قابل اسکرول تبدیل شود
-- دکمه‌های اصلی عرض مناسب داشته باشند
-- فرم Login/Register تک‌ستونه باشد
-- اطلاعات حساس بدون نمایش ناخواسته در viewport قرار گیرند
-
-## ۳. تبلت
-
-- استفاده از دو ستون فقط زمانی که خوانایی حفظ شود
-- کارت‌های مرتبط می‌توانند کنار هم قرار گیرند
-- فرم‌های چندبخشی با grid واکنش‌گرا
-
-## ۴. دسکتاپ
-
-- حداکثر عرض محتوای خوانا
-- فضای تنفس کافی
-- Dashboard پرتال می‌تواند sidebar داشته باشد
-- Landing می‌تواند از layout چندستونه استفاده کند
-- Pricing باید مقایسه پلن‌ها را بدون overflow نمایش دهد
-
-## ۵. RTL/LTR
-
-از CSS logical properties مانند `margin-inline`، `padding-inline` و `inset-inline` استفاده شود. URL، ایمیل، کلیدها و مقادیر فنی باید جهت مناسب خود را حفظ کنند.
-
-## ۶. عملکرد
-
-Responsive باید بدون JavaScript سنگین ممکن باشد. تصاویر responsive، font loading کنترل‌شده و asset splitting در نظر گرفته شود.
-
-## ۷. کیفیت
-
-حداقل حالت‌های زیر باید بررسی شوند:
-
-- موبایل کوچک
-- موبایل بزرگ
-- تبلت
-- لپ‌تاپ
-- دسکتاپ عریض
-- zoom بالا
-- font size بالا
-- Reduced Motion
-
-## ۸. ممنوعیت
-
-نباید برای رفع مشکل یک breakpoint، محتوای اصلی یا منطق Backend به شکل متفاوت و ناسازگار پیاده‌سازی شود.
+- Mobile-first، RTL-first و بدون تغییر semantics محتوا
+- Mobile: navigation فشرده، layout تک‌ستونه، Billing به card/scrollable list، Auth تک‌ستونه
+- Tablet: دو ستون فقط وقتی خوانایی حفظ شود
+- Desktop: max-width خوانا، breathing room و Portal sidebar اختیاری
+- CSS logical properties برای RTL/LTR
+- responsive images، controlled font loading و asset splitting
+- بدون JavaScript سنگین برای breakpoint/layout
+- پشتیبانی از zoom، font scaling و Reduced Motion
+- breakpoint نباید منطق Backend یا معماری محتوا را تغییر دهد.
