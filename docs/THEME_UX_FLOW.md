@@ -173,12 +173,10 @@ Site Status
 Connection Status
 Last verification
 
-[ Verify Again ]
-
-[ Disconnect Site ]
+[ Logout ]
 ```
 
-Disconnect Site فقط رابطه Site متصل را قطع می‌کند و به معنی حذف Account نیست. Theme مستقیماً به WooCommerce مشتری متصل نمی‌شود.
+`Logout` در این صفحه به خروج از Web Session و Portal اشاره دارد و باید از `POST /web/logout` استفاده کند. Logout به معنی حذف Account یا تغییر مالکیت Site نیست. Theme مستقیماً به WooCommerce مشتری متصل نمی‌شود.
 
 ### 4.10 Account / Security
 
@@ -297,11 +295,11 @@ no records → Empty
 
 ### Connected Site
 
-فقط داده‌ای نمایش داده می‌شود که Backend برای Portal منتشر کند؛ اتصال مستقیم به WooCommerce مشتری ممنوع است.
+فقط داده‌ای نمایش داده می‌شود که Backend برای Portal منتشر کند؛ اتصال مستقیم به WooCommerce مشتری ممنوع است. در این بخش action جداگانه‌ای برای Verify Again یا Disconnect Site وجود ندارد؛ خروج از Portal با `Logout` انجام می‌شود.
 
 ### Password Change / Logout
 
-پس از تغییر موفق رمز، Backend همه Web Sessionها را revoke می‌کند؛ Theme state محلی را پاک کرده و Login می‌خواهد. Logout نیز revoke سمت Backend و پاک‌سازی state موقت را انجام می‌دهد.
+پس از تغییر موفق رمز، Backend همه Web Sessionها را revoke می‌کند؛ Theme state محلی را پاک کرده و Login می‌خواهد. Logout نیز با `POST /web/logout` انجام می‌شود، Web Session را در Backend revoke می‌کند و state موقت محلی را پاک می‌کند.
 
 ## 7. Navigation / Responsive / Accessibility
 
@@ -323,7 +321,7 @@ no records → Empty
 6. Portal هیچ operational WooCommerce data ندارد.
 7. Subscription مدیریت کامل مورد توافق را پوشش می‌دهد.
 8. Billing و Payments از نظر مفهوم و UI جدا هستند.
-9. Connected Site شامل Verify Again و Disconnect Site است؛ Disconnect به معنی حذف Account نیست.
+9. Connected Site فقط وضعیت سایت و Logout را ارائه می‌کند؛ Verify Again و Disconnect Site وجود ندارند.
 10. Active Sessions نمایش داده نمی‌شود.
 11. Footer Home کامل است.
 12. شدت Glass بر اساس page contract رعایت می‌شود.
