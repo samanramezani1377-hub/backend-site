@@ -22,8 +22,7 @@ Visitor → Landing / Public Website
              ├── Billing
              ├── Payments
              ├── Connected Site
-             ├── Security
-             └── Account
+             └── Account / Security
 ```
 
 Public navigation و Portal navigation جدا هستند، ولی Design System مشترک دارند.
@@ -114,7 +113,7 @@ Welcome back
 فراموشی رمز عبور؟
 ```
 
-قرارداد V1 بر Site URL + Web Password است، نه Email/Password عمومی.
+قرارداد V1 بر Site URL + Web Password است، نه Email/Password عمومی. **Contact Email برای ارتباط با مشتری است و credential/identifier ورود محسوب نمی‌شود.**
 
 ### 4.4 Register
 
@@ -184,11 +183,14 @@ Disconnect Site فقط رابطه Site متصل را قطع می‌کند و ب�
 ### 4.10 Account / Security
 
 ```text
-Account
+Account / Security
+├── Site URL
 ├── Contact Email
 ├── Password
 └── Security
 ```
+
+**Site URL** اطلاعات اصلی حساب برای ورود به Portal و Login است. **Contact Email** فقط برای ارتباط با مشتری است و برای Login یا جایگزینی Site URL در احراز حساب استفاده نمی‌شود.
 
 Security شامل Change Password، Logout و Logout All Sessions است. **Active Sessions در V1 نمایش داده نمی‌شود.**
 
