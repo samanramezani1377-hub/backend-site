@@ -5,8 +5,6 @@ defined('ABSPATH') || exit;
 
 final class IdentityService
 {
-    private const PROVISIONED_META = '_woogit_identity_provisioned';
-
     public function getUserId(int $accountId): int
     {
         global $wpdb;
@@ -24,86 +22,31 @@ final class IdentityService
         return $user instanceof \WP_User ? $user : null;
     }
 
+    /** A linked WP user is the single Web/WooCommerce identity for this Account. */
     public function isPasswordConfigured(int $accountId): bool
     {
-        $user = $this->getUser($accountId);
-        return $user instanceof \WP_User && !get_user_meta($user->ID, self::PROVISIONED_META, true);
+        return $this->getUser($accountId) instanceof \WP_User;
     }
 
-    public function provision(string $email, int $accountId): array
-    {
-        $email = sanitize_email($email);
-        if ($email === '' || !is_email($email) || $accountId <= 0) {
-            return ['ok' => false, 'code' => 'invalid_identity_input'];
-        }
-
-        $existing = $this->getUser($accountId);
-        if ($existing) {
-            return ['ok' => true, 'user_id' => (int) $existing->ID, 'created' => false, 'provisioned' => (bool) get_user_meta($existing->ID, self::PROVISIONED_META, true)];
-        }
-
-        $owner = email_exists($email);
-        if ($owner) {
-            return ['ok' => true, 'user_id' => 0, 'created' => false, 'provisioned' => false, 'link_required' => true];
-        }
-
-        $login = 'woogit_' . strtolower(wp_generate_password(20, false, false));
-        $randomPassword = wp_generate_password(48, true, true);
-        $userId = function_exists('wc_create_new_customer')
-            ? wc_create_new_customer($email, $login, $randomPassword)
-            : wp_insert_user(wp_slash([
-                'user_login' => $login,
-                'user_pass' => $randomPassword,
-                'user_email' => $email,
-                'role' => 'subscriber',
-                'display_name' => $email,
-            ]));
-
-        if (is_wp_error($userId) || !$userId) {
-            return ['ok' => false, 'code' => 'identity_creation_failed'];
-        }
-
-        if (!$this->link($accountId, (int) $userId)) {
-            wp_delete_user((int) $userId);
-            return ['ok' => false, 'code' => 'identity_link_failed'];
-        }
-
-        update_user_meta((int) $userId, self::PROVISIONED_META, '1');
-        return ['ok' => true, 'user_id' => (int) $userId, 'created' => true, 'provisioned' => true];
-    }
-
+    /**
+     * Creates or links the single central WordPress/WooCommerce identity during
+     * explicit web-credential setup. Account creation and site verification never
+     * call this method.
+     */
     public function linkOrCreate(int $accountId, string $email, string $password, string $currentPassword = ''): array
     {
         $email = sanitize_email($email);
-        if ($email === '' || !is_email($email)) {
+        if ($accountId <= 0 || $email === '' || !is_email($email)) {
             return ['ok' => false, 'code' => 'invalid_contact_email'];
         }
         if (strlen($password) < 12 || strlen($password) > 256) {
             return ['ok' => false, 'code' => 'invalid_web_password'];
         }
 
-        $existing = $this->getUser($accountId);
-        if ($existing) {
-            if (!$this->isCustomerIdentity($existing)) {
-                return ['ok' => false, 'code' => 'account_identity_unavailable'];
-            }
-            $provisioned = (bool) get_user_meta($existing->ID, self::PROVISIONED_META, true);
-            if (!$provisioned && !wp_check_password($currentPassword, $existing->user_pass, $existing->ID)) {
-                return ['ok' => false, 'code' => 'invalid_current_password'];
-            }
-            if ($existing->user_email !== $email) {
-                $owner = email_exists($email);
-                if ($owner && (int) $owner !== (int) $existing->ID) {
-                    return ['ok' => false, 'code' => 'contact_email_already_in_use'];
-                }
-                $updated = wp_update_user(['ID' => (int) $existing->ID, 'user_email' => $email]);
-                if (is_wp_error($updated)) {
-                    return ['ok' => false, 'code' => 'identity_update_failed'];
-                }
-            }
-            wp_set_password($password, (int) $existing->ID);
-            delete_user_meta((int) $existing->ID, self::PROVISIONED_META);
-            return ['ok' => true, 'user_id' => (int) $existing->ID, 'created' => false];
+        // setup is first-time only; an existing linked identity is handled by
+        // the authenticated password-change endpoint instead.
+        if ($this->getUser($accountId)) {
+            return ['ok' => false, 'code' => 'web_credentials_already_configured'];
         }
 
         $owner = email_exists($email);
@@ -132,20 +75,23 @@ final class IdentityService
                 'role' => 'subscriber',
                 'display_name' => $email,
             ]));
+
         if (is_wp_error($userId) || !$userId) {
             return ['ok' => false, 'code' => 'identity_creation_failed'];
         }
+
         if (!$this->link($accountId, (int) $userId)) {
             wp_delete_user((int) $userId);
             return ['ok' => false, 'code' => 'identity_link_failed'];
         }
+
         return ['ok' => true, 'user_id' => (int) $userId, 'created' => true];
     }
 
     public function verifyPassword(int $accountId, string $password): bool
     {
         $user = $this->getUser($accountId);
-        return $user instanceof \WP_User && $this->isPasswordConfigured($accountId) && wp_check_password($password, $user->user_pass, $user->ID);
+        return $user instanceof \WP_User && wp_check_password($password, $user->user_pass, $user->ID);
     }
 
     public function setPassword(int $accountId, string $password): bool
@@ -158,7 +104,6 @@ final class IdentityService
             return false;
         }
         wp_set_password($password, $user->ID);
-        delete_user_meta($user->ID, self::PROVISIONED_META);
         return true;
     }
 
