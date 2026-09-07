@@ -12,18 +12,18 @@ final class AccountService
     /** Email is contact metadata; identity is the linked WordPress/WooCommerce customer user. */
     public function create(string $email=''): ?array
     {
-        $email=sanitize_email($email);if($email!==''&&!is_email($email))return null;global $wpdb;$table=$wpdb->prefix.'woogit_accounts';$now=current_time('mysql',true);$ok=$wpdb->insert($table,['email'=>$email!==''?$email:null,'wp_user_id'=>null,'web_password_hash'=>null,'status'=>'active','created_at'=>$now,'updated_at'=>$now],['%s','%d','%s','%s','%s','%s']);if(!$ok)return null;return ['id'=>(int)$wpdb->insert_id,'email'=>$email,'wp_user_id'=>0,'web_password_hash'=>null,'status'=>'active'];
+        $email=sanitize_email($email);if($email!==''&&!is_email($email))return null;global $wpdb;$table=$wpdb->prefix.'woogit_accounts';$now=current_time('mysql',true);$ok=$wpdb->insert($table,['email'=>$email!==''?$email:null,'wp_user_id'=>null,'web_password_hash'=>null,'status'=>'active','created_at'=>$now,'updated_at'=>$now],['%s','%d','%s','%s','%s','%s']);if(!$ok)return null;$account=['id'=>(int)$wpdb->insert_id,'email'=>$email,'wp_user_id'=>0,'web_password_hash'=>null,'status'=>'active'];if($email!==''){$identity=(new IdentityService())->provision($email,(int)$account['id']);if(empty($identity['ok'])){$wpdb->delete($table,['id'=>(int)$account['id']],['%d']);return null;}$account['wp_user_id']=(int)($identity['user_id']??0);}return $account;
     }
     public function updateContactEmail(int $accountId,string $email): bool
     {
         $email=sanitize_email($email);$identity=new IdentityService();$user=$identity->getUser($accountId);if($user instanceof \WP_User){if($email===''||!is_email($email)||!$identity->updateEmail($accountId,$email))return false;}else{if($email!==''&&!is_email($email))return false;}
         global $wpdb;$table=$wpdb->prefix.'woogit_accounts';return false!==$wpdb->update($table,['email'=>$email!==''?$email:null,'updated_at'=>current_time('mysql',true)],['id'=>$accountId],['%s','%s'],['%d']);
     }
-    public function hasWebPassword(int $accountId): bool{return (new IdentityService())->getUser($accountId) instanceof \WP_User;}
+    public function hasWebPassword(int $accountId): bool{return (new IdentityService())->isPasswordConfigured($accountId);}
     public function setWebPassword(int $accountId,string $password): bool{return (new IdentityService())->setPassword($accountId,$password);}
     public function verifyWebPassword(int $accountId,string $password): bool{return (new IdentityService())->verifyPassword($accountId,$password);}
     public function deleteIfEmpty(int $accountId): void
     {
-        global $wpdb;$accounts=$wpdb->prefix.'woogit_accounts';$sites=$wpdb->prefix.'woogit_sites';$hasSite=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$sites} WHERE account_id=%d LIMIT 1",$accountId));if(!$hasSite)$wpdb->delete($accounts,['id'=>$accountId],['%d']);
+        global $wpdb;$accounts=$wpdb->prefix.'woogit_accounts';$sites=$wpdb->prefix.'woogit_sites';$hasSite=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$sites} WHERE account_id=%d LIMIT 1",$accountId));if(!$hasSite){$userId=(int)$wpdb->get_var($wpdb->prepare("SELECT wp_user_id FROM {$accounts} WHERE id=%d LIMIT 1",$accountId));$wpdb->delete($accounts,['id'=>$accountId],['%d']);if($userId>0&&get_user_meta($userId,'_woogit_identity_provisioned',true))wp_delete_user($userId);}
     }
 }
