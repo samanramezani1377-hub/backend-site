@@ -13,13 +13,21 @@ final class AccountService
         return ($row && $row['status'] === 'active') ? $row : null;
     }
 
-    /** Account identity is the verified WooGit Site; email is contact metadata only. */
+    /**
+     * Creates the single WooGit account identity. Email is contact metadata only;
+     * it is never looked up or used to identify/link an account.
+     *
+     * A WP/WooCommerce customer identity is created together with the Account,
+     * and only this verified-account lifecycle is allowed to create it.
+     */
     public function create(string $email = ''): ?array
     {
         $email = sanitize_email($email);
-        if ($email !== '' && !is_email($email)) {
-            return null;
-        }
+        if ($email !== '' && !is_email($email)) return null;
+
+        $identity = new IdentityService();
+        $userId = $identity->createCustomer();
+        if ($userId <= 0) return null;
 
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_accounts';
@@ -28,7 +36,7 @@ final class AccountService
             $table,
             [
                 'email' => $email !== '' ? $email : null,
-                'wp_user_id' => null,
+                'wp_user_id' => $userId,
                 'web_password_hash' => null,
                 'status' => 'active',
                 'created_at' => $now,
@@ -37,13 +45,14 @@ final class AccountService
             ['%s', '%d', '%s', '%s', '%s', '%s']
         );
         if (!$ok) {
+            wp_delete_user($userId);
             return null;
         }
 
         return [
-            'id' => (int) $wpdb->insert_id,
+            'id' => (int)$wpdb->insert_id,
             'email' => $email,
-            'wp_user_id' => 0,
+            'wp_user_id' => $userId,
             'web_password_hash' => null,
             'status' => 'active',
         ];
@@ -52,25 +61,25 @@ final class AccountService
     public function updateContactEmail(int $accountId, string $email): bool
     {
         $email = sanitize_email($email);
-        $identity = new IdentityService();
-        $user = $identity->getUser($accountId);
-        if ($user instanceof \WP_User) {
-            if ($email === '' || !is_email($email) || !$identity->updateEmail($accountId, $email)) {
-                return false;
-            }
-        } elseif ($email !== '' && !is_email($email)) {
-            return false;
-        }
+        if ($email !== '' && !is_email($email)) return false;
 
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_accounts';
-        return false !== $wpdb->update(
+        $accountUpdated = false !== $wpdb->update(
             $table,
             ['email' => $email !== '' ? $email : null, 'updated_at' => current_time('mysql', true)],
             ['id' => $accountId],
             ['%s', '%s'],
             ['%d']
         );
+        if (!$accountUpdated) return false;
+
+        // Email is only contact information. Never search by email or reject it
+        // because another WP user already has the same address.
+        $identity = new IdentityService();
+        $user = $identity->getUser($accountId);
+        if ($user && $email !== '' && !$identity->updateEmail($accountId, $email)) return false;
+        return true;
     }
 
     public function hasWebPassword(int $accountId): bool
@@ -95,7 +104,9 @@ final class AccountService
         $sites = $wpdb->prefix . 'woogit_sites';
         $hasSite = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$sites} WHERE account_id=%d LIMIT 1", $accountId));
         if (!$hasSite) {
+            $account = $this->get($accountId);
             $wpdb->delete($accounts, ['id' => $accountId], ['%d']);
+            if ($account && (int)$account['wp_user_id'] > 0) wp_delete_user((int)$account['wp_user_id']);
         }
     }
 }
