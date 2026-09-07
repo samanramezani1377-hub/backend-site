@@ -1,4 +1,3 @@
-# restored below from the previously inspected invariant suite
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -60,9 +59,12 @@ contains "$site" 'one-to-one with the connected site' 'SiteService must enforce 
 contains "$account" 'function create' 'Account must be created explicitly'
 contains "$account" 'function updateContactEmail' 'Account contact email update must be explicit'
 contains "$account" 'wp_user_id' 'Account must expose its linked WordPress identity'
+if grep -Eq 'IdentityService\(\).*provision|->provision\(' "$account"; then fail 'Account creation must never provision a central WordPress identity'; fi
+if grep -Eq 'PROVISIONED_META|identity_provisioned|function provision\(' "$identity" "$account" "$controller"; then fail 'identity provisioning marker/API must not be part of Account or verify lifecycle'; fi
+contains "$identity" 'linkOrCreate' 'explicit web setup must create or link the single central identity'
 contains "$identity" 'wp_check_password' 'web password verification must use WordPress password hashing'
 contains "$identity" 'wp_set_password' 'web password changes must use WordPress password storage'
-contains "$identity" 'wc_create_new_customer' 'new identities must be WooCommerce customers when available'
+contains "$identity" 'wc_create_new_customer' 'new web identities must be WooCommerce customers when available'
 contains "$identity" 'identity_verification_required' 'linking an existing WordPress customer must require password proof'
 contains "$identity" 'administrator.*shop_manager' 'identity linking must reject privileged WordPress roles'
 if grep -Eq 'findOrCreate\([^)]*email|findOrCreate\(\$email' "$account" "$controller"; then fail 'email must never resolve Account identity'; fi
