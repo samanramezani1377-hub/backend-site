@@ -13,7 +13,6 @@ Customer Portal
 ├── Billing
 ├── Payments
 ├── Connected Site
-├── Usage (در صورت وجود قرارداد)
 ├── Security
 └── Account
 ```
