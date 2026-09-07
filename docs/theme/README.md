@@ -19,9 +19,10 @@ Theme نباید منطق عملیاتی App یا اتصال مستقیم به W
 | سند | مسئولیت |
 |---|---|
 | [THEME.md](../THEME.md) | قرارداد اصلی Theme و مرز مسئولیت‌ها |
+| [THEME_UX_FLOW.md](../THEME_UX_FLOW.md) | **مرجع UX Flow و State Transition** |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | معماری هدف، لایه‌بندی و ساختار فایل پیشنهادی |
-| [PAGES.md](PAGES.md) | معماری صفحات عمومی، Auth و مسیرهای کاربر |
-| [PORTAL.md](PORTAL.md) | معماری Customer Portal و Navigation آن |
+| [PAGES.md](PAGES.md) | معماری صفحات و Page Inventory |
+| [PORTAL.md](PORTAL.md) | معماری Customer Portal و Information Architecture |
 | [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) | توکن‌ها، Liquid Glass و Component System |
 | [RESPONSIVE.md](RESPONSIVE.md) | Responsive و RTL/LTR |
 | [PERFORMANCE.md](PERFORMANCE.md) | Performance و Progressive Enhancement |
@@ -43,9 +44,12 @@ Theme نباید منطق عملیاتی App یا اتصال مستقیم به W
 8. Products، Orders، Sync، Conflicts، Inventory و Store Operations در Theme وجود ندارند.
 9. طراحی mobile-first، RTL-first، accessible و performance-first است.
 10. همه صفحات API-driven باید Loading، Empty/Pending در صورت نیاز، Error و Success state داشته باشند.
-11. هیچ credential حساس مشتری نباید در storage پایدار، HTML، log یا telemetry نگهداری شود.
-12. Progressive enhancement ترجیح دارد و functionality نباید بدون JavaScript غیرضروری از کار بیفتد.
+11. 400، 401، 403، 404، 409، 429 و 5xx باید طبق `THEME_UX_FLOW.md` رفتار شوند.
+12. Payment Pending، Payment Failed و Payment Success باید در UX از هم تفکیک شوند.
+13. Timeout-after-success در Checkout باید پوشش داده شود و نتیجه Unknown نباید به‌عنوان Failure تفسیر شود.
+14. هیچ credential حساس مشتری نباید در storage پایدار، HTML، log یا telemetry نگهداری شود.
+15. Progressive enhancement ترجیح دارد و functionality نباید بدون JavaScript غیرضروری از کار بیفتد.
 
 ## قبل از شروع کدنویسی
 
-هر قرارداد مبهم Backend، به‌خصوص مسیر مستقیم ثبت‌نام وب و ایجاد Web Credential، باید ابتدا در Backend/API Contract نهایی شود. Theme نباید برای شکاف‌های قراردادی راه‌حل امنیتی مستقل اختراع کند.
+هر قرارداد مبهم Backend، به‌خصوص مسیر مستقیم ثبت‌نام وب، ایجاد Web Credential، Web Billing و Payment Return، باید ابتدا در Backend/API Contract نهایی شود. Theme نباید برای شکاف‌های قراردادی راه‌حل امنیتی مستقل اختراع کند.
