@@ -18,7 +18,7 @@ final class OperationService
 
     public function bindContext(string $operationId,int $accountId,int $siteId): bool
     {
-        global $wpdb;return false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET account_id=%d,site_id=%d,updated_at=%s WHERE operation_id=%s AND account_id=0 AND site_id=0 AND status='pending'",$accountId,$siteId,current_time('mysql',true),$operationId));
+        global $wpdb;$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET account_id=%d,site_id=%d,updated_at=%s WHERE operation_id=%s AND account_id=0 AND site_id=0 AND status='pending'",$accountId,$siteId,current_time('mysql',true),$operationId));return 1===(int)$wpdb->rows_affected;
     }
 
     public function getByOperationId(string $operationId): ?array
@@ -27,7 +27,7 @@ final class OperationService
     }
 
     public function deletePending(int $accountId,int $siteId,string $operationId): void{global $wpdb;$wpdb->delete($wpdb->prefix.'woogit_operations',['account_id'=>$accountId,'site_id'=>$siteId,'operation_id'=>$operationId,'status'=>'pending'],['%d','%d','%s','%s']);}
-    public function update(int $accountId,int $siteId,string $operationId,string $status,int $upstreamStatus,array $body): bool{global $wpdb;return false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET status=%s,upstream_status=%d,response_body=%s,updated_at=%s WHERE operation_id=%s AND account_id=%d AND site_id=%d AND status='pending'",$status,$upstreamStatus,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),$operationId,$accountId,$siteId));}
-    public function markUnknown(int $accountId,int $siteId,string $operationId): bool{global $wpdb;return false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET status='unknown',updated_at=%s WHERE operation_id=%s AND account_id=%d AND site_id=%d AND status='pending'",current_time('mysql',true),$operationId,$accountId,$siteId));}
+    public function update(int $accountId,int $siteId,string $operationId,string $status,int $upstreamStatus,array $body): bool{global $wpdb;$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET status=%s,upstream_status=%d,response_body=%s,updated_at=%s WHERE operation_id=%s AND account_id=%d AND site_id=%d AND status='pending'",$status,$upstreamStatus,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),$operationId,$accountId,$siteId));return 1===(int)$wpdb->rows_affected;}
+    public function markUnknown(int $accountId,int $siteId,string $operationId): bool{global $wpdb;$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET status='unknown',updated_at=%s WHERE operation_id=%s AND account_id=%d AND site_id=%d AND status='pending'",current_time('mysql',true),$operationId,$accountId,$siteId));return 1===(int)$wpdb->rows_affected;}
     public function getForAccount(int $accountId,int $siteId,string $operationId): ?array{global $wpdb;$row=$wpdb->get_row($wpdb->prepare("SELECT operation_id,account_id,site_id,resource,operation_path,method,status,upstream_status,response_body,created_at,updated_at,expires_at FROM {$wpdb->prefix}woogit_operations WHERE account_id=%d AND site_id=%d AND operation_id=%s LIMIT 1",$accountId,$siteId,$operationId),ARRAY_A);if(!$row)return null;$body=$row['response_body']!==null?json_decode($row['response_body'],true):null;$row['upstream_status']=$row['upstream_status']!==null?(int)$row['upstream_status']:null;$row['response_body']=is_array($body)?$body:null;return $row;}
 }
