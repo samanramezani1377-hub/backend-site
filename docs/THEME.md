@@ -1,301 +1,372 @@
-# WooGit Theme Specification
+# مشخصات تم WooGit
 
-> وضعیت: V1 — Design/Implementation Contract
+> وضعیت: V1 — قرارداد طراحی و پیاده‌سازی
 >
-> این سند فقط مربوط به `theme/woogit/` است و مرز Theme با WooGit Main Plugin و WooCommerce را تعریف می‌کند.
+> این سند مرجع اصلی `theme/woogit/` است و مرز تم با افزونه اصلی WooGit و WooCommerce را مشخص می‌کند.
 
-## 1. هدف
+## ۱. هدف و جایگاه تم
 
-`WooGit Theme` رابط وب عمومی و Billing/Account وب‌سایت اصلی WooGit است. Theme یک Presentation Layer است و نباید منطق امنیتی، احراز هویت، Authorization، Site Ownership، Entitlement، Session lifecycle یا Customer Credential storage را مالک شود.
+`WooGit Theme` وب‌سایت رسمی محصول WooGit و پرتال مشتری احراز‌شده است. تم دو نقش دارد:
 
-ساختار Repository:
+1. معرفی محصول، قابلیت‌ها، روش کار، قیمت‌ها، مستندات عمومی، پشتیبانی و صفحات حقوقی؛
+2. ارائه پرتال مشتری برای حساب کاربری، اشتراک، پرداخت‌ها، وضعیت Billing، سایت متصل و تنظیمات امنیتی حساب.
+
+تم **نسخه وب App نیست** و نباید عملیات فروشگاه را پیاده‌سازی کند.
 
 ```text
-backend-site/
-├── plugin/woogit-backend/   # Backend / domain / API / security
-├── theme/woogit/            # Website presentation
-├── docs/
-└── .github/
+App Android
+    ↓
+عملیات فروشگاه مشتری
+محصولات / سفارش‌ها / همگام‌سازی / تعارض‌ها
+
+Theme
+    ↓
+وب‌سایت رسمی + پرتال حساب + اشتراک و Billing
+
+Plugin
+    ↓
+مرجع اصلی API + امنیت + احراز هویت + Business Logic
 ```
 
-Theme و Plugin باید کاملاً از نظر فایل، مسئولیت و lifecycle جدا باشند. Theme نباید فایل PHP، class، service، migration، database code یا business logic مربوط به Plugin را کپی کند.
+## ۲. مرز مسئولیت‌ها
 
-## 2. اصل معماری
+### تم مسئول است از:
+
+- صفحات عمومی وب‌سایت؛
+- معرفی محصول و قابلیت‌ها؛
+- Pricing؛
+- Login و Register/Onboarding وب طبق قرارداد Backend؛
+- پرتال حساب مشتری؛
+- Subscription؛
+- Billing و سابقه پرداخت؛
+- هدایت به Checkout؛
+- اطلاعات سایت متصل؛
+- تنظیمات حساب و امنیت وب؛
+- Documentation، FAQ، Support، Privacy و Terms؛
+- UI، Navigation، Accessibility و Responsive behavior.
+
+### تم مسئول نیست از:
+
+- مدیریت Products؛
+- مدیریت Orders؛
+- Order Detail عملیاتی؛
+- Sync؛
+- Conflict Resolution؛
+- Inventory؛
+- Media operations؛
+- Store Dashboard عملیاتی؛
+- فراخوانی مستقیم WooCommerce مشتری؛
+- Forwarding عملیاتی؛
+- تصمیم‌گیری درباره Authorization یا Entitlement.
+
+این قابلیت‌ها متعلق به App و Backend هستند.
+
+## ۳. معماری
 
 ```text
 Browser
   ↓
 WooGit Theme
   ↓
-WooGit Main Plugin / REST API
+REST API عمومی WooGit
+  ↓
+WooGit Main Plugin
   ├─ Account
   ├─ Site Identity
   ├─ Authentication
-  ├─ Session
+  ├─ Web Session
   ├─ Ownership
   ├─ Trial / Subscription
   ├─ Entitlement
   ├─ Billing
   ├─ Security
   └─ Authorization
-       ↓
-WooCommerce / Customer Site
 ```
 
-Theme فقط UI، navigation، rendering و interaction را ارائه می‌کند. تصمیم‌های authoritative از Backend دریافت می‌شوند.
+Theme فقط Presentation و تعامل کاربر را ارائه می‌کند. هر تصمیم authoritative باید از Backend بیاید.
 
-## 3. صفحات اصلی
+تم نباید فایل PHP، کلاس، سرویس، Migration، Database code یا Business Logic افزونه را کپی یا مستقیماً وارد کند.
 
-Theme باید برای این صفحات طراحی شود:
+## ۴. نقشه صفحات
 
-- Home / Landing
-- Pricing
-- Login
-- Register / Connect Store
-- Site Verification state
-- Dashboard
-- Account
-- Subscription
-- Billing / Payment History
-- Checkout handoff
-- Connected Sites
-- Usage
-- Documentation
-- Status
-- Privacy
-- Terms
+### صفحات عمومی
 
-صفحات می‌توانند در صورت نیاز با WordPress routing/template hierarchy پیاده‌سازی شوند، اما قرارداد API و منطق Backend نباید داخل Theme تکرار شود.
+- خانه / معرفی محصول
+- قابلیت‌ها
+- روش کار
+- قیمت‌گذاری
+- پرسش‌های متداول
+- مستندات عمومی
+- پشتیبانی
+- وضعیت سرویس
+- حریم خصوصی
+- شرایط استفاده
 
-## 4. Login
+### صفحات احراز هویت
 
-مدل ورود V1 با Account معمولی Email/Password جایگزین نمی‌شود. Login بر اساس Site identity و credential قراردادی Backend طراحی می‌شود:
+- ورود
+- ثبت‌نام / اتصال اولیه سایت
+- خروج
+- وضعیت اعتبارسنجی اتصال
+
+### پرتال مشتری
+
+- داشبورد حساب
+- اشتراک
+- Billing
+- سابقه پرداخت‌ها
+- سایت‌های متصل
+- مصرف/Usage در صورت وجود قرارداد Backend
+- امنیت و نشست‌ها
+- اطلاعات حساب
+- تغییر رمز و ایمیل تماس
+
+**هیچ صفحه‌ای برای Products، Orders، Sync یا Conflicts در Theme وجود ندارد.**
+
+## ۵. Login
+
+ورود V1 با Email/Password عمومی جایگزین نمی‌شود. قرارداد فعلی ورود وب:
 
 ```text
 Site URL
 Password
 ```
 
-Theme باید این دو ورودی را دریافت و به endpoint قراردادی Backend ارسال کند. Theme نباید Password را ذخیره کند یا خودش اعتبار آن را تعیین کند.
+Theme این دو مقدار را دریافت و به Backend ارسال می‌کند. Theme اعتبار رمز یا مالکیت سایت را خودش تعیین نمی‌کند.
 
-UI پیشنهادی:
+نمونه UI:
 
 ```text
-Welcome back
+خوش آمدید
 
-Site URL
+آدرس سایت
 [ https://example.com ]
 
-Password
+رمز عبور WooGit
 [ ******** ]
 
-[ Sign in ]
-
-Forgot password?
+[ ورود ]
 ```
 
-رفتار موفق/ناموفق کاملاً بر اساس response قرارداد Backend است.
+پیام خطا باید عمومی و مطابق قرارداد Backend باشد و اطلاعات حساس یا جزئیات وجود Account را بیش از حد لازم افشا نکند.
 
-## 5. Register / Connect Store
+## ۶. Register / اتصال اولیه
 
-ثبت‌نام اولیه هم‌زمان با Bootstrap/Verification سایت انجام می‌شود. فرم شامل این اطلاعات است:
+جریان ثبت‌نام اولیه و اتصال سایت شامل اطلاعات زیر است:
 
-- Store URL
-- WordPress Username
-- WordPress Application Password
-- WooCommerce Consumer Key
-- WooCommerce Consumer Secret
+- آدرس فروشگاه؛
+- نام کاربری WordPress؛
+- Application Password وردپرس؛
+- Consumer Key ووکامرس؛
+- Consumer Secret ووکامرس.
 
 ```text
-Connect your store
+اتصال فروشگاه
 
-Store URL
+آدرس فروشگاه
 [ https://example.com ]
 
-WordPress Username
+نام کاربری WordPress
 [ ... ]
 
-WordPress Application Password
+Application Password وردپرس
 [ ... ]
 
-WooCommerce Consumer Key
+Consumer Key ووکامرس
 [ ... ]
 
-WooCommerce Consumer Secret
+Consumer Secret ووکامرس
 [ ... ]
 
-[ Verify & Create Account ]
+[ اعتبارسنجی و ایجاد حساب ]
 ```
 
-این اطلاعات request-scoped هستند. Theme، مرورگر و Backend نباید آن‌ها را به عنوان اطلاعات دائمی Theme ذخیره کنند. Backend در V1 Customer Credential را در DB، Vault، persistent cache، Log، Telemetry، Audit یا Response نگه نمی‌دارد.
+این اطلاعات فقط برای جریان request-scoped اعتبارسنجی اولیه هستند و نباید به Credential دائمی حساب تبدیل شوند.
 
-## 6. Verification UX
+طبق قرارداد Backend، این Credentialها نباید در Database، Log، Telemetry، Audit، Cache پایدار، HTML، JavaScript bundle یا Browser Storage نگهداری شوند.
 
-پس از Submit، Theme فقط وضعیت مراحل را نمایش می‌دهد و نتیجه را از Backend می‌گیرد:
+### نکته معماری مهم
+
+در قرارداد فعلی Backend، تنظیم Web Password از مسیر `setup-web-credentials` به App Session معتبر وابسته است. بنابراین اگر ثبت‌نام مستقیم از وب قرار است بدون App انجام شود، باید قبل از پیاده‌سازی یک قرارداد Backend مشخص برای آن تعریف شود. Theme نباید این شکاف را با منطق امنیتی خودش پر کند.
+
+## ۷. اعتبارسنجی اتصال
+
+Theme فقط پیشرفت مراحل را نمایش می‌دهد و نتیجه را از Backend می‌گیرد:
 
 ```text
-Network / HTTPS
+شبکه / HTTPS
       ↓
-WordPress reachability / authentication
+دسترسی و احراز هویت WordPress
       ↓
-WordPress identity/access
+هویت و دسترسی WordPress
       ↓
-WooCommerce availability / authentication
+دسترسی و احراز هویت WooCommerce
       ↓
 Site Identity
       ↓
-Account / Trial lifecycle
+Account / Trial
       ↓
 WooGit Session
 ```
 
-Verification باید read-only باشد و برای تست اتصال نباید Product/Order/Media mutation انجام دهد.
+Verification باید Read-only باشد و نباید برای تست اتصال Product، Order یا Media ایجاد/ویرایش کند.
 
-موفقیت Verification به معنی اثبات کنترل معتبر فنی سایت است، نه ادعای مالکیت حقوقی دامنه.
+موفقیت Verification به معنی اثبات کنترل فنی معتبر سایت در این جریان است، نه اثبات مالکیت حقوقی دامنه.
 
-## 7. Session و دسترسی
+## ۸. Session و دسترسی
 
-Theme نباید Session را مرجع Authorization بداند. Backend تنها مرجع معتبر است.
+Theme مرجع Authorization نیست؛ Backend تنها مرجع معتبر است.
 
-V1 دو Scope دارد:
+دو نوع Session کاملاً جدا هستند:
 
-- `billing`: ورود به Account و Billing؛
-- `operational`: قابلیت‌های Customer-site / Commerce.
+```text
+App   → X-WooGit-Session
+Web   → X-WooGit-Web-Session
+```
 
-Session منقضی‌شده معتبر نیست و locally revive نمی‌شود. Automatic re-login باید Session Creation جدید باشد و Backend دوباره Account + Site Ownership + Entitlement را بررسی کند.
+Theme نباید App Session را برای Web استفاده کند.
 
-اگر Trial/Subscription منقضی باشد، کاربر همچنان می‌تواند وارد Billing شود، اما Theme نباید UI را طوری نمایش دهد که `/forward` یا قابلیت عملیاتی بدون Entitlement مجاز است.
+Session منقضی‌شده معتبر نیست و نباید locally revive شود. ورود مجدد باید Session جدید بسازد و Backend دوباره Account، Site Ownership و Entitlement لازم را بررسی کند.
 
-## 8. Pricing
+## ۹. معماری نگهداری Web Session
 
-Pricing باید داده‌محور باشد. قیمت، مدت و Currency نباید hard-code شوند.
+Token نشست وب نباید در URL قرار گیرد.
 
-منبع قیمت و مدت، Billing API/ WooCommerce Subscription products است. Theme باید response را render کند و امکان نمایش:
+پیاده‌سازی ترجیحی برای مرورگر، Cookie امن با ویژگی‌های مناسب مانند `HttpOnly`، `Secure` و `SameSite` یا یک BFF/Bridge امن است؛ اما انتخاب نهایی باید با قرارداد Backend هماهنگ شود.
 
-- Plan name
-- Price
-- Currency
-- Duration
-- Features
-- Site limits
-- AI credits در صورت وجود
-- Current plan
-- Upgrade / renew CTA
+اگر Backend فقط Header `X-WooGit-Web-Session` را پشتیبانی کند، ذخیره خام Token در `localStorage` نباید بدون ارزیابی امنیتی و تصمیم معماری صریح انجام شود.
 
-را داشته باشد.
+## ۱۰. Pricing
 
-## 9. Billing
+Pricing باید کاملاً داده‌محور باشد. قیمت، مدت و Currency نباید در Theme به‌صورت ثابت نوشته شوند.
 
-Billing روی WordPress اصلی WooGit و WooCommerce/WooCommerce Subscriptions انجام می‌شود.
+Theme باید در صورت وجود این اطلاعات را نمایش دهد:
 
-Flow:
+- نام پلن؛
+- قیمت؛
+- واحد پول؛
+- مدت؛
+- قابلیت‌ها؛
+- محدودیت سایت؛
+- اعتبار AI در صورت وجود؛
+- پلن فعلی؛
+- اقدام ارتقا یا تمدید.
+
+## ۱۱. Billing و Checkout
+
+جریان کلی:
 
 ```text
 Pricing
   ↓
-Select Plan
+انتخاب پلن
   ↓
 Backend Billing Checkout
   ↓
 WooCommerce Order
   ↓
-Payment Gateway
+درگاه پرداخت
   ↓
-Server-side payment/subscription event
+رویداد سروری پرداخت/اشتراک
   ↓
 Entitlement
   ↓
-New operational session when eligible
+دسترسی عملیاتی در صورت واجد شرایط بودن
 ```
 
-Theme هرگز موفقیت پرداخت را از redirect یا callback کلاینت نتیجه‌گیری نمی‌کند. وضعیت واقعی از Backend خوانده می‌شود.
+پرداخت واقعی توسط Backend و WooCommerce انجام می‌شود. Theme فقط رابط انتخاب و هدایت است.
 
-Endpoints قراردادی V1:
+### اصل مهم
+
+بازگشت از درگاه **هرگز به‌تنهایی به معنی موفقیت پرداخت نیست**.
 
 ```text
-GET  /api/v1/billing/plans
-GET  /api/v1/billing/status
-POST /api/v1/billing/checkout
-POST /api/v1/billing/activate-session
+بازگشت از درگاه
+      ↓
+استعلام دوباره Billing Status
+      ↓
+تأیید پرداخت و اشتراک توسط Backend
+      ↓
+نمایش وضعیت نهایی
 ```
 
-`checkout` باید با Session معتبر انجام شود و Account/Site از Session گرفته می‌شود؛ Theme نباید بتواند Account/Site دلخواه را به عنوان authority تعیین کند.
+### Idempotency
 
-## 10. Checkout UI
+Checkout باید طبق قرارداد Backend دارای `Idempotency-Key` باشد. Retry همان عملیات باید همان کلید را حفظ کند تا یک خرید چندبار ایجاد نشود.
 
-Theme می‌تواند صفحه انتخاب/تأیید پلن را نمایش دهد، اما پرداخت واقعی توسط WooCommerce انجام می‌شود.
+## ۱۲. Subscription Dashboard
 
-نمونه:
+داشبورد اشتراک باید وضعیت authoritative را نمایش دهد:
 
-```text
-Your plan
-Pro
+- Trial؛
+- Active؛
+- Expired؛
+- Cancelled؛
+- پلن فعلی؛
+- تاریخ شروع؛
+- تاریخ پایان/تمدید؛
+- سابقه پرداخت؛
+- وضعیت Billing؛
+- وضعیت Entitlement؛
+- اقدام تمدید یا ارتقا.
 
-Duration     30 days
-Price        <server value>
-Currency     <server value>
+Theme نباید با تغییر State محلی، Premium یا Active را جعل کند.
 
-[ Continue to payment ]
-```
+## ۱۳. داشبورد حساب مشتری
 
-Backend پس از ساخت Order، `payment_url` را برمی‌گرداند و Theme کاربر را به صفحه پرداخت هدایت می‌کند.
-
-## 11. Subscription Dashboard
-
-Dashboard باید وضعیت authoritative را نمایش دهد:
-
-- Trial / Active / Expired / Cancelled
-- Current plan
-- Start date
-- Expiration / renewal
-- Payment history
-- Upgrade / renewal actions
-- Billing status
-- Entitlement/access state
-
-Theme نباید با تغییر local state وضعیت Premium/Active را جعل کند.
-
-## 12. Account Dashboard
+داشبورد Theme یک **Customer Account Dashboard** است، نه Store Dashboard.
 
 ساختار پیشنهادی:
 
 ```text
-Dashboard
-├── Overview
-├── Subscription
-├── Connected Stores
-├── Usage
+داشبورد حساب
+├── نمای کلی
+├── اشتراک
 ├── Billing
-├── Sessions / Security
-└── Account
+├── پرداخت‌ها
+├── سایت متصل
+├── مصرف در صورت وجود
+├── امنیت و نشست‌ها
+└── حساب کاربری
 ```
 
-در Overview کارت‌های اصلی می‌توانند شامل Current Plan، Access Status، Expiration، Connected Site و Usage باشند.
+نمای کلی می‌تواند شامل کارت‌های Current Plan، Access Status، Expiration، Connected Site و Usage باشد.
 
-## 13. Connected Sites
+## ۱۴. Connected Sites
 
-Theme فقط Siteهای متعلق به Account را نمایش می‌دهد که Backend در response مجاز اعلام کرده است. Theme نباید ownership را از URL یا اطلاعات فرم حدس بزند.
+Theme فقط سایت‌هایی را نمایش می‌دهد که Backend متعلق بودن آن‌ها به Account را تأیید کرده است.
 
-Customer Credential نباید در لیست Site، dashboard، HTML source، browser storage یا UI نمایش داده شود.
+Theme نباید Ownership را از URL، فرم یا اطلاعات محلی حدس بزند.
 
-## 14. Security Boundary
+Credential سایت مشتری نباید در Dashboard، HTML، Browser Storage، Source Code یا UI نمایش داده شود.
+
+## ۱۵. Account و Security
+
+Theme باید امکان مدیریت مواردی را که Backend برای وب منتشر می‌کند ارائه دهد:
+
+- اطلاعات Account؛
+- Contact Email؛
+- تغییر Web Password؛
+- خروج از حساب؛
+- نمایش وضعیت نشست؛
+- نمایش اطلاعات امن سایت متصل.
+
+تغییر رمز و عملیات حساس باید به Backend سپرده شوند. پس از تغییر رمز، اگر Backend نشست‌های قبلی را revoke کند، Theme باید ورود مجدد را درخواست کند.
+
+## ۱۶. Security Boundary
 
 Theme نباید:
 
-- Customer Credential را persistent ذخیره کند؛
+- Credential مشتری را دائمی ذخیره کند؛
 - Session را locally معتبر اعلام کند؛
-- Entitlement را locally محاسبه کند؛
-- Payment success را از client callback قبول کند؛
-- URL مقصد دلخواه برای gateway بسازد؛
-- Customer WooCommerce را مستقیماً از Browser فراخوانی کند؛
-- Secret را در HTML، JavaScript bundle، analytics یا logs قرار دهد؛
-- business logic Plugin را duplicate کند.
+- Entitlement را محاسبه یا جعل کند؛
+- موفقیت پرداخت را از Callback/Redirect کلاینت قبول کند؛
+- مقصد دلخواه و ناامن برای Gateway بسازد؛
+- WooCommerce مشتری را مستقیماً از Browser فراخوانی کند؛
+- Secret را در HTML، JavaScript، Analytics یا Log قرار دهد؛
+- منطق امنیتی یا Business Logic Plugin را تکرار کند.
 
-Theme می‌تواند public content و داده‌های دریافتی از API را render کند، اما authorization همیشه server-side است.
-
-## 15. Separation of Theme and Plugin
-
-قانون اصلی:
+## ۱۷. جداسازی Theme و Plugin
 
 ```text
 THEME
@@ -308,8 +379,8 @@ THEME
 
 PLUGIN
   = REST API
-  = Domain logic
-  = Auth
+  = Domain Logic
+  = Authentication
   = Sessions
   = Accounts
   = Sites
@@ -320,45 +391,56 @@ PLUGIN
   = Admin
 ```
 
-Theme نباید به فایل‌های داخلی Plugin با include/require وابسته شود. Integration فقط از قراردادهای public و پایدار WordPress/REST API انجام شود.
+Theme نباید با `include` یا `require` به فایل داخلی Plugin وابسته شود. ارتباط فقط از طریق API عمومی و قرارداد مستند انجام می‌شود.
 
-فعال/غیرفعال شدن Theme نباید داده‌های Backend را حذف یا تغییر دهد. فعال/غیرفعال شدن Plugin نیز نباید Theme را به کد داخلی آن وابسته کند؛ در نبود Backend response مناسب، Theme باید graceful error state داشته باشد.
+فعال یا غیرفعال شدن Theme نباید داده Backend را حذف یا تغییر دهد. در صورت در دسترس نبودن Backend، Theme باید وضعیت خطای قابل‌بازیابی و قابل‌فهم نمایش دهد.
 
-## 16. Performance
+## ۱۸. Performance
 
-Theme باید lightweight باشد:
+Theme باید سبک باشد:
 
-- بدون page builder اجباری؛
-- بدون dependency سنگین غیرضروری؛
-- assetهای CSS/JS فقط در صفحات لازم؛
-- تصاویر بهینه؛
-- lazy loading در موارد مناسب؛
-- semantic HTML؛
-- responsive؛
-- accessibility؛
-- حداقل third-party scripts.
+- بدون Page Builder اجباری؛
+- بدون Dependency سنگین غیرضروری؛
+- بارگذاری CSS/JS فقط در صفحات لازم؛
+- تصاویر بهینه و Responsive؛
+- Lazy Loading در موارد مناسب؛
+- HTML معنایی؛
+- حداقل Scriptهای شخص ثالث؛
+- Core Web Vitals مناسب؛
+- جلوگیری از JavaScript سنگین برای کارهای قابل انجام با CSS/HTML.
 
-## 17. Design System
+## ۱۹. سیستم طراحی
 
-ظاهر Theme باید یک SaaS/Infrastructure product حرفه‌ای باشد، نه قالب عمومی WordPress.
+Theme باید از یک Design System مشترک و حرفه‌ای استفاده کند که با زبان بصری App هماهنگ باشد، اما UI عملیاتی App را کپی نکند.
 
-اصول:
+جهت بصری:
 
-- Liquid/glass-inspired UI به شکل کنترل‌شده؛
-- typography خوانا؛
-- کارت‌های تمیز؛
-- border و shadow ظریف؛
-- spacing سیستماتیک؛
-- responsive کامل؛
-- dark/light در صورت نیاز؛
-- وضعیت‌ها با visual hierarchy واضح؛
-- loading، empty، success و error state برای interactionهای API.
+- Liquid Glass کنترل‌شده؛
+- پایه روشن نرم نزدیک به `#EFF1F7`؛
+- لکه‌های محیطی Mint، Peach، Lavender و Sky؛
+- سطوح شیشه‌ای نیمه‌شفاف؛
+- Blur/Haze ظریف؛
+- Border و Shadow نرم؛
+- تأکید اصلی با گرادیان بنفش به صورتی؛
+- وضعیت زنده با سبز؛
+- وضعیت فوری با نارنجی؛
+- Typography خوانا و دارای سلسله‌مراتب؛
+- Responsive کامل؛
+- RTL-first.
 
-Landing، Pricing، Auth، Billing و Dashboard باید از یک Design System مشترک استفاده کنند.
+جزئیات کامل در `docs/THEME_DESIGN_SYSTEM.md` تعریف می‌شود.
 
-## 18. Error / Loading States
+## ۲۰. RTL و Responsive
 
-Theme برای endpointهای Backend باید stateهای زیر را داشته باشد:
+Theme باید از ابتدا RTL-first باشد و برای محتوای فارسی و LTR مانند URL، Email و مقادیر فنی رفتار صحیح داشته باشد.
+
+باید روی موبایل، تبلت، لپ‌تاپ و دسکتاپ عریض بدون Overflow و شکستن layout کار کند.
+
+جزئیات در `docs/THEME_RESPONSIVE_SPEC.md` آمده است.
+
+## ۲۱. Error / Loading States
+
+Theme برای تعاملات API باید حداقل این وضعیت‌ها را پوشش دهد:
 
 ```text
 idle
@@ -375,103 +457,101 @@ server_error
 network_error
 ```
 
-متن UI باید machine-readable error codeهای Backend را به پیام قابل‌فهم تبدیل کند، بدون نمایش Secret، SQL، stack trace یا اطلاعات داخلی.
+برای `429` باید پیام مناسب و در صورت وجود `Retry-After` رفتار منطقی retry نمایش داده شود.
 
-برای `429` باید پیام مناسب و در صورت وجود `Retry-After` رفتار retry UI رعایت شود.
+متن خطا نباید SQL، Stack Trace، Secret یا جزئیات داخلی Backend را نشان دهد.
 
-## 19. Session Expiration UX
+## ۲۲. Session Expiration UX
 
-اگر Backend Session را منقضی اعلام کرد:
+اگر Backend نشست را منقضی اعلام کرد:
 
 ```text
 Session expired
    ↓
-Clear local transient session state
+پاک‌سازی State موقت
    ↓
-Ask for required Login information
+نمایش Login
    ↓
-New Session Creation
+ایجاد Web Session جدید
    ↓
-Backend re-checks Account + Site Ownership + Entitlement
+بررسی دوباره Account + Site Ownership + Entitlement
 ```
 
-Theme نباید Session منقضی‌شده را locally تمدید یا معتبر نگه دارد.
+Theme نباید نشست منقضی‌شده را تمدید محلی کند.
 
-## 20. Documentation / Status
+## ۲۳. Documentation / Support / Status
 
-Documentation باید برای کاربران و توسعه‌دهندگان قابل دسترسی باشد و شامل Getting Started، Authentication، Site Connection، Billing، Sessions، Errors، Security و Rate Limits باشد.
+وب‌سایت باید مستندات عمومی، راهنمای شروع، اتصال سایت، Authentication، Billing، Session، Error، Security و Rate Limit را در اختیار کاربر قرار دهد.
 
-Status page باید وضعیت سرویس‌های مهم را بدون افشای اطلاعات داخلی نمایش دهد.
+صفحه Status باید فقط وضعیت سرویس‌ها را به شکل امن نمایش دهد و اطلاعات داخلی زیرساخت را افشا نکند.
 
-## 21. Compatibility
+## ۲۴. SEO و محتوای عمومی
 
-Theme باید با WordPress استاندارد و stack اصلی WooGit سازگار باشد و از APIهای عمومی WordPress و قراردادهای مستند Backend استفاده کند.
+صفحات عمومی باید:
 
-Theme نباید فرض کند Customer Gateway Plugin در این Repository نصب است؛ Gateway Plugin مشتری خارج از Scope این Repository است.
+- عنوان و توضیحات مناسب داشته باشند؛
+- ساختار Heading صحیح داشته باشند؛
+- Semantic HTML استفاده کنند؛
+- Open Graph و metadata لازم را داشته باشند؛
+- برای موتورهای جست‌وجو قابل crawl باشند؛
+- محتوای اصلی را وابسته به JavaScript سنگین نکنند.
 
-## 22. Testing Requirements
+صفحات خصوصی پرتال نباید داده خصوصی مشتری را در Search Engine Index قرار دهند.
 
-Theme قبل از release باید حداقل این مسیرها را تست کند:
+## ۲۵. دسترس‌پذیری
 
-- Home rendering؛
-- Pricing data rendering؛
-- Login success/failure؛
-- Register/Connect؛
-- Verification states؛
-- Expired session؛
-- Billing status؛
-- Checkout handoff؛
-- Payment pending/failed/success reflected from server؛
-- Expired entitlement؛
-- Responsive layouts؛
-- Keyboard/accessibility basics؛
-- No credential persistence؛
-- No secrets in generated HTML/JS/logs؛
-- Theme activation/deactivation isolation from Plugin.
+حداقل الزامات:
 
-## 23. V1 Non-Goals
+- Keyboard Navigation؛
+- Focus قابل مشاهده؛
+- Label واقعی برای ورودی‌ها؛
+- پیام خطای مرتبط با فیلد؛
+- کنتراست مناسب؛
+- Reduced Motion؛
+- Zoom و افزایش اندازه متن؛
+- Touch Target مناسب در موبایل؛
+- Semantic HTML و ARIA فقط در جایی که لازم است.
 
-این موارد در Theme V1 نباید به منطق مستقل تبدیل شوند:
+## ۲۶. Compatibility
 
-- پیاده‌سازی Auth مستقل؛
-- Token/Refresh-token system جدید؛
-- Credential Vault؛
-- Customer WooCommerce business API؛
-- Payment processor مستقل؛
-- Subscription database مستقل؛
-- Entitlement database مستقل؛
-- Proxy/gateway مستقیم از Browser؛
-- وابستگی اجباری به Gateway Plugin مشتری.
+Theme باید با WordPress استاندارد و API عمومی WooGit سازگار باشد. نباید به جزئیات پیاده‌سازی داخلی Plugin وابسته شود.
 
-## 24. Definition of Done
+## ۲۷. تست و CI
 
-Theme زمانی V1-ready است که:
+تست‌های Theme باید از تست‌های Plugin/Backend جدا باشند:
 
-1. تمام صفحات اصلی تعریف‌شده را داشته باشد؛
-2. Login با Site URL + Password را طبق قرارداد Backend پیاده کند؛
-3. Register/Connect با Site URL + چهار Customer Credential را طبق Bootstrap contract پیاده کند؛
-4. هیچ Customer Credential را persistent نگه ندارد؛
-5. Pricing/Billing را از Backend/WooCommerce data بگیرد؛
-6. Checkout را از طریق Backend به WooCommerce payment flow بسپارد؛
-7. Subscription/Entitlement را authoritative از Backend نمایش دهد؛
-8. Session expiration را امن مدیریت کند؛
-9. Theme و Plugin از نظر فایل و مسئولیت مستقل باشند؛
-10. با غیرفعال شدن Theme، داده Backend آسیب نبیند؛
-11. با غیرفعال شدن Plugin، Theme graceful failure داشته باشد؛
-12. responsive، accessible و lightweight باشد؛
-13. تست‌های UI و integration موردنیاز را پاس کند؛
-14. هیچ business/security logic از Plugin را duplicate نکند.
+```text
+tests/plugin/  → Backend / Plugin
+ tests/theme/  → Theme
+```
 
-## 25. مرجع معماری
+Theme CI باید در آینده حداقل Lint، Syntax، Unit، Integration، Security، Accessibility و Build قابل نصب را بررسی کند.
 
-این سند باید همراه با قراردادهای زیر خوانده شود:
+در تست‌های مستقل، شکست یک تست نباید مانع اجرای تست‌های مستقل دیگر شود؛ اما در پایان، شکست هر تست الزامی باید نتیجه CI را قرمز کند.
 
-- `docs/API-CONTRACT.md`
-- `docs/CLIENT_CONTRACT.md`
-- `docs/IDENTITY_AND_WP_CONNECTION.md`
-- `docs/ONBOARDING_AND_REGISTRATION.md`
-- `docs/BILLING.md`
-- `docs/WORDPRESS_MONOREPO.md`
-- `docs/SECURITY.md`
+جزئیات در `docs/THEME_TESTING.md` آمده است.
 
-در صورت تعارض، قراردادهای Backend و Security مرجع رفتار server-side هستند و Theme باید خود را با آن‌ها تطبیق دهد.
+## ۲۸. اسناد تکمیلی
+
+- `docs/THEME_API_CONTRACT.md` — قرارداد API و ارتباط با Backend
+- `docs/THEME_AUTH_FLOW.md` — احراز هویت و نشست وب
+- `docs/THEME_DESIGN_SYSTEM.md` — سیستم طراحی
+- `docs/THEME_RESPONSIVE_SPEC.md` — Responsive و RTL
+- `docs/THEME_TESTING.md` — تست و CI
+
+این اسناد باید همگی فارسی و هماهنگ با این سند باشند.
+
+## ۲۹. غیرهدف‌های V1
+
+در V1، Theme نباید به وب‌اپلیکیشن عملیاتی فروشگاه تبدیل شود. موارد زیر خارج از Scope هستند:
+
+- Products؛
+- Orders؛
+- Inventory؛
+- Media Management؛
+- Sync؛
+- Conflict Resolution؛
+- Store Operations؛
+- اجرای مستقیم عملیات WooCommerce مشتری.
+
+این مرز برای جلوگیری از تداخل مسئولیت Theme، App و Backend الزامی است.
