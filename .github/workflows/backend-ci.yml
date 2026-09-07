@@ -5,13 +5,13 @@ on:
     branches: [main]
     paths:
       - 'plugin/**'
-      - 'tests/**'
+      - 'tests/plugin/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'plugin/**'
-      - 'tests/**'
+      - 'tests/plugin/**'
       - '.github/workflows/backend-ci.yml'
 
 jobs:
@@ -19,12 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-
       - name: PHP syntax check
         id: php_syntax
         continue-on-error: true
@@ -34,30 +32,24 @@ jobs:
           failed=0
           while IFS= read -r -d '' file; do
             echo "CHECK PHP: $file"
-            if ! php -l "$file"; then
-              failed=1
-            fi
+            if ! php -l "$file"; then failed=1; fi
           done < <(find plugin/woogit-backend -type f -name '*.php' -print0)
           exit "$failed"
-
       - name: Behavioral lifecycle tests
         id: behavioral
         continue-on-error: true
         shell: bash
-        run: bash tests/run_behavioral.sh
-
+        run: bash tests/plugin/run_behavioral.sh
       - name: Web login Site URL identity test
         id: web_login
         continue-on-error: true
         shell: bash
-        run: bash tests/web_login_identity.sh
-
+        run: bash tests/plugin/web_login_identity.sh
       - name: Backend security invariants
         id: backend_security
         continue-on-error: true
         shell: bash
-        run: bash tests/security_invariants.sh
-
+        run: bash tests/plugin/security_invariants.sh
       - name: Proxy security invariants
         id: proxy_security
         continue-on-error: true
@@ -82,7 +74,6 @@ jobs:
           grep -Eq 'markUnknown' "$operations"
           grep -Eq "'proxy'" "$controller"
           grep -Eq 'ALLOWED_MEDIA_PATH' "$policy"
-
       - name: Build installable WordPress plugin ZIP
         id: build_zip
         continue-on-error: true
@@ -93,14 +84,10 @@ jobs:
           test -n "$VERSION"
           rm -rf dist
           mkdir -p dist
-          # The plugin directory itself must be the archive root. Including
-          # the repository-level `plugin/` directory makes WordPress unable
-          # to discover the main plugin file during upload.
           (cd plugin && zip -qr "../dist/woogit-backend-${VERSION}.zip" woogit-backend)
           unzip -t "dist/woogit-backend-${VERSION}.zip"
           unzip -l "dist/woogit-backend-${VERSION}.zip" | grep -Eq 'woogit-backend/woogit-backend\.php$'
           echo "Built dist/woogit-backend-${VERSION}.zip"
-
       - name: Upload installable plugin ZIP
         id: upload_zip
         if: ${{ always() && steps.build_zip.outcome == 'success' }}
@@ -111,42 +98,26 @@ jobs:
           path: dist/woogit-backend-*.zip
           if-no-files-found: error
           retention-days: 30
-
       - name: Final CI gate
         if: ${{ always() }}
         shell: bash
         run: |
           failed=0
-
           check_step() {
-            local name="$1"
-            local outcome="$2"
-            if [ "$outcome" != "success" ]; then
-              echo "FAIL: $name ($outcome)"
-              failed=1
-            else
-              echo "PASS: $name"
-            fi
+            local name="$1"; local outcome="$2"
+            if [ "$outcome" != "success" ]; then echo "FAIL: $name ($outcome)"; failed=1; else echo "PASS: $name"; fi
           }
-
           check_step 'PHP syntax check' '${{ steps.php_syntax.outcome }}'
           check_step 'Behavioral lifecycle tests' '${{ steps.behavioral.outcome }}'
           check_step 'Web login Site URL identity test' '${{ steps.web_login.outcome }}'
           check_step 'Backend security invariants' '${{ steps.backend_security.outcome }}'
           check_step 'Proxy security invariants' '${{ steps.proxy_security.outcome }}'
           check_step 'Build installable WordPress plugin ZIP' '${{ steps.build_zip.outcome }}'
-
-          if [ '${{ steps.build_zip.outcome }}' = 'success' ]; then
-            check_step 'Upload installable WordPress plugin ZIP' '${{ steps.upload_zip.outcome }}'
-          else
-            echo 'SKIP: Upload installable plugin ZIP (build failed)'
-          fi
-
+          if [ '${{ steps.build_zip.outcome }}' = 'success' ]; then check_step 'Upload installable WordPress plugin ZIP' '${{ steps.upload_zip.outcome }}'; else echo 'SKIP: Upload installable plugin ZIP (build failed)'; fi
           if [ "$failed" -ne 0 ]; then
             echo
             echo 'CI FAILED: one or more checks failed. All checks were allowed to run; see the individual steps above for every failure.'
             exit 1
           fi
-
           echo
           echo 'CI PASSED: all checks passed.'
