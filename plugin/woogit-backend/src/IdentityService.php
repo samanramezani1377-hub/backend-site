@@ -24,6 +24,12 @@ final class IdentityService
         return $user instanceof \WP_User ? $user : null;
     }
 
+    public function isPasswordConfigured(int $accountId): bool
+    {
+        $user = $this->getUser($accountId);
+        return $user instanceof \WP_User && !get_user_meta($user->ID, self::PROVISIONED_META, true);
+    }
+
     public function provision(string $email, int $accountId): array
     {
         $email = sanitize_email($email);
@@ -139,7 +145,7 @@ final class IdentityService
     public function verifyPassword(int $accountId, string $password): bool
     {
         $user = $this->getUser($accountId);
-        return $user instanceof \WP_User && wp_check_password($password, $user->user_pass, $user->ID);
+        return $user instanceof \WP_User && $this->isPasswordConfigured($accountId) && wp_check_password($password, $user->user_pass, $user->ID);
     }
 
     public function setPassword(int $accountId, string $password): bool
