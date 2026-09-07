@@ -30,6 +30,9 @@ jobs:
       - name: Behavioral lifecycle tests
         shell: bash
         run: bash tests/run_behavioral.sh
+      - name: Web login Site URL identity test
+        shell: bash
+        run: bash tests/web_login_identity.sh
       - name: Backend security invariants
         shell: bash
         run: bash tests/security_invariants.sh
