@@ -6,7 +6,7 @@ PLUGIN="$ROOT/plugin/woogit-backend"
 fail(){ echo "FAIL: $1" >&2; exit 1; }
 contains(){ local file="$1" pattern="$2" label="$3"; grep -Eq "$pattern" "$file" || fail "$label"; }
 while IFS= read -r -d '' file; do php -l "$file" >/dev/null || fail "PHP syntax: $file"; done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; billing="$PLUGIN/src/BillingService.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"; requirement="$PLUGIN/src/RequirementService.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; billing="$PLUGIN/src/BillingService.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; identity="$PLUGIN/src/IdentityService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"; requirement="$PLUGIN/src/RequirementService.php"
 contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
 contains "$controller" 'APP_VERSION_DEPRECATED' 'controller must enforce deprecated-version gate'
@@ -26,7 +26,7 @@ contains "$billingController" "billing_plans_ip" 'billing plans must be IP rate 
 contains "$billingController" 'PLANS_LIMIT = 60' 'billing plans limit must be 60/min'
 contains "$billingController" "billing_status_account_site" 'billing status must be Account/Site rate limited'
 contains "$billingController" "billing_status_session" 'billing status must be Session rate limited'
-contains "$billingController" 'STATUS_LIMIT = 30' 'billing status limit must be 30/min'
+contains "$billingController" 'STATUS_LIMIT = 30' 'billing status must be 30/min'
 contains "$billingController" "billing_checkout_account_site" 'billing checkout must be Account/Site rate limited'
 contains "$billingController" "billing_checkout_ip" 'billing checkout must be IP rate limited'
 contains "$billingController" 'CHECKOUT_LIMIT = 5' 'billing checkout limit must be 5/min'
@@ -39,7 +39,7 @@ contains "$billingController" 'Retry-After' 'billing rate limiting must expose R
 grep -Fq "hash('sha256'" "$billingController" || fail 'billing must not persist raw session tokens as rate-limit keys'
 contains "$billing" 'getPaymentHistory' 'billing service must expose account payment history'
 contains "$billing" "_woogit_account_id" 'payment history must be scoped to WooGit Account metadata'
-contains "$billing" "_woogit_site_id" 'payment history must be scoped to the unique Site metadata'
+contains "$billing" "_woogit_site_id" 'payment history must be scoped to Site metadata'
 contains "$idempotency" 'state.*unknown' 'idempotency must support unknown state'
 contains "$proxy" 'wp_safe_remote_request' 'proxy must use safe WordPress HTTP request'
 contains "$proxy" 'resolvePublicDestination' 'proxy must validate resolved public destination'
@@ -54,12 +54,17 @@ contains "$policy" 'site identity is the origin' 'site identity must be normaliz
 if grep -Eq 'consumer_(key|secret).*query|query.*consumer_(key|secret)' "$proxy"; then fail 'credentials must not be query parameters'; fi
 contains "$database" 'UNIQUE KEY host \(host\)' 'Site host must be globally unique'
 contains "$database" 'UNIQUE KEY account_id \(account_id\)' 'Account must have exactly one Site relationship'
+contains "$database" 'UNIQUE KEY wp_user_id \(wp_user_id\)' 'WordPress identity must map to at most one WooGit Account'
+contains "$database" 'migrateAccountIdentity' 'identity migration must be versioned'
 contains "$site" 'one-to-one with the connected site' 'SiteService must enforce one-site-per-account invariant'
 contains "$account" 'function create' 'Account must be created explicitly'
 contains "$account" 'function updateContactEmail' 'Account contact email update must be explicit'
-contains "$account" 'web_password_hash' 'Account must store only the web password hash'
-contains "$account" 'PASSWORD_ARGON2ID' 'web password must use Argon2id hashing'
-contains "$account" 'password_verify' 'web password login must verify a hash'
+contains "$account" 'wp_user_id' 'Account must expose its linked WordPress identity'
+contains "$identity" 'wp_check_password' 'web password verification must use WordPress password hashing'
+contains "$identity" 'wp_set_password' 'web password changes must use WordPress password storage'
+contains "$identity" 'wc_create_new_customer' 'new identities must be WooCommerce customers when available'
+contains "$identity" 'identity_verification_required' 'linking an existing WordPress customer must require password proof'
+contains "$identity" 'administrator.*shop_manager' 'identity linking must reject privileged WordPress roles'
 if grep -Eq 'findOrCreate\([^)]*email|findOrCreate\(\$email' "$account" "$controller"; then fail 'email must never resolve Account identity'; fi
 contains "$database" 'web_sessions' 'web authentication must use a separate session table'
 contains "$webSession" 'token_hash' 'web sessions must store token hashes'
@@ -78,6 +83,9 @@ contains "$webAuth" 'invalid_web_credentials' 'web login failures must be generi
 contains "$webAuth" 'web_login_ip' 'web login must be IP rate limited'
 contains "$webAuth" 'web_login_site' 'web login must be Site/host rate limited'
 contains "$webAuth" 'X-WooGit-Web-Session' 'web API must use a separate session credential'
+contains "$webAuth" 'current_wordpress_password' 'existing WordPress identity linking must prove current password'
+contains "$webAuth" 'identity_user_id' 'web identity must expose the linked WordPress user id'
+contains "$bootstrap" 'IdentityService' 'WordPress identity service must be bootstrapped'
 contains "$bootstrap" 'WebSessionService' 'web session service must be bootstrapped'
 contains "$bootstrap" 'WebAuthController' 'web auth controller must be registered'
 contains "$bootstrap" "woogit_idempotency WHERE updated_at < .*AND state IN \('succeeded','failed'\)" 'retention must never delete pending/unknown idempotency rows'
@@ -117,5 +125,4 @@ contains "$requirement" 'numeric type is an opaque wire value' 'requirement type
 contains "$webAuth" 'requirements->build' 'requirements endpoint must use generic requirement service'
 if grep -Eq "'type'=>'(account_setup|contact_metadata)'" "$webAuth"; then fail 'requirements endpoint must not emit string semantic types'; fi
 contains "$bootstrap" 'RequirementService' 'generic requirement service must be bootstrapped'
-
 echo "security invariants: PASS"
