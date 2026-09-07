@@ -45,6 +45,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: bash tests/plugin/web_login_identity.sh
+      - name: Web Bootstrap security contract test
+        id: web_bootstrap
+        continue-on-error: true
+        shell: bash
+        run: bash tests/plugin/web_bootstrap_identity.sh
       - name: Backend security invariants
         id: backend_security
         continue-on-error: true
@@ -110,6 +115,7 @@ jobs:
           check_step 'PHP syntax check' '${{ steps.php_syntax.outcome }}'
           check_step 'Behavioral lifecycle tests' '${{ steps.behavioral.outcome }}'
           check_step 'Web login Site URL identity test' '${{ steps.web_login.outcome }}'
+          check_step 'Web Bootstrap security contract test' '${{ steps.web_bootstrap.outcome }}'
           check_step 'Backend security invariants' '${{ steps.backend_security.outcome }}'
           check_step 'Proxy security invariants' '${{ steps.proxy_security.outcome }}'
           check_step 'Build installable WordPress plugin ZIP' '${{ steps.build_zip.outcome }}'
