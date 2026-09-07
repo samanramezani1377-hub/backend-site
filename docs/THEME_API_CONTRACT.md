@@ -1,26 +1,44 @@
 # قرارداد API تم WooGit
 
-> وضعیت: V1 — قرارداد پیاده‌سازی
+> وضعیت: V1 — قرارداد یکپارچه پیاده‌سازی
 >
-> این سند قرارداد ارتباط `theme/woogit/` با API عمومی WooGit است. تم نباید به کلاس‌ها، سرویس‌ها یا فایل‌های داخلی افزونه Backend وابسته شود.
+> این سند قرارداد ارتباط `theme/woogit/` با API عمومی WooGit است. Theme فقط مصرف‌کننده API عمومی است و نباید به کلاس‌ها، سرویس‌ها یا فایل‌های داخلی Backend وابسته شود.
 
-## ۱. اصل مرجعیت
+## ۱. اصل مرجعیت و مرزبندی
 
-تم فقط مصرف‌کننده API است. Account، Site، احراز هویت، نشست، مالکیت، اشتراک، اعتبار دسترسی و Billing در Backend تعیین می‌شوند.
+Account، Site، احراز هویت، Session، مالکیت، Subscription، Entitlement، Billing و Authorization در Backend تعیین می‌شوند. Theme فقط Presentation و تعامل کاربر را ارائه می‌کند.
 
-## ۲. آدرس API
+Theme نسخه وب App نیست و نباید عملیات Products، Orders، Sync، Conflicts، Inventory، Media یا Store Dashboard عملیاتی را پیاده‌سازی کند.
 
-مسیر پایه REST در WordPress:
+## ۲. آدرس و نسخه API
 
 ```text
 /wp-json/woogit/v1/
 ```
 
-تم نباید مسیر API را حدس بزند یا endpointهای داخلی افزونه را مستقیماً فراخوانی کند.
+API version از Client version جداست. Theme نباید برای مصرف endpointهای App، هدر یا payload جعلی ارسال کند.
 
-## ۳. قراردادهای وب
+برای تشخیص Client در قرارداد نهایی، الگوی پیشنهادی:
 
-مسیرهای وب V1 که Backend فعلاً ارائه می‌کند:
+```text
+X-WooGit-Client: web
+X-WooGit-Client-Version: 1.0.0
+```
+
+`X-WooGit-App-Version` مخصوص قرارداد App است و Theme نباید آن را جعل کند. Backend می‌تواند حداقل نسخه پشتیبانی‌شده App و Web را مستقل مدیریت کند.
+
+## ۳. نشست‌ها
+
+```text
+Android App → X-WooGit-Session
+Theme       → X-WooGit-Web-Session
+```
+
+این Sessionها قابل جایگزینی نیستند. Web Session منقضی‌شده قابل revive محلی نیست؛ Login مجدد باید Session جدید بسازد و Backend دوباره Account + Site Ownership + Entitlement لازم را بررسی کند.
+
+## ۴. قراردادهای Web
+
+مسیرهای فعلی وب:
 
 ```text
 GET  /account/requirements
@@ -33,15 +51,55 @@ POST /web/account/password
 GET  /web/billing/history
 ```
 
-هدر نشست وب:
+### Web-first Bootstrap — مورد لازم V1
+
+برای ثبت‌نام مستقیم از Theme، قرارداد مستقل زیر باید در Backend اضافه شود:
 
 ```text
-X-WooGit-Web-Session
+POST /account/web-bootstrap
 ```
 
-## ۴. Billing
+ورودی مفهومی:
 
-مسیرهای Billing فعلی Backend:
+```json
+{
+  "site_url": "https://example.com",
+  "wp_username": "...",
+  "wp_application_password": "...",
+  "consumer_key": "...",
+  "consumer_secret": "...",
+  "web_password": "...",
+  "web_password_confirmation": "..."
+}
+```
+
+جریان authoritative:
+
+```text
+Validate input
+  ↓
+Rate Limit
+  ↓
+Verify real WooCommerce site
+  ↓
+Resolve/Create Account
+  ↓
+Resolve/Create Site
+  ↓
+Verify Site ↔ Account ownership
+  ↓
+Create Web Credential
+  ↓
+Issue Web Session
+```
+
+این endpoint باید mutation محسوب شود و `Idempotency-Key` داشته باشد. Credentialهای WooCommerce/WordPress فقط request-scoped هستند و نباید در DB، options، session پایدار، cookie، browser storage، log، telemetry، audit، cache یا HTML/JS نگهداری شوند.
+
+`/sites/verify` همچنان می‌تواند قرارداد App/bootstrap باشد؛ Theme نباید بدون قرارداد صریح، آن endpoint را با تغییر header/payload به‌عنوان Web API مصرف کند.
+
+## ۵. Billing برای Web و App
+
+مسیرهای Billing:
 
 ```text
 GET  /billing/plans
@@ -50,70 +108,87 @@ POST /billing/checkout
 POST /billing/activate-session
 ```
 
-Theme فقط باید قراردادهایی را مصرف کند که Backend برای وب منتشر کرده است. اگر endpointی فقط برای App Session طراحی شده باشد، تم نباید آن را با جعل هدر یا تغییر payload مصرف کند.
+`plans` عمومی است. `status` و `checkout` باید در قرارداد نهایی امکان احراز هویت با Web Session و App Session را داشته باشند.
 
-## ۵. احراز هویت درخواست
-
-هر endpoint باید طبق قرارداد خود احراز هویت شود. تم نباید `account_id`، `site_id` یا entitlement را از ورودی کاربر به عنوان مرجع دسترسی بپذیرد.
-
-## ۶. نشست وب
-
-نشست وب و نشست App کاملاً جدا هستند:
+Backend باید App Session و Web Session را به یک مفهوم مشترک authorization context تبدیل کند، برای نمونه:
 
 ```text
-App     → X-WooGit-Session
-Theme   → X-WooGit-Web-Session
+account_id
+site_id
+client_type
+session_id
 ```
 
-## ۷. خطاها
+Business Logic و BillingService مشترک بمانند؛ فقط لایه احراز هویت/Context تفاوت داشته باشد.
 
-تم باید بر اساس `code` و وضعیت HTTP رفتار کند و پیام قابل‌فهم نمایش دهد. SQL، stack trace، Secret و جزئیات داخلی Backend نباید نمایش داده شوند.
+`/billing/activate-session` **App-only** است؛ چون وظیفه آن صدور Operational App Session است. Theme نباید این endpoint را مصرف کند.
 
-کدهای مهم می‌توانند شامل این موارد باشند:
+## ۶. Checkout و Idempotency
+
+Theme برای Checkout از قرارداد Backend استفاده می‌کند و باید `Idempotency-Key` ارسال کند. Retry همان عملیات باید همان کلید را حفظ کند.
+
+Backend باید سناریوی timeout-after-success را پوشش دهد: اگر عملیات در سرور موفق شد ولی پاسخ به Client نرسید، retry با همان کلید باید نتیجه همان عملیات را بازیابی کند و خرید دوم نسازد.
+
+## ۷. Payment Return
+
+بازگشت از Gateway اثبات پرداخت نیست:
 
 ```text
+Theme → Checkout
+      ↓
+Gateway
+      ↓
+Backend callback/webhook
+      ↓
+Order + BillingService
+      ↓
+Entitlement
+      ↓
+Theme /payment/result
+      ↓
+GET /billing/status با Web Session
+      ↓
+نمایش وضعیت نهایی
+```
+
+Query parameter مانند `status=success` نباید trusted باشد. Enum دقیق وضعیت‌های Billing/Payment باید توسط Backend به‌صورت canonical منتشر شود؛ برای نمونه `pending`, `paid`, `failed`, `expired`, `cancelled`.
+
+## ۸. خطاها
+
+قرارداد canonical خطا در `docs/API_ERROR_CODES.md` است. Theme بر اساس HTTP status + `code` رفتار می‌کند، نه متن پیام.
+
+کدهای کلیدی:
+
+```text
+validation_error
+invalid_web_credentials
+invalid_web_session
 invalid_session
 account_inactive
 site_not_owned
-invalid_web_credentials
+not_entitled
+idempotency_conflict
+operation_pending
+operation_unknown
 rate_limited
-validation_error
-payment_pending
-payment_failed
 server_error
 ```
 
-برای کد ناشناخته باید رفتار امن و عمومی استفاده شود.
+برای `429` در صورت وجود `Retry-After`/`retry_after`، Theme باید رفتار کنترل‌شده داشته باشد و retry تهاجمی نکند.
 
-## ۸. Idempotency در Checkout
+## ۹. نگهداری Web Session
 
-هر Checkout باید طبق قرارداد Backend دارای `Idempotency-Key` معتبر باشد. در retry همان عملیات، همان کلید باید حفظ شود تا یک خرید ناخواسته چندبار ایجاد نشود.
+Token نباید در URL قرار گیرد. گزینه ترجیحی Cookie امن `HttpOnly` + `Secure` + `SameSite` مناسب یا BFF/Bridge امن است. اگر Backend فقط Header را پشتیبانی کند، قرار دادن خام Token در `localStorage` بدون تصمیم امنیتی صریح مجاز نیست.
 
-## ۹. بازگشت از پرداخت
+## ۱۰. ممنوعیت‌ها
 
-بازگشت کاربر از درگاه به معنی موفقیت پرداخت نیست:
-
-```text
-بازگشت از درگاه
-      ↓
-استعلام وضعیت معتبر Billing
-      ↓
-تأیید پرداخت/اشتراک/Entitlement توسط Backend
-      ↓
-نمایش نتیجه نهایی
-```
-
-## ۱۰. سازگاری
-
-Theme باید با نسخه قرارداد API هماهنگ باشد. تغییر معنای فیلد یا حذف آن بدون قرارداد سازگاری مجاز نیست.
-
-## ۱۱. ممنوعیت‌ها
-
-تم نباید:
+Theme نباید:
 
 - مستقیماً به WooCommerce مشتری وصل شود؛
-- Credential مشتری را خارج از جریان قراردادی ثبت‌نام نگه دارد؛
-- کلاس PHP افزونه را `include/require` کند؛
+- Credential سایت مشتری را دائمی ذخیره کند؛
+- App Session را برای Web جعل یا reuse کند؛
 - Entitlement را خودش محاسبه کند؛
-- موفقیت پرداخت را از URL تشخیص دهد؛
-- نشست منقضی‌شده را معتبر اعلام کند.
+- موفقیت پرداخت را از URL نتیجه‌گیری کند؛
+- Session منقضی‌شده را locally revive کند؛
+- به کلاس یا سرویس داخلی Plugin وابسته شود؛
+- `account_id`/`site_id` ارسالی کاربر را مرجع Authorization بداند.
