@@ -21,7 +21,8 @@ final class AnnouncementController
     public function list(\WP_REST_Request $request): \WP_REST_Response
     {
         $ip=$_SERVER['REMOTE_ADDR']??'unknown';
-        if(!$this->rateLimits->allow('announcement:ip:'.hash('sha256',$ip),30,60))return new \WP_REST_Response(['code'=>'RATE_LIMITED'],429);
+        $limit=$this->rateLimits->check('announcement_ip',hash('sha256',$ip),30,60);
+        if(!$limit['allowed'])return new \WP_REST_Response(['code'=>'RATE_LIMITED','retry_after'=>$limit['retry_after'],'retryable'=>true],429);
         $version=sanitize_text_field((string)$request->get_header('X-WooGit-App-Version'));
         $gate=$this->versionGate->check($version);
         if(!$gate['allowed']&&$gate['code']==='APP_VERSION_REQUIRED')return new \WP_REST_Response(['code'=>'APP_VERSION_REQUIRED','message'=>'نسخه اپ باید ارسال شود.','minimum_supported_version'=>$gate['policy']['minimum_supported_version'],'latest_version'=>$gate['policy']['latest_version'],'recommended_version'=>$gate['policy']['recommended_version'],'update_required'=>false,'retryable'=>false],400);
