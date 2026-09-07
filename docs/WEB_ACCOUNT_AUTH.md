@@ -2,71 +2,58 @@
 
 ## Identity model
 
-A WooGit Account is permanently associated with exactly one connected site. The Site URL identifies the site; the Account is not resolved by email.
+A WooGit Account is permanently associated with exactly one connected Site. The Account identity is backed by a WordPress User on the central WooGit Backend WordPress installation; when WooCommerce is available that user is created as a WooCommerce Customer. `wp_user_id` is the identity link. Site and Entitlement remain WooGit-owned domain entities.
+
+Email is contact metadata, not the Account lookup key. Web login still starts with Site URL, which resolves Site -> Account -> linked WordPress User.
 
 ## Two independent authentication paths
 
-### App path
+### App/API path
 
-The app connects using the supplied WordPress/WooCommerce site credentials: Site URL, WordPress username, WordPress Application Password, Consumer Key, and Consumer Secret. These are site credentials and are not WooGit web-account credentials.
+The app connects using the supplied customer-site credentials: Site URL, WordPress username, WordPress Application Password, Consumer Key, and Consumer Secret. These authenticate against the customer's WordPress/WooCommerce site during `/sites/verify` and `/forward`. They are not the central WooGit WordPress User password and are never treated as the web login credential.
 
 ### WooGit web-site path
 
-The separate WooGit Backend website authenticates with Site URL + WooGit web-account password. Email is contact metadata only and is never a login identifier.
+The separate WooGit Backend website authenticates with Site URL + the linked central WordPress User password. The resulting credential is a dedicated WooGit Web Session and is independent from `X-WooGit-Session`.
 
-The web password is stored only as an Argon2id hash.
+Web password storage therefore uses the central WordPress user password storage (`wp_set_password` / `wp_check_password`); WooGit no longer uses `web_password_hash` as the active authentication source. The legacy column remains only for migration compatibility and must not be used for new authentication.
+
+## Linking an existing WordPress Customer
+
+First-time setup is performed from a valid App/API session. If the supplied contact email does not already belong to a central WordPress user, WooGit creates a new WooCommerce Customer (or WordPress subscriber when WooCommerce is unavailable) and links its user ID to the Account.
+
+If the email already belongs to a central WordPress user, WooGit does not silently take over that identity. The setup request must also provide the current WordPress password, and the user must be a non-privileged customer/subscriber identity. Administrator, editor, author, and shop-manager identities are never auto-linked.
+
+This prevents a customer-site credential holder from claiming an unrelated privileged WordPress identity merely by knowing its email address.
 
 ## Generic account requirements contract
 
-`GET /wp-json/woogit/v1/account/requirements` returns a generic list of account requirements. The contract is deliberately not tied to password setup or to a particular UI.
+`GET /wp-json/woogit/v1/account/requirements` returns a generic list of account requirements. The contract is deliberately not tied to a particular UI.
 
-Each requirement has an `id`, a numeric `type`, and a `required` flag. The numeric type is an opaque wire value owned by the app: Backend does not define what UI or interaction a type means.
+Each requirement has an `id`, a numeric `type`, and a `required` flag. The numeric type is an opaque wire value owned by the app.
 
 Current stable types:
 
 | Type | ID | Meaning in Backend |
 |---:|---|---|
-| `1` | `web_account_password` | WooGit web password is not configured |
+| `1` | `web_account_password` | Linked WordPress/WooCommerce identity is not configured |
 | `2` | `contact_email` | Optional contact email metadata |
-
-Example:
-
-```json
-{
-  "requirements": [
-    {
-      "id": "web_account_password",
-      "type": 1,
-      "required": true,
-      "configured": false
-    },
-    {
-      "id": "contact_email",
-      "type": 2,
-      "required": false,
-      "configured": false
-    }
-  ]
-}
-```
-
-Future requirement types can be added without changing the endpoint shape. The app should treat unknown numeric types as unsupported data rather than assuming UI semantics from the number.
-
-The server enforces each security-sensitive requirement independently; the requirement response is not itself an authorization mechanism.
 
 ## First-time web credential setup
 
-After `/sites/verify` returns a valid API session, the app can call the requirements endpoint. If type `1` is required, it can submit `POST /wp-json/woogit/v1/account/setup-web-credentials` with the web password and confirmation. A contact email may be supplied, but it never changes Account identity.
+After `/sites/verify` returns a valid API session, the app can call the requirements endpoint. If type `1` is required, it calls `POST /wp-json/woogit/v1/account/setup-web-credentials` with password and confirmation. `email` may be supplied; when an existing central WordPress user owns that email, `current_wordpress_password` is also required to prove control before linking.
 
 ## Web login
 
-`POST /wp-json/woogit/v1/web/login` accepts Site URL + password. The server normalizes the URL, resolves the unique Site, resolves its single Account, and verifies the Account password hash. Successful login returns a separate web session token.
+`POST /wp-json/woogit/v1/web/login` accepts Site URL + password. The server normalizes the URL, resolves the unique Site, resolves its single Account, resolves the linked WordPress User, and verifies the WordPress password. Successful login returns a separate Web Session token.
 
 ## Security boundary
 
 - One Account has exactly one Site.
-- Email is contact-only.
-- WordPress site credentials are not copied into the Account.
-- Web passwords use Argon2id hashes.
-- Web sessions are separate from app API sessions.
-- Unknown/future requirement types do not change backend authorization behavior.
+- One central WordPress User can back at most one WooGit Account.
+- Site and Entitlement remain WooGit domain entities.
+- Email is contact metadata and is never used alone to resolve Account identity.
+- Customer-site API credentials are never copied into the central WordPress User password.
+- App/API and Web authentication remain separate paths and separate sessions.
+- Existing privileged WordPress users cannot be auto-linked by email.
+- The legacy `web_password_hash` column is not an active authentication source.
