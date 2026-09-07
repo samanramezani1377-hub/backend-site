@@ -18,11 +18,21 @@ The separate WooGit Backend website authenticates with Site URL + the linked cen
 
 Web password storage therefore uses the central WordPress user password storage (`wp_set_password` / `wp_check_password`); WooGit no longer uses `web_password_hash` as the active authentication source. The legacy column remains only for migration compatibility and must not be used for new authentication.
 
+## Account creation and identity provisioning
+
+When `/sites/verify` creates a new WooGit Account and the request includes a valid contact email, the Backend also provisions a central WordPress/WooCommerce Customer identity and links its `wp_user_id` to the Account. The new identity receives a random high-entropy temporary WordPress password that is never returned to the App. It is marked as provisioned-but-not-configured until the customer chooses the actual web password.
+
+If the email already belongs to a central WordPress user, WooGit does not silently take over that identity. The Account is created without linking that existing user; first-time web credential setup must also provide the current WordPress password and prove that the identity is a permitted non-privileged customer/subscriber identity.
+
+If no email is supplied during `/sites/verify`, the Account and Site can still be created, but the central web identity remains unconfigured until the customer completes first-time web credential setup with an email.
+
+If identity provisioning fails for a newly created Account, the Account creation is failed closed rather than leaving a partially created WooGit Account.
+
 ## Linking an existing WordPress Customer
 
-First-time setup is performed from a valid App/API session. If the supplied contact email does not already belong to a central WordPress user, WooGit creates a new WooCommerce Customer (or WordPress subscriber when WooCommerce is unavailable) and links its user ID to the Account.
+First-time setup is performed from a valid App/API session. If a central identity was provisioned by WooGit, the customer chooses the web password and the Backend replaces the temporary password using WordPress password storage. No temporary password is exposed to the App.
 
-If the email already belongs to a central WordPress user, WooGit does not silently take over that identity. The setup request must also provide the current WordPress password, and the user must be a non-privileged customer/subscriber identity. Administrator, editor, author, and shop-manager identities are never auto-linked.
+If the supplied contact email already belongs to a central WordPress user, the setup request must provide the current WordPress password before the Account can be linked. Administrator, editor, author, and shop-manager identities are never auto-linked.
 
 This prevents a customer-site credential holder from claiming an unrelated privileged WordPress identity merely by knowing its email address.
 
@@ -36,12 +46,12 @@ Current stable types:
 
 | Type | ID | Meaning in Backend |
 |---:|---|---|
-| `1` | `web_account_password` | Linked WordPress/WooCommerce identity is not configured |
+| `1` | `web_account_password` | Linked WordPress/WooCommerce identity exists but its web password is not configured |
 | `2` | `contact_email` | Optional contact email metadata |
 
 ## First-time web credential setup
 
-After `/sites/verify` returns a valid API session, the app can call the requirements endpoint. If type `1` is required, it calls `POST /wp-json/woogit/v1/account/setup-web-credentials` with password and confirmation. `email` may be supplied; when an existing central WordPress user owns that email, `current_wordpress_password` is also required to prove control before linking.
+After `/sites/verify` returns a valid API session, the app can call the requirements endpoint. If type `1` is required, it calls `POST /wp-json/woogit/v1/account/setup-web-credentials` with password and confirmation. `email` may be supplied when the Account has no contact email. When an existing central WordPress user owns that email and is not already linked, `current_wordpress_password` is also required to prove control before linking.
 
 ## Web login
 
@@ -56,4 +66,5 @@ After `/sites/verify` returns a valid API session, the app can call the requirem
 - Customer-site API credentials are never copied into the central WordPress User password.
 - App/API and Web authentication remain separate paths and separate sessions.
 - Existing privileged WordPress users cannot be auto-linked by email.
+- Newly provisioned identities use a temporary random password that is never exposed and must be replaced during setup.
 - The legacy `web_password_hash` column is not an active authentication source.
