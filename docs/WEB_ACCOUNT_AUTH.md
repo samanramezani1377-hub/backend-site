@@ -1,40 +1,81 @@
 # WooGit Account Authentication
 
-## Identity model
+## Unified identity model
 
-A WooGit Account is permanently associated with exactly one connected Site. The Account identity is backed by a WordPress User on the central WooGit Backend WordPress installation; when WooCommerce is available that user is created as a WooCommerce Customer. `wp_user_id` is the identity link. Site and Entitlement remain WooGit-owned domain entities.
+A WooGit Account is the single user account for a verified customer Site. Its identity is based on the normalized Site URL and the unique WooGit Site record, not on email and not on which client path created it.
 
-Email is contact metadata, not the Account lookup key. Web login still starts with Site URL, which resolves Site -> Account -> linked WordPress User.
+The same account is used by both the WooGit App/API path and the WooGit Backend website path. When the account has a web identity, that identity is the linked WordPress User/WooCommerce Customer on the central WooGit Backend installation. These are not separate customer accounts; the WordPress user is the central WordPress representation of the same WooGit user.
 
-## Two independent authentication paths
+Email is contact metadata only. It is never sufficient to create, resolve, or claim an Account.
 
-### App/API path
+## Verification is mandatory before Account creation
 
-The app connects using the supplied customer-site credentials: Site URL, WordPress username, WordPress Application Password, Consumer Key, and Consumer Secret. These authenticate against the customer's WordPress/WooCommerce site during `/sites/verify` and `/forward`. They are not the central WooGit WordPress User password and are never treated as the web login credential.
+No WooGit Account or WooGit Site may be created from an unverified Site URL.
 
-### WooGit web-site path
+The customer must prove control of the Site using the customer-site credentials accepted by `/sites/verify`:
 
-The separate WooGit Backend website authenticates with Site URL + the linked central WordPress User password. The resulting credential is a dedicated WooGit Web Session and is independent from `X-WooGit-Session`.
+- Site URL
+- WordPress username
+- WordPress Application Password
+- WooCommerce Consumer Key
+- WooCommerce Consumer Secret
 
-Web password storage therefore uses the central WordPress user password storage (`wp_set_password` / `wp_check_password`); WooGit no longer uses `web_password_hash` as the active authentication source. The legacy column remains only for migration compatibility and must not be used for new authentication.
+`/sites/verify` verifies the real customer site through the Backend proxy before creating or reusing the unique Site/Account relationship.
 
-## Account creation and identity provisioning
+A successful verification does exactly one of these:
 
-When `/sites/verify` creates a new WooGit Account and the request includes a valid contact email, the Backend also provisions a central WordPress/WooCommerce Customer identity and links its `wp_user_id` to the Account. The new identity receives a random high-entropy temporary WordPress password that is never returned to the App. It is marked as provisioned-but-not-configured until the customer chooses the actual web password.
+1. Reuses the existing Account/Site for that verified Site URL; or
+2. Creates the Account and its Site together for that verified Site URL.
 
-If the email already belongs to a central WordPress user, WooGit does not silently take over that identity. The Account is created without linking that existing user; first-time web credential setup must also provide the current WordPress password and prove that the identity is a permitted non-privileged customer/subscriber identity.
+Account creation itself never provisions a separate identity and never creates a second customer record.
 
-If no email is supplied during `/sites/verify`, the Account and Site can still be created, but the central web identity remains unconfigured until the customer completes first-time web credential setup with an email.
+## App/API path
 
-If identity provisioning fails for a newly created Account, the Account creation is failed closed rather than leaving a partially created WooGit Account.
+The App starts with customer-site credentials and calls `/sites/verify`. If the Site URL is new, successful verification creates the single Account/Site identity. If it already exists, the existing Account is returned.
 
-## Linking an existing WordPress Customer
+The resulting App/API session is independent from the web session. Customer-site credentials remain customer-site credentials and are not converted into the central web password.
 
-First-time setup is performed from a valid App/API session. If a central identity was provisioned by WooGit, the customer chooses the web password and the Backend replaces the temporary password using WordPress password storage. No temporary password is exposed to the App.
+## Web path
 
-If the supplied contact email already belongs to a central WordPress user, the setup request must provide the current WordPress password before the Account can be linked. Administrator, editor, author, and shop-manager identities are never auto-linked.
+The web signup path uses the same Site verification lifecycle. It must not create an Account from Site URL + password alone.
 
-This prevents a customer-site credential holder from claiming an unrelated privileged WordPress identity merely by knowing its email address.
+The web client first performs the same Site verification with the customer-site credentials. After verification succeeds, it receives the Account/API context and can complete first-time web credential setup with the chosen password.
+
+Therefore a user can start from either client path:
+
+```text
+App/API → verify Site → Account/Site → web credentials (optional)
+Web     → verify Site → Account/Site → web credentials
+```
+
+Both paths resolve to the exact same Account when they refer to the same verified Site URL. A second Account for the same Site is forbidden by the one-to-one Site/Account constraint.
+
+## Central WordPress/WooCommerce identity
+
+The central WordPress User/WooCommerce Customer is the web-facing representation of the same WooGit user. It is created or linked only as part of explicit first-time web credential setup after Site verification has already succeeded.
+
+Account creation and `/sites/verify` do **not** provision a central WordPress/WooCommerce customer merely because an email was supplied.
+
+During `POST /account/setup-web-credentials`:
+
+- If the Account has no linked central user and the email is unused, WooGit creates a WooCommerce Customer when WooCommerce is available (or a subscriber WordPress user as fallback) using the chosen password.
+- If the email already belongs to a central WordPress user, WooGit never silently claims it. The customer must provide that user's current WordPress password, and privileged roles are rejected.
+- A newly created identity is linked to the already verified Account. If linking fails, the newly created WordPress user is deleted so the operation does not leave an orphan identity.
+- The chosen web password is stored by WordPress password APIs (`wp_set_password` / `wp_check_password`). The legacy `web_password_hash` column is not an authentication source.
+
+An Account with no linked central user simply has web credentials not configured yet; this does not mean a hidden or temporary customer identity exists.
+
+## Web login
+
+`POST /wp-json/woogit/v1/web/login` accepts Site URL + password only after the Site has previously been verified and the Account has a linked central WordPress identity.
+
+The server resolves:
+
+```text
+Site URL → unique Site → same Account → linked WP User → WordPress password
+```
+
+Successful login returns a separate WooGit Web Session. It does not reuse or convert `X-WooGit-Session`.
 
 ## Generic account requirements contract
 
@@ -46,25 +87,28 @@ Current stable types:
 
 | Type | ID | Meaning in Backend |
 |---:|---|---|
-| `1` | `web_account_password` | Linked WordPress/WooCommerce identity exists but its web password is not configured |
+| `1` | `web_account_password` | The verified Account has no linked central WordPress identity yet |
 | `2` | `contact_email` | Optional contact email metadata |
 
 ## First-time web credential setup
 
-After `/sites/verify` returns a valid API session, the app can call the requirements endpoint. If type `1` is required, it calls `POST /wp-json/woogit/v1/account/setup-web-credentials` with password and confirmation. `email` may be supplied when the Account has no contact email. When an existing central WordPress user owns that email and is not already linked, `current_wordpress_password` is also required to prove control before linking.
+After Site verification has returned a valid Account/API context, the client can call the requirements endpoint. If type `1` is required, it calls `POST /wp-json/woogit/v1/account/setup-web-credentials` with password and confirmation. `email` may be supplied when the Account has no contact email.
 
-## Web login
+When the supplied email already belongs to a central WordPress user and that user is not already linked, `current_wordpress_password` is required to prove control before linking.
 
-`POST /wp-json/woogit/v1/web/login` accepts Site URL + password. The server normalizes the URL, resolves the unique Site, resolves its single Account, resolves the linked WordPress User, and verifies the WordPress password. Successful login returns a separate Web Session token.
+## Password changes and contact email
+
+Once a central identity exists, web password changes use the authenticated Web Session and update the same WordPress user's password with `wp_set_password`. Contact email changes update both WooGit contact metadata and the linked WordPress user's email when an identity exists.
 
 ## Security boundary
 
-- One Account has exactly one Site.
-- One central WordPress User can back at most one WooGit Account.
-- Site and Entitlement remain WooGit domain entities.
+- One verified Site URL maps to exactly one WooGit Site and one WooGit Account.
+- An Account cannot be created before successful Site verification.
+- App/API and Web are two access paths to the same Account, not two account systems.
+- The central WordPress User/WooCommerce Customer represents the same Account's web identity; it is not a separate WooGit account.
 - Email is contact metadata and is never used alone to resolve Account identity.
 - Customer-site API credentials are never copied into the central WordPress User password.
 - App/API and Web authentication remain separate paths and separate sessions.
 - Existing privileged WordPress users cannot be auto-linked by email.
-- Newly provisioned identities use a temporary random password that is never exposed and must be replaced during setup.
+- A newly created central identity is created only during explicit web credential setup and is rolled back if Account linking fails.
 - The legacy `web_password_hash` column is not an active authentication source.
