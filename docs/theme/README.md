@@ -20,6 +20,7 @@ Theme نباید منطق عملیاتی App یا اتصال مستقیم به W
 |---|---|
 | [THEME.md](../THEME.md) | قرارداد اصلی Theme و مرز مسئولیت‌ها |
 | [THEME_UX_FLOW.md](../THEME_UX_FLOW.md) | **مرجع UX Flow و State Transition** |
+| [THEME_ARCHITECTURE_CONTRACT.md](../THEME_ARCHITECTURE_CONTRACT.md) | **قرارداد اجرایی و فریز ساختار فایل Theme** |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | معماری هدف، لایه‌بندی و ساختار فایل پیشنهادی |
 | [PAGES.md](PAGES.md) | معماری صفحات و Page Inventory |
 | [PORTAL.md](PORTAL.md) | معماری Customer Portal و Information Architecture |
@@ -49,6 +50,7 @@ Theme نباید منطق عملیاتی App یا اتصال مستقیم به W
 13. Timeout-after-success در Checkout باید پوشش داده شود و نتیجه Unknown نباید به‌عنوان Failure تفسیر شود.
 14. هیچ credential حساس مشتری نباید در storage پایدار، HTML، log یا telemetry نگهداری شود.
 15. Progressive enhancement ترجیح دارد و functionality نباید بدون JavaScript غیرضروری از کار بیفتد.
+16. ساختار اجرایی `theme/woogit/` و مرز مسئولیت فایل‌ها طبق `THEME_ARCHITECTURE_CONTRACT.md` فریز است؛ تغییر معماری باید ابتدا در مستندات تصویب شود.
 
 ## قبل از شروع کدنویسی
 
