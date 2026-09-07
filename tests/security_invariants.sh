@@ -57,17 +57,19 @@ contains "$database" 'UNIQUE KEY wp_user_id \(wp_user_id\)' 'WordPress identity 
 contains "$database" 'migrateAccountIdentity' 'identity migration must be versioned'
 contains "$site" 'one-to-one with the connected site' 'SiteService must enforce one-site-per-account invariant'
 contains "$account" 'function create' 'Account must be created explicitly'
+contains "$account" 'createCustomer' 'Account creation must create the single WP/WooCommerce customer identity'
 contains "$account" 'function updateContactEmail' 'Account contact email update must be explicit'
 contains "$account" 'wp_user_id' 'Account must expose its linked WordPress identity'
-if grep -Eq 'IdentityService\(\).*provision|->provision\(' "$account"; then fail 'Account creation must never provision a central WordPress identity'; fi
-if grep -Eq 'PROVISIONED_META|identity_provisioned|function provision\(' "$identity" "$account" "$controller"; then fail 'identity provisioning marker/API must not be part of Account or verify lifecycle'; fi
-contains "$identity" 'linkOrCreate' 'explicit web setup must create or link the single central identity'
+if grep -Eq 'email_exists|findByEmail|email.*wp_user_id|wp_user_id.*email' "$account" "$identity" "$controller"; then fail 'email must never participate in identity lookup or linking'; fi
+contains "$identity" 'function createCustomer' 'verified Account lifecycle must create a central customer identity'
+contains "$identity" "'user_email'=>''" 'customer identity creation must not require contact email'
+contains "$identity" 'wp_insert_user' 'customer identity must be a WordPress user'
+contains "$identity" "'role'=>'customer'" 'customer identity must use the WooCommerce customer role'
+contains "$identity" 'WEB_PASSWORD_META' 'web password configuration must be separate from customer identity existence'
 contains "$identity" 'wp_check_password' 'web password verification must use WordPress password hashing'
 contains "$identity" 'wp_set_password' 'web password changes must use WordPress password storage'
-contains "$identity" 'wc_create_new_customer' 'new web identities must be WooCommerce customers when available'
-contains "$identity" 'identity_verification_required' 'linking an existing WordPress customer must require password proof'
-contains "$identity" 'administrator.*shop_manager' 'identity linking must reject privileged WordPress roles'
-if grep -Eq 'findOrCreate\([^)]*email|findOrCreate\(\$email' "$account" "$controller"; then fail 'email must never resolve Account identity'; fi
+if grep -Eq 'linkOrCreate|current_wordpress_password|identity_verification_required|email_exists' "$identity" "$webAuth"; then fail 'web setup must not claim or link identities by contact email'; fi
+if grep -Eq "'email'.*email_exists|email_exists.*'email'" "$controller" "$account" "$identity"; then fail 'contact email must not be an identity lookup key'; fi
 contains "$database" 'web_sessions' 'web authentication must use a separate session table'
 contains "$webSession" 'token_hash' 'web sessions must store token hashes'
 contains "$webSession" 'random_bytes' 'web session tokens must be cryptographically random'
@@ -85,7 +87,6 @@ contains "$webAuth" 'invalid_web_credentials' 'web login failures must be generi
 contains "$webAuth" 'web_login_ip' 'web login must be IP rate limited'
 contains "$webAuth" 'web_login_site' 'web login must be Site/host rate limited'
 contains "$webAuth" 'X-WooGit-Web-Session' 'web API must use a separate session credential'
-contains "$webAuth" 'current_wordpress_password' 'existing WordPress identity linking must prove current password'
 contains "$webAuth" 'identity_user_id' 'web identity must expose the linked WordPress user id'
 contains "$bootstrap" 'IdentityService' 'WordPress identity service must be bootstrapped'
 contains "$bootstrap" 'WebSessionService' 'web session service must be bootstrapped'
