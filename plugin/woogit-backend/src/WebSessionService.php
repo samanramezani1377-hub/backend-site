@@ -33,6 +33,14 @@ final class WebSessionService
         global $wpdb;$table=$wpdb->prefix.'woogit_web_sessions';$hash=hash('sha256',$token);
         $id=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE token_hash=%s AND revoked_at IS NULL LIMIT 1",$hash));
         if(!$id)return false;
-        return false!==$wpdb->update($table,['revoked_at'=>gmdate('Y-m-d H:i:s')],['id'=>(int)$id],['%s'],['%d']);
+        return 1===(int)$wpdb->update($table,['revoked_at'=>gmdate('Y-m-d H:i:s')],['id'=>(int)$id],['%s'],['%d']);
+    }
+
+    public function revokeAllForAccount(int $accountId): int
+    {
+        if($accountId<=0)return 0;
+        global $wpdb;$table=$wpdb->prefix.'woogit_web_sessions';
+        $wpdb->query($wpdb->prepare("UPDATE {$table} SET revoked_at=%s WHERE account_id=%d AND revoked_at IS NULL",gmdate('Y-m-d H:i:s'),$accountId));
+        return max(0,(int)$wpdb->rows_affected);
     }
 }
