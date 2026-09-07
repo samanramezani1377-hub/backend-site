@@ -113,9 +113,7 @@ Customer Portal
 ├── Billing
 ├── Payments
 ├── Connected Site
-├── Usage (در صورت وجود قرارداد Backend)
-├── Security
-└── Account
+└── Account / Security
 ```
 
 Portal navigation و Public navigation جدا هستند؛ Design System مشترک دارند. هیچ صفحه عملیاتی فروشگاه در Theme وجود ندارد.
@@ -173,10 +171,6 @@ Issue Web Session
 Credentialهای WordPress/WooCommerce **فقط request-scoped** هستند و هرگز نباید در DB/options، session یا cache پایدار، cookie/browser storage، log، telemetry، audit، HTML یا JavaScript bundle ذخیره شوند.
 
 `/sites/verify` قرارداد App/bootstrap است مگر Backend صراحتاً آن را برای Web منتشر کند؛ Theme نباید با جعل header/payload آن را Web API کند.
-
-### قرارداد حل‌نشده Backend
-
-در قرارداد فعلی، `POST /account/setup-web-credentials` به App Session معتبر وابسته است. اگر Web registration باید مستقل از App باشد، `web-bootstrap` باید قبل از implementation در Backend نهایی شود. Theme حق ساخت workaround امنیتی ندارد.
 
 Verification فقط اثبات **کنترل فنی معتبر در این جریان** است، نه مالکیت حقوقی دامنه، و نباید برای تست Product/Order/Media mutation انجام دهد.
 
@@ -252,7 +246,7 @@ Web routes فعلی:
 
 ```text
 GET  /account/requirements
-POST /account/setup-web-credentials
+POST /account/web-bootstrap
 POST /web/login
 POST /web/logout
 GET  /web/me
