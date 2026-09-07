@@ -4,7 +4,7 @@
 
 ## 1. معماری V1
 
-App نباید مستقیماً به Customer Site متصل شود. تمام عملیات Customer باید از Backend عبور کند:
+App نباید برای عملیات مدیریتی Customer مستقیماً به Customer Site متصل شود. مسیر اصلی عملیات Customer باید از Backend عبور کند:
 
 ```text
 App
@@ -14,7 +14,23 @@ WooGit Backend
 Customer WordPress / WooCommerce
 ```
 
-حتی GET محصولات، سفارش‌ها و تصاویر نیز نباید مستقیم به Customer Site ارسال شوند.
+### استثنای V1 — دریافت مستقیم فایل تصویر
+
+برای جلوگیری از انتقال فایل‌های حجیم تصویر از روی Backend و کاهش مصرف bandwidth، CPU و memory هاست Backend، **دانلود/دریافت binary تصویر برای نمایش در App در V1 از مسیر مستقیم Customer Site معاف است**.
+
+بنابراین V1 این دو مسیر را به‌صورت آگاهانه دارد:
+
+```text
+عملیات Customer / Media management
+App → Backend → Plugin → Customer
+
+دریافت binary تصویر برای نمایش
+App → Customer Site
+```
+
+این استثنا فقط برای **خواندن فایل تصویر** است و به معنی مجاز شدن direct access عمومی App به Customer Site نیست.
+
+Upload، update، delete و دریافت metadata مربوط به Media همچنان باید از Backend عبور کنند.
 
 ## 2. Base URL و مسیرها
 
@@ -24,9 +40,9 @@ App باید Backend Base URL را برای APIهای WooGit استفاده کن
 /wp-json/woogit/v1/...
 ```
 
-Customer Site URL فقط برای شناسایی Site و verify اولیه است و نباید مقصد مستقیم request عملیاتی App باشد.
+Customer Site URL فقط برای شناسایی Site، verify اولیه و مورد استثنای Direct Image Download استفاده می‌شود.
 
-تمام عملیات Customer از این مسیر عبور می‌کنند:
+تمام عملیات Customer به‌جز Direct Image Download باید از این مسیر عبور کنند:
 
 ```http
 GET    /wp-json/woogit/v1/forward?path=...
@@ -112,24 +128,38 @@ WordPress Media:
 
 هیچ namespace دیگر WordPress را نباید به‌عنوان مسیر عمومی Proxy فرض کرد.
 
+Direct Image Download یک استثنای محدود است و فقط برای دریافت binary تصویر از URL تصویر معتبر Customer مجاز است.
+
 ## 6. WooCommerce Operations
 
-Repositoryهای فعلی App باید از abstraction شبکه استفاده کنند، اما مقصد عملیاتی آنها باید Backend `/forward` باشد.
+Repositoryهای App باید از abstraction شبکه استفاده کنند، اما مقصد عملیاتی آنها باید Backend `/forward` باشد.
 
 مواردی مانند products، orders، categories، variations، attributes/terms، reports، `system_status` و سایر endpointهای مجاز `wc/v3` باید از `/forward` عبور کنند.
 
 Customer WooCommerce منبع اصلی حقیقت برای وضعیت سفارش است؛ App نباید status سفارش را مستقل و authoritative به‌صورت local نگهداری کند.
 
-## 7. Media
+## 7. Media و استثنای Direct Image Download
 
-Upload/read/update/delete Media باید از Backend عبور کند:
+### 7.1 عملیات Media که الزماً از Backend عبور می‌کنند
+
+موارد زیر همیشه باید از Backend عبور کنند:
+
+```text
+Create / Upload Media
+Update Media
+Delete Media
+Read Media metadata
+List Media
+```
+
+مسیر Customer این عملیات:
 
 ```text
 /wp-json/wp/v2/media
 /wp-json/wp/v2/media/{id}
 ```
 
-برای Media:
+برای Media API:
 
 ```http
 X-WooGit-Wordpress-Username: ...
@@ -143,9 +173,70 @@ X-WooGit-Consumer-Key: ...
 X-WooGit-Consumer-Secret: ...
 ```
 
-حتی اگر Customer یک `source_url` برای Media برگرداند، App نباید آن URL را مستقیم fetch کند؛ download/read نیز باید از Backend عبور کند.
+### 7.2 Direct Image Download — فقط در V1
 
-## 8. Query و Body
+اگر Customer در Media response یک `source_url` معتبر برای تصویر برگرداند، App در V1 می‌تواند **خود binary تصویر را مستقیماً از Customer Site دریافت کند** تا فایل حجیم از Backend عبور نکند.
+
+```text
+App → source_url → Customer Site
+```
+
+این تنها استثنای فعلی برای direct Customer access است.
+
+شرایط این استثنا:
+
+1. فقط `GET` برای دریافت binary تصویر مجاز است.
+2. این مسیر نباید برای APIهای WooCommerce، WordPress یا عملیات مدیریتی استفاده شود.
+3. App نباید از این استثنا برای upload/update/delete یا دریافت metadata استفاده کند.
+4. اگر Customer برای دریافت تصویر authentication لازم داشته باشد، App می‌تواند از همان credentialهای موجود برای Direct Image Download استفاده کند؛ این credential مصرف باید محدود به همین لایه باشد.
+5. Credentialهای Customer نباید در URL قرار داده شوند.
+6. URL تصویر نباید به‌عنوان یک مقصد arbitrary برای سایر درخواست‌های App استفاده شود.
+7. Direct Image Download نباید باعث شود سایر direct Customer requests در App مجاز تلقی شوند.
+8. اگر URL تصویر قابل استفاده مستقیم نبود یا نیاز به flow Backend داشت، App باید بتواند به مسیر Backend-based image retrieval مهاجرت کند.
+
+### 7.3 مرزبندی Credential در Direct Image Download
+
+از آنجا که پیاده‌سازی فعلی App برای دریافت بعضی تصاویر به credentialهای Customer وابسته است، در V1 این dependency برای Direct Image Download حفظ می‌شود.
+
+اما این credentialها نباید به‌عنوان مجوزی برای بازگرداندن معماری قدیمی direct-to-WooCommerce استفاده شوند. تمام APIهای عملیاتی همچنان باید از Backend عبور کنند.
+
+## 8. Future Migration — حذف Direct Image Download
+
+این استثنا **V1-only و قابل تعویض** است.
+
+App باید دریافت تصویر را پشت یک abstraction مستقل قرار دهد و UI/Repositoryهای بالاتر نباید مستقیماً به Customer URL یا implementation شبکه وابسته شوند.
+
+مدل پیشنهادی:
+
+```text
+ImageRepository
+      ↓
+ImageFetcher
+      ├── DirectCustomerImageFetcher   ← V1
+      └── BackendImageFetcher           ← Future
+```
+
+در V1 implementation فعال:
+
+```text
+DirectCustomerImageFetcher
+```
+
+در نسخه آینده در صورت تصمیم به انتقال تصاویر به Backend:
+
+```text
+BackendImageFetcher
+        ↓
+WooGit Backend
+        ↓
+Customer Site
+```
+
+با این طراحی، مهاجرت آینده نباید نیازمند بازنویسی UI یا کل لایه Media باشد؛ فقط strategy/implementation دریافت binary تصویر تغییر می‌کند.
+
+**تا زمانی که قرارداد جدیدی تصویب نشده، Direct Image Download استثنای رسمی V1 باقی می‌ماند.**
+
+## 9. Query و Body
 
 نمونه صحیح:
 
@@ -170,6 +261,8 @@ App باید قبل از ارسال request این محدودیت‌ها را ر
 - Media request body: حداکثر حدود 10 MiB
 - timeout سمت Proxy برای درخواست Customer: حدود 20 ثانیه
 
+Direct Image Download از این Proxy عبور نمی‌کند و بنابراین نباید به‌عنوان upload/proxy body به Backend ارسال شود.
+
 App نباید timeout را به‌تنهایی failure قطعی mutation تلقی کند؛ قواعد بخش Unknown باید اعمال شوند.
 
 JSON زیر wire contract نیست و فقط می‌تواند مدل داخلی App باشد:
@@ -182,7 +275,7 @@ JSON زیر wire contract نیست و فقط می‌تواند مدل داخلی
 }
 ```
 
-## 9. Mutation Idempotency — الزامی
+## 10. Mutation Idempotency — الزامی
 
 تمام mutationهای Customer (`POST`, `PUT`, `PATCH`, `DELETE`) باید با:
 
@@ -194,7 +287,7 @@ Idempotency-Key: <stable-client-operation-key>
 
 کلید باید برای یک عملیات منطقی پایدار بماند. Retry همان عملیات باید دقیقاً همان کلید را استفاده کند. استفاده از یک کلید برای دو عملیات متفاوت ممنوع است؛ همان کلید با request متفاوت باید به‌عنوان Conflict مدیریت شود.
 
-## 10. Timeout-after-success / Unknown Operation
+## 11. Timeout-after-success / Unknown Operation
 
 Timeout به‌تنهایی به معنی failure قطعی نیست.
 
@@ -219,7 +312,7 @@ unknown
 
 `unknown` نباید خودکار به `failed` تبدیل شود.
 
-## 11. App Version Gate — الزامی برای App جدید
+## 12. App Version Gate — الزامی برای App جدید
 
 **هر requestی که App به Backend می‌فرستد و مشمول API قرارداد WooGit است باید header زیر را داشته باشد:**
 
@@ -261,7 +354,7 @@ APP_VERSION_DEPRECATED
 
 App باید این پاسخ را به typed update-required state تبدیل کند، نه خطای عمومی شبکه.
 
-## 12. In-App Announcements
+## 13. In-App Announcements
 
 App باید endpoint زیر را پشتیبانی کند:
 
@@ -294,7 +387,7 @@ Actionهای ناشناخته باید safely نادیده گرفته شوند �
 
 Announcement مربوط به deprecated App باید قابل دریافت باقی بماند تا App بتواند پیام Update را نمایش دهد.
 
-## 13. Error Contract
+## 14. Error Contract
 
 App باید Backend error را بر اساس `code` و state، نه فقط HTTP status، طبقه‌بندی کند.
 
@@ -322,7 +415,7 @@ RATE_LIMITED
 
 Session error باید باعث invalidate/reconcile کردن Session state شود و App نباید همان token نامعتبر را بی‌نهایت retry کند.
 
-## 14. Response Headers و Pagination
+## 15. Response Headers و Pagination
 
 App باید headerهای pagination برگشتی Customer را در حد نیاز حفظ و مصرف کند، به‌خصوص:
 
@@ -337,7 +430,7 @@ Pagination نباید از تعداد آیتم‌های صفحه فعلی حدس
 
 این مورد برای products، orders، Media، categories، variations و attributes اعمال می‌شود.
 
-## 15. Credential Boundary
+## 16. Credential Boundary
 
 Customer credentials با WooGit Session یکی نیستند.
 
@@ -363,16 +456,18 @@ Customer credential نباید در URL request Backend قرار بگیرد.
 
 Web Account Password مربوط به Backend Website است و نباید وارد این flow شود.
 
-## 16. معماری موردنیاز در App
+در V1، credentialهای لازم برای Direct Image Download می‌توانند توسط `DirectCustomerImageFetcher` مصرف شوند، اما این مصرف باید فقط در همان لایه محدود بماند.
 
-تغییرات App باید ترجیحاً با یک transport/adapter در پشت abstraction فعلی انجام شود تا Repositoryهای Domain بی‌دلیل بازنویسی نشوند:
+## 17. معماری موردنیاز در App
+
+تغییرات App باید ترجیحاً با transport/adapter در پشت abstraction فعلی انجام شود تا Repositoryهای Domain بی‌دلیل بازنویسی نشوند:
 
 ```text
 UI
  ↓
 Repository / Use Case
  ↓
-WooCommerce API abstraction
+WooGit Customer Operations abstraction
  ↓
 Backend Transport
  ├─ X-WooGit-Session
@@ -399,38 +494,36 @@ Backend API
  └─ Version Gate
 ```
 
-هدف حذف featureهای فعلی یا بازنویسی بی‌دلیل Domain نیست؛ هدف تغییر transport و اضافه کردن contractهای Backend است.
+Direct Image Download باید از این مسیر جدا و پشت abstraction خودش باشد:
 
-## 17. V1 Acceptance Checklist
+```text
+UI / Repository
+ ↓
+ImageFetcher
+ ↓
+DirectCustomerImageFetcher  ← V1
+ ↓
+Customer source_url
+```
 
-- [ ] هیچ request مستقیم App به Customer WooCommerce وجود نداشته باشد.
-- [ ] هیچ request مستقیم App به Customer WordPress Media وجود نداشته باشد.
-- [ ] `/sites/verify` برای اتصال اولیه استفاده شود.
-- [ ] Session در `X-WooGit-Session` ارسال شود.
-- [ ] Billing و Operational Session جدا باشند.
-- [ ] `/forward` تنها مسیر عملیاتی Customer باشد.
-- [ ] تمام mutationهای Customer `Idempotency-Key` پایدار داشته باشند.
-- [ ] timeout/unknown بدون ایجاد mutation دوم reconcile شود.
-- [ ] `X-WooGit-App-Version` در implementation اپ همیشه ارسال شود.
-- [ ] `426 APP_VERSION_DEPRECATED` به typed update-required state تبدیل شود.
-- [ ] `/announcements` به‌عنوان In-App UI پشتیبانی شود، نه Push.
-- [ ] `display_type` فقط به‌عنوان عدد opaque مصرف شود.
-- [ ] `operation_pending`/`operation_in_progress` به pending و `operation_unknown`/`operation_status_unknown` به unknown نگاشت شوند.
-- [ ] `X-WP-Total` و `X-WP-TotalPages` برای pagination مصرف شوند.
-- [ ] Customer credentialها در URL یا log/telemetry قرار نگیرند.
-- [ ] Web Account password وارد App flow نشود.
-- [ ] body/timeout limits رعایت شوند.
+در آینده فقط implementation `ImageFetcher` می‌تواند به:
 
-## 18. خارج از Scope App CHANGE
+```text
+BackendImageFetcher
+ ↓
+WooGit Backend
+```
 
-موارد زیر عمداً در این سند نیستند:
+تغییر کند.
 
-- Web Account login
-- Web Account password
-- contact email management
-- payment history UI در وب
-- Admin UI
-- مدیریت Version Policy در WordPress Admin
-- مدیریت Announcement در WordPress Admin
+## 18. V1 Boundary و اصل مهم
 
-این‌ها متعلق به WooGit Backend Website/Admin هستند و نباید به Android App credential/auth flow اضافه شوند.
+این سند عمداً بین **Customer operations** و **binary image download** تفاوت می‌گذارد.
+
+قاعده نهایی V1:
+
+> **هیچ عملیات مدیریتی Customer نباید direct باشد؛ فقط دریافت binary تصویر برای نمایش می‌تواند مستقیم از Customer Site انجام شود تا فایل‌های حجیم از Backend عبور نکنند.**
+
+این استثنا باید در App به‌صورت explicit پیاده‌سازی شود و نباید به‌صورت accidental ناشی از باقی‌ماندن معماری قدیمی باشد.
+
+اگر در نسخه آینده تصمیم گرفته شود که همه تصاویر نیز از Backend عبور کنند، باید فقط با تغییر قرارداد و فعال‌کردن `BackendImageFetcher` انجام شود؛ تا قبل از آن، رفتار مستقیم تصویر در V1 معتبر است.
