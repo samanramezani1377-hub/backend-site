@@ -198,6 +198,27 @@ Business Logic و BillingService مشترک بمانند؛ فقط لایه اح�
 
 `/billing/activate-session` **App-only** است؛ چون وظیفه آن صدور Operational App Session است. Theme نباید این endpoint را مصرف کند.
 
+### Payment Method در Billing
+
+در بخش `Payment Method`، Theme فقط داده‌های non-sensitive و منتشرشده توسط Backend را نمایش می‌دهد:
+
+```text
+Payment Method
+├── payment_method_type
+├── payment_method_status
+├── last_payment_at
+└── expires_at
+```
+
+معادل نمایشی در UI:
+
+- نوع روش پرداخت
+- وضعیت روش پرداخت
+- تاریخ آخرین پرداخت
+- تاریخ انقضا
+
+این داده‌ها باید Backend-authoritative باشند. Theme نباید وضعیت یا تاریخ‌ها را حدس بزند یا از داده‌های محلی بسازد. اطلاعات حساس پرداختی مانند شماره کامل کارت، CVV یا credentialهای Gateway نباید توسط Theme نمایش، ذخیره یا دریافت شوند.
+
 ## ۶. Checkout و Idempotency
 
 Theme برای Checkout از قرارداد Backend استفاده می‌کند و باید `Idempotency-Key` ارسال کند. Retry همان عملیات باید همان کلید را حفظ کند.
