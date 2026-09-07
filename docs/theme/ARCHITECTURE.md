@@ -9,7 +9,7 @@ Public Website
     └─ معرفی، قابلیت‌ها، قیمت، FAQ، Docs، Support، Legal
 
 Customer Portal
-    └─ Account، Subscription، Billing، Payments، Connected Site، Security
+    └─ Overview، Subscription، Billing، Payments، Connected Site، Account / Security
 ```
 
 این دو تجربه از یک Design System مشترک استفاده می‌کنند، اما Navigation و Information Architecture آن‌ها یکسان نیست.
