@@ -1,73 +1,108 @@
 # معماری احراز هویت و نشست وب تم WooGit
 
+> وضعیت: V1 — قرارداد یکپارچه
+
 ## ۱. دامنه
 
-این سند فقط احراز هویت وب‌سایت و پرتال مشتری را تعریف می‌کند. احراز هویت عملیاتی App مستقل است.
+این سند فقط احراز هویت وب‌سایت و Customer Portal را تعریف می‌کند. احراز هویت عملیاتی App مستقل است.
 
 ## ۲. دو نوع نشست
 
 ```text
-Android App  → X-WooGit-Session
-Web Theme    → X-WooGit-Web-Session
+Android App → X-WooGit-Session
+Web Theme   → X-WooGit-Web-Session
 ```
 
-این دو نشست قابل جایگزینی نیستند.
+این دو نشست قابل جایگزینی نیستند. Theme نباید App Session را جعل یا برای Web reuse کند.
 
-## ۳. ورود
+## ۳. Login
 
-ورود V1 با این اطلاعات انجام می‌شود:
+ورود V1:
 
 ```text
 Site URL
 Password
 ```
 
-Backend باید Site و Account مرتبط را پیدا و اعتبار Web Password را بررسی کند. Theme فقط نتیجه را مصرف می‌کند.
+Backend Site و Account مرتبط را resolve و اعتبار Web Password را بررسی می‌کند و Web Session صادر می‌کند. Theme فقط نتیجه Backend را مصرف می‌کند.
 
-## ۴. ثبت‌نام و اتصال اولیه
+## ۴. Web-first Registration
 
-فرم اولیه شامل Store URL، نام کاربری WordPress، Application Password وردپرس، Consumer Key و Consumer Secret ووکامرس است. این Credentialها فقط برای جریان اعتبارسنجی اولیه request-scoped هستند.
+برای ثبت‌نام مستقیم از Theme، قرارداد مستقل `POST /account/web-bootstrap` باید توسط Backend ارائه شود.
 
-Theme نباید آن‌ها را در Cookie، Local Storage، Session Storage، دیتابیس Theme، لاگ، تحلیل‌گر یا HTML نگه دارد.
-
-## ۵. ساخت Web Credential
-
-طبق قرارداد فعلی Backend، تنظیم Web Password از مسیر `setup-web-credentials` به یک App Session معتبر وابسته است. این موضوع باید در پیاده‌سازی نهایی ثبت‌نام وب به‌صورت صریح حل و مستند شود و Theme نباید یک جریان جایگزین حدس بزند.
-
-## ۶. نگهداری نشست در مرورگر
-
-Token نشست وب نباید در URL قرار گیرد. پیاده‌سازی باید در برابر XSS و سرقت نشست مقاوم باشد. گزینه ترجیحی، Cookie امن `HttpOnly`، `Secure` و `SameSite` مناسب یا یک لایه BFF/Bridge امن است، مشروط به سازگاری با قرارداد Backend.
-
-اگر قرارداد فعلی فقط Header را پشتیبانی کند، Theme نباید بدون طراحی امنیتی مشخص Token خام را در `localStorage` قرار دهد.
-
-## ۷. پایان نشست
-
-در Logout، Theme باید وضعیت موقت محلی را پاک کند و Backend باید نشست را revoke کند.
-
-در `401` یا اعلام انقضای نشست:
+ورودی مفهومی:
 
 ```text
-پاک‌سازی نشست موقت
-        ↓
-نمایش Login
-        ↓
-ایجاد Web Session جدید
-        ↓
-بررسی دوباره Account + Site Ownership توسط Backend
+Store URL
+WordPress Username
+WordPress Application Password
+WooCommerce Consumer Key
+WooCommerce Consumer Secret
+Web Password + Confirmation
 ```
 
-Theme حق revive کردن نشست منقضی‌شده را ندارد.
+جریان:
 
-## ۸. تغییر رمز
+```text
+Validate
+  ↓
+Rate Limit
+  ↓
+Real Site Verification
+  ↓
+Resolve/Create Account + Site
+  ↓
+Ownership Check
+  ↓
+Create Web Password
+  ↓
+Issue Web Session
+```
 
-تغییر رمز باید از endpoint قراردادی Backend انجام شود. پس از تغییر موفق رمز، همه Web Sessionهای قبلی طبق قرارداد Backend revoke می‌شوند و Theme باید کاربر را به ورود مجدد هدایت کند.
+این عملیات mutation است و باید `Idempotency-Key` داشته باشد.
 
-## ۹. تفکیک Credentialها
+Credentialهای WordPress/WooCommerce فقط request-scoped هستند و نباید در DB، Cookie، Browser Storage، Session پایدار، Log، Telemetry، Audit، Cache یا HTML/JS نگهداری شوند.
 
-Customer Site Credential با WooGit Web Password یکسان نیست. Theme نباید Credential سایت مشتری را به عنوان Account Password ذخیره یا بازاستفاده کند.
+`/sites/verify` قرارداد App/bootstrap باقی می‌ماند مگر اینکه Backend صراحتاً آن را برای Web نیز منتشر کند.
+
+## ۵. شکاف قرارداد فعلی
+
+`POST /account/setup-web-credentials` در قرارداد فعلی به App Session معتبر وابسته است. این endpoint نباید توسط Theme با هدر جعلی مصرف شود. Web-first bootstrap باید این وابستگی را به‌صورت رسمی حل کند.
+
+## ۶. نگهداری Web Session
+
+Token نشست وب نباید در URL قرار گیرد. گزینه ترجیحی Cookie امن `HttpOnly`، `Secure` و `SameSite` مناسب یا BFF/Bridge امن است.
+
+اگر Backend فقط Header `X-WooGit-Web-Session` را پشتیبانی کند، ذخیره خام Token در `localStorage` بدون تصمیم امنیتی صریح مجاز نیست.
+
+## ۷. انقضای Session
+
+```text
+401 / expired
+      ↓
+Clear temporary state
+      ↓
+Login
+      ↓
+New Web Session
+      ↓
+Backend re-checks Account + Site Ownership + Entitlement
+```
+
+Session منقضی‌شده هرگز locally revive نمی‌شود.
+
+## ۸. Logout و Password Change
+
+Logout باید revoke سمت Backend را انجام دهد و Theme وضعیت موقت محلی را پاک کند.
+
+پس از تغییر موفق Password، Backend همه Web Sessionهای قبلی را revoke می‌کند؛ Theme باید کاربر را به Login مجدد هدایت کند.
+
+## ۹. Authorization Context
+
+Backend مرجع Authorization است. Web Session باید Account و Site را از session/context معتبر resolve کند و هرگز `account_id` یا `site_id` ارسالی کاربر را مرجع دسترسی قرار ندهد.
 
 ## ۱۰. Rate Limit و خطا
 
-Login و عملیات حساس باید رفتار `429` را پشتیبانی کنند. Theme نباید با retry تهاجمی محدودیت Backend را دور بزند.
+Login، Bootstrap و عملیات حساس باید `429` را پشتیبانی کنند. Theme نباید retry تهاجمی انجام دهد.
 
-پیام خطای ورود باید عمومی باشد و وجود یا وضعیت دقیق Account/Site را بیش از قرارداد Backend افشا نکند.
+کد خطا باید طبق `docs/API_ERROR_CODES.md` canonical باشد و Theme بر اساس HTTP status + `code` رفتار کند. پیام Login نباید اطلاعات حساس درباره وجود Account/Site را افشا کند.
