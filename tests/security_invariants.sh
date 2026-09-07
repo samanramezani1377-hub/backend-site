@@ -87,6 +87,8 @@ contains "$idempotency" 'state.*pending' 'idempotency must support pending state
 contains "$operations" 'markUnknown' 'operation service must persist unknown state'
 contains "$rate" 'ON DUPLICATE KEY UPDATE' 'rate limit counter must be atomic'
 contains "$rate" 'allowed.*false' 'rate limit must fail closed on storage error'
+contains "$version" 'APP_VERSION_REQUIRED' 'version gate must reject missing app version'
+if grep -Eq "if\(\$version===''\).*allowed.*true|if\(\$version===''\)return \['allowed'=>true" "$version"; then fail 'version gate must not allow missing app version'; fi
 contains "$version" 'minimum_supported_version' 'version gate must enforce minimum supported version'
 contains "$version" 'deprecated_versions' 'version gate must support explicit deprecated versions'
 contains "$database" 'version_compare' 'database migrations must be version gated'
@@ -101,7 +103,8 @@ contains "$announcement" 'active' 'announcement service must filter active recor
 contains "$announcement" 'app_versions' 'announcements must support app-version targeting'
 contains "$announcementAdmin" 'display_type' 'announcement admin must persist numeric app-owned display type'
 contains "$announcementController" "'/announcements'" 'announcement endpoint must be registered'
-contains "$announcementController" 'VersionGate' 'announcement endpoint must understand deprecated app versions'
+contains "$announcementController" 'VersionGate' 'announcement endpoint must understand app versions'
+contains "$announcementController" 'APP_VERSION_REQUIRED' 'announcement endpoint must reject missing app version'
 contains "$announcementController" 'system-app-version-deprecated' 'deprecated app must receive an in-app update banner'
 contains "$announcementController" 'system-entitlement-expiring' 'expiring entitlement must receive an in-app warning'
 contains "$announcementAdmin" 'manage_options' 'announcement admin must require administrator capability'
