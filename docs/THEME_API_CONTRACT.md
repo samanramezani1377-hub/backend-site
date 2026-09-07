@@ -43,11 +43,14 @@ Theme       → X-WooGit-Web-Session
 ```text
 GET  /account/requirements
 POST /account/setup-web-credentials
+POST /account/web-bootstrap
 POST /web/login
 POST /web/logout
 GET  /web/me
 POST /web/account/contact-email
 POST /web/account/password
+POST /web/password-recovery/start
+POST /web/password-recovery/reset
 GET  /web/billing/history
 ```
 
@@ -96,6 +99,78 @@ Issue Web Session
 این endpoint باید mutation محسوب شود و `Idempotency-Key` داشته باشد. Credentialهای WooCommerce/WordPress فقط request-scoped هستند و نباید در DB، options، session پایدار، cookie، browser storage، log، telemetry، audit، cache یا HTML/JS نگهداری شوند.
 
 `/sites/verify` همچنان می‌تواند قرارداد App/bootstrap باشد؛ Theme نباید بدون قرارداد صریح، آن endpoint را با تغییر header/payload به‌عنوان Web API مصرف کند.
+
+### Password Recovery / Reset — مورد لازم V1
+
+Forgot Password از مسیر **Site URL + اثبات مجدد کنترل فروشگاه** انجام می‌شود و به Contact Email وابسته نیست. Contact Email فقط برای ارتباط با مشتری است.
+
+```text
+POST /web/password-recovery/start
+```
+
+ورودی مفهومی:
+
+```json
+{
+  "site_url": "https://example.com",
+  "wp_username": "...",
+  "wp_application_password": "...",
+  "consumer_key": "...",
+  "consumer_secret": "..."
+}
+```
+
+جریان authoritative:
+
+```text
+Validate input
+  ↓
+Rate Limit
+  ↓
+Verify real WooCommerce site using supplied credentials
+  ↓
+Resolve Account + Site
+  ↓
+Verify Site ↔ Account ownership
+  ↓
+Issue short-lived, single-use reset authorization
+```
+
+Reset authorization باید کوتاه‌عمر، single-use، محدود به همان Account/Site و غیرقابل استفاده به‌عنوان Web Session باشد. پاسخ نباید وجود یا عدم وجود Account/Site را افشا کند.
+
+سپس:
+
+```text
+POST /web/password-recovery/reset
+```
+
+ورودی مفهومی:
+
+```json
+{
+  "reset_token": "...",
+  "new_web_password": "...",
+  "new_web_password_confirmation": "..."
+}
+```
+
+جریان:
+
+```text
+Validate reset authorization
+  ↓
+Validate new password policy
+  ↓
+Set new Web Password
+  ↓
+Revoke all existing Web Sessions
+  ↓
+Require Login with Site URL + new Web Password
+```
+
+Credentialهای WordPress/WooCommerce فقط request-scoped هستند و هرگز نباید در DB، options، session پایدار، cookie، browser storage، log، telemetry، audit، cache یا HTML/JS نگهداری شوند. Reset token نیز نباید در URL قرار گیرد یا به‌عنوان Session پذیرفته شود.
+
+Recovery و Reset هر دو باید rate-limited باشند و retry/duplicate operation طبق state و idempotency contract کنترل شود.
 
 ## ۵. Billing برای Web و App
 
