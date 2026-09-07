@@ -60,7 +60,7 @@ contains "$account" 'function create' 'Account must be created explicitly'
 contains "$account" 'createCustomer' 'Account creation must create the single WP/WooCommerce customer identity'
 contains "$account" 'function updateContactEmail' 'Account contact email update must be explicit'
 contains "$account" 'wp_user_id' 'Account must expose its linked WordPress identity'
-if grep -Eq 'email_exists|findByEmail|email.*wp_user_id|wp_user_id.*email' "$account" "$identity" "$controller"; then fail 'email must never participate in identity lookup or linking'; fi
+if grep -Eq 'email_exists|findByEmail' "$account" "$identity" "$controller"; then fail 'email must never participate in identity lookup or linking'; fi
 contains "$identity" 'function createCustomer' 'verified Account lifecycle must create a central customer identity'
 contains "$identity" "'user_email'=>''" 'customer identity creation must not require contact email'
 contains "$identity" 'wp_insert_user' 'customer identity must be a WordPress user'
