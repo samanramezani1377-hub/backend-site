@@ -85,9 +85,12 @@ jobs:
           test -n "$VERSION"
           rm -rf dist
           mkdir -p dist
-          zip -qr "dist/woogit-backend-${VERSION}.zip" plugin/woogit-backend
+          # The plugin directory itself must be the archive root. Including
+          # the repository-level `plugin/` directory makes WordPress unable
+          # to discover the main plugin file during upload.
+          (cd plugin && zip -qr "../dist/woogit-backend-${VERSION}.zip" woogit-backend)
           unzip -t "dist/woogit-backend-${VERSION}.zip"
-          unzip -l "dist/woogit-backend-${VERSION}.zip" | grep -Eq 'plugin/woogit-backend/woogit-backend\.php$'
+          unzip -l "dist/woogit-backend-${VERSION}.zip" | grep -Eq 'woogit-backend/woogit-backend\.php$'
           echo "Built dist/woogit-backend-${VERSION}.zip"
 
       - name: Upload installable plugin ZIP
@@ -126,7 +129,7 @@ jobs:
           check_step 'Build installable WordPress plugin ZIP' '${{ steps.build_zip.outcome }}'
 
           if [ '${{ steps.build_zip.outcome }}' = 'success' ]; then
-            check_step 'Upload installable plugin ZIP' '${{ steps.upload_zip.outcome }}'
+            check_step 'Upload installable WordPress plugin ZIP' '${{ steps.upload_zip.outcome }}'
           else
             echo 'SKIP: Upload installable plugin ZIP (build failed)'
           fi
