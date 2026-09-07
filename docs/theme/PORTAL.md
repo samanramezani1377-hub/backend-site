@@ -13,8 +13,7 @@ Customer Portal
 ├── Billing
 ├── Payments
 ├── Connected Site
-├── Security
-└── Account
+└── Account / Security
 ```
 
 Navigation Portal از Navigation سایت عمومی جداست؛ فقط visual language و component system مشترک هستند.
@@ -37,13 +36,15 @@ Payment Return موفقیت پرداخت را ثابت نمی‌کند؛ پس ا
 
 فقط اطلاعاتی که Backend برای نمایش منتشر می‌کند در Portal نمایش داده شود. Theme نباید از Portal مستقیماً به WooCommerce سایت مشتری وصل شود.
 
-## Security
+## Account / Security
 
-این بخش برای Web Session و Account Security است، نه مدیریت Credentialهای WooCommerce. تغییر رمز و logout طبق قرارداد Backend انجام می‌شوند. Session منقضی‌شده باید پاک و کاربر به Login هدایت شود.
+این بخش برای مدیریت حساب WooGit و امنیت Web Session است، نه مدیریت Credentialهای WooCommerce.
 
-## Account
-
-اطلاعات حساب و contact email از API رسمی Backend مدیریت می‌شوند. تغییرات موفق باید نتیجه Backend را مبنا قرار دهند.
+- **Site URL** شناسه/اطلاعات اصلی حساب برای ورود به Portal و احراز حساب است و Login بر مبنای Site URL + Web Password انجام می‌شود.
+- **Contact Email** صرفاً اطلاعات تماس با مشتری است و جایگزین Site URL برای Login یا شناسایی حساب در Flow ورود نیست.
+- تغییر Password، Logout و Logout All Sessions طبق قرارداد Backend انجام می‌شوند.
+- Session منقضی‌شده باید پاک و کاربر به Login هدایت شود.
+- **Active Sessions در V1 نمایش داده نمی‌شود.**
 
 ## State model
 
