@@ -20,8 +20,8 @@ final class IdempotencyService
 
     public function claim(int $accountId,int $siteId,string $key,string $fingerprint,string $operationId): array
     {global $wpdb;$table=$wpdb->prefix.'woogit_idempotency';$now=current_time('mysql',true);$inserted=$wpdb->insert($table,['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key,'request_fingerprint'=>$fingerprint,'operation_id'=>$operationId,'state'=>'pending','status_code'=>0,'response_body'=>'','created_at'=>$now,'updated_at'=>$now],['%d','%d','%s','%s','%s','%s','%d','%s','%s','%s']);if($inserted)return ['state'=>'claimed','operation_id'=>$operationId];return $this->lookup($accountId,$siteId,$key,$fingerprint);}
-    public function markUnknown(int $accountId,int $siteId,string $key): bool{global $wpdb;return false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state='unknown',updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",current_time('mysql',true),$accountId,$siteId,$key));}
-    public function complete(int $accountId,int $siteId,string $key,int $status,array $body): bool{global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';return false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",$state,$status,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),$accountId,$siteId,$key));}
+    public function markUnknown(int $accountId,int $siteId,string $key): bool{global $wpdb;$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state='unknown',updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",current_time('mysql',true),$accountId,$siteId,$key));return 1===(int)$wpdb->rows_affected;}
+    public function complete(int $accountId,int $siteId,string $key,int $status,array $body): bool{global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=%d AND site_id=%d AND idempotency_key=%s AND state='pending'",$state,$status,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),$accountId,$siteId,$key));return 1===(int)$wpdb->rows_affected;}
 
     public function lookupVerify(string $key,string $fingerprint): array
     {
@@ -32,10 +32,10 @@ final class IdempotencyService
     public function completeVerify(string $key,int $status,array $body): bool
     {
         global $wpdb;$state=($status>=200&&$status<300)?'succeeded':'failed';$stored=$this->encryptVerifyResponse($body);if($stored===null)return false;
-        $saved=false;
         $row=$wpdb->get_row($wpdb->prepare("SELECT operation_id FROM {$wpdb->prefix}woogit_idempotency WHERE account_id=0 AND site_id=0 AND idempotency_key=%s AND state='pending' LIMIT 1",$key),ARRAY_A);
         if(!$row)return false;
-        $saved=false!==$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=0 AND site_id=0 AND idempotency_key=%s AND state='pending'",$state,$status,$stored,current_time('mysql',true),$key));
+        $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_idempotency SET state=%s,status_code=%d,response_body=%s,updated_at=%s WHERE account_id=0 AND site_id=0 AND idempotency_key=%s AND state='pending'",$state,$status,$stored,current_time('mysql',true),$key));
+        $saved=1===(int)$wpdb->rows_affected;
         if($saved&&$state==='failed')$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}woogit_operations SET status='failed',upstream_status=%d,response_body=%s,updated_at=%s WHERE operation_id=%s AND status='pending'",$status,wp_json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),current_time('mysql',true),(string)$row['operation_id']));
         return $saved;
     }
