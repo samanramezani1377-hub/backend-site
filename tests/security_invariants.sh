@@ -109,7 +109,11 @@ contains "$versionAdmin" 'check_admin_referer' 'version policy changes must requ
 contains "$versionAdmin" 'VERSION_PATTERN' 'version policy admin must validate version syntax'
 contains "$versionAdmin" 'update_option(self::OPTION' 'version policy admin must persist through WordPress options API'
 contains "$bootstrap" 'VersionAdmin' 'version policy admin must be registered by plugin bootstrap'
-contains "$versionAdmin" 'minimum.*latest' 'version policy admin must enforce minimum/latest ordering'
+# Keep the version-order invariant line-local so the test is not dependent on
+# grep matching across newlines.
+contains "$versionAdmin" 'version_compare(\$minimum, \$latest' 'minimum supported version must not exceed latest version'
+contains "$versionAdmin" 'version_compare(\$recommended, \$latest' 'recommended version must not exceed latest version'
+contains "$versionAdmin" 'version_compare(\$recommended, \$minimum' 'recommended version must not be below minimum supported version'
 contains "$announcement" 'active' 'announcement service must filter active records'
 contains "$announcement" 'app_versions' 'announcements must support app-version targeting'
 contains "$announcementAdmin" 'display_type' 'announcement admin must persist numeric app-owned display type'
