@@ -85,8 +85,16 @@ final class BillingController
             $recovered=$this->billing->findCheckoutByIdempotencyKey($accountId,$siteId,$key);
             if($recovered['ok']){
                 $body=['order_id'=>$recovered['order_id'],'payment_url'=>$recovered['payment_url'],'status'=>$recovered['status']];
-                $this->operations->update($accountId,$siteId,(string)$existing['operation_id'],'succeeded',201,$body);
-                $this->idempotency->complete($accountId,$siteId,$key,201,$body);
+                $operationId=(string)$existing['operation_id'];
+                if(!$this->operations->update($accountId,$siteId,$operationId,'succeeded',201,$body)){
+                    $this->operations->markUnknown($accountId,$siteId,$operationId);
+                    $this->idempotency->markUnknown($accountId,$siteId,$key);
+                    return $this->unknownResponse($operationId);
+                }
+                if(!$this->idempotency->complete($accountId,$siteId,$key,201,$body)){
+                    $this->idempotency->markUnknown($accountId,$siteId,$key);
+                    return $this->unknownResponse($operationId);
+                }
                 return new \WP_REST_Response($body,201);
             }
             return new \WP_REST_Response(['code'=>'operation_pending','operation_id'=>$existing['operation_id'],'retryable'=>true],409);
@@ -95,9 +103,10 @@ final class BillingController
         if($productId<=0)return new \WP_REST_Response(['code'=>'missing_plan'],400);
         $operation=$this->operations->create($accountId,$siteId,$key,$fingerprint,'billing','/woogit/v1/billing/checkout','POST');
         if(!$operation)return new \WP_REST_Response(['code'=>'operation_creation_failed'],500);
-        $claim=$this->idempotency->claim($accountId,$siteId,$key,$fingerprint,(string)$operation['operation_id']);
+        $operationId=(string)$operation['operation_id'];
+        $claim=$this->idempotency->claim($accountId,$siteId,$key,$fingerprint,$operationId);
         if($claim['state']!=='claimed'){
-            $this->operations->deletePending($accountId,$siteId,(string)$operation['operation_id']);
+            $this->operations->deletePending($accountId,$siteId,$operationId);
             if($claim['state']==='conflict')return new \WP_REST_Response(['code'=>'idempotency_conflict'],409);
             if($claim['state']==='completed')return new \WP_REST_Response($claim['body'],$claim['status']);
             if($claim['state']==='unknown')return new \WP_REST_Response(['code'=>'operation_unknown','operation_id'=>$claim['operation_id'],'retryable'=>false],409);
@@ -106,13 +115,27 @@ final class BillingController
         $result=$this->billing->createCheckout($accountId,$siteId,$productId,$variationId,$key);
         if(!$result['ok']){
             $body=['code'=>$result['code']];
-            $this->operations->update($accountId,$siteId,(string)$operation['operation_id'],'failed',400,$body);
-            $this->idempotency->complete($accountId,$siteId,$key,400,$body);
+            if(!$this->operations->update($accountId,$siteId,$operationId,'failed',400,$body)){
+                $this->operations->markUnknown($accountId,$siteId,$operationId);
+                $this->idempotency->markUnknown($accountId,$siteId,$key);
+                return $this->unknownResponse($operationId);
+            }
+            if(!$this->idempotency->complete($accountId,$siteId,$key,400,$body)){
+                $this->idempotency->markUnknown($accountId,$siteId,$key);
+                return $this->unknownResponse($operationId);
+            }
             return new \WP_REST_Response($body,400);
         }
         $body=['order_id'=>$result['order_id'],'payment_url'=>$result['payment_url'],'status'=>$result['status']];
-        $this->operations->update($accountId,$siteId,(string)$operation['operation_id'],'succeeded',201,$body);
-        $this->idempotency->complete($accountId,$siteId,$key,201,$body);
+        if(!$this->operations->update($accountId,$siteId,$operationId,'succeeded',201,$body)){
+            $this->operations->markUnknown($accountId,$siteId,$operationId);
+            $this->idempotency->markUnknown($accountId,$siteId,$key);
+            return $this->unknownResponse($operationId);
+        }
+        if(!$this->idempotency->complete($accountId,$siteId,$key,201,$body)){
+            $this->idempotency->markUnknown($accountId,$siteId,$key);
+            return $this->unknownResponse($operationId);
+        }
         return new \WP_REST_Response($body,201);
     }
 
@@ -168,6 +191,11 @@ final class BillingController
         $response=new \WP_REST_Response(['code'=>'RATE_LIMITED','retry_after'=>$retryAfter,'retryable'=>true],429);
         $response->header('Retry-After',(string)$retryAfter);
         return $response;
+    }
+
+    private function unknownResponse(string $operationId): \WP_REST_Response
+    {
+        return new \WP_REST_Response(['code'=>'operation_unknown','operation_id'=>$operationId,'retryable'=>false],409);
     }
 
     private function clientIp(): string
