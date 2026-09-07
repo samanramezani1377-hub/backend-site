@@ -107,7 +107,7 @@ contains "$database" 'false===\$result' 'database migrations must stop on failed
 contains "$versionAdmin" 'manage_options' 'version policy admin must require administrator capability'
 contains "$versionAdmin" 'check_admin_referer' 'version policy changes must require CSRF nonce'
 contains "$versionAdmin" 'VERSION_PATTERN' 'version policy admin must validate version syntax'
-contains "$versionAdmin" 'update_option(self::OPTION' 'version policy admin must persist through WordPress options API'
+contains "$versionAdmin" 'update_option[(]self::OPTION' 'version policy admin must persist through WordPress options API'
 contains "$bootstrap" 'VersionAdmin' 'version policy admin must be registered by plugin bootstrap'
 # Use character classes for literal parentheses. This avoids grep -E's special
 # meaning for escaped grouping syntax (\(...), which previously caused an
