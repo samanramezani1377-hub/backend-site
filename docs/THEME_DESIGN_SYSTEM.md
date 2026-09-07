@@ -1,75 +1,17 @@
 # سیستم طراحی تم WooGit
 
-## ۱. هدف
+> سند اجرایی Design System در [docs/theme/DESIGN-SYSTEM.md](theme/DESIGN-SYSTEM.md) نگهداری می‌شود. این فایل برای سازگاری مسیر قبلی باقی مانده است.
 
-تم باید وب‌سایت رسمی محصول و پرتال SaaS حرفه‌ای باشد، نه نسخه وب App.
+## خلاصه قرارداد
 
-زبان بصری باید با App هماهنگ باشد، اما صفحات و اجزای عملیاتی App نباید کپی شوند.
+Theme از Liquid Glass به‌عنوان زبان بصری استفاده می‌کند، اما performance و readability اولویت بالاتری دارند.
 
-## ۲. زبان بصری مشترک
+- RTL-first و پشتیبانی صحیح LTR برای URL، email و داده فنی
+- token-driven typography، spacing، color، radius، shadow و motion
+- component library کوچک و reusable
+- semantic HTML، keyboard navigation، visible focus و reduced motion
+- stateهای Loading / Success / Error / Empty/Pending
+- Landing و Customer Portal دارای visual language مشترک اما information architecture جدا هستند
+- Theme نسخه وب App نیست و UI عملیاتی Products، Orders، Sync، Conflicts و Store Operations ندارد.
 
-- پایه روشن نرم نزدیک به `#EFF1F7`
-- لکه‌های محیطی Mint، Peach، Lavender و Sky
-- سطوح شیشه‌ای نیمه‌شفاف سفید
-- Blur و Haze کنترل‌شده
-- Highlight ظریف در بالا-چپ
-- Border نیمه‌شفاف
-- Shadow نرم و عمیق
-- گوشه‌های اصلی حدود 26dp، سطوح ثانویه 18dp و کنترل‌های کوچک 12dp در App؛ در وب این مقادیر باید متناسب با مقیاس CSS تطبیق داده شوند.
-- تأکید اصلی با گرادیان بنفش به صورتی
-- وضعیت زنده با سبز و وضعیت فوری با نارنجی
-- سلسله‌مراتب روشن متن اصلی، متن فرعی و متن کم‌رنگ
-
-## ۳. اصول وب
-
-- RTL-first برای محتوای فارسی و پشتیبانی صحیح LTR برای متن و URL انگلیسی
-- تایپوگرافی خوانا و مقیاس‌پذیر
-- کارت‌های content-driven
-- فاصله‌گذاری منظم
-- حداقل شلوغی بصری
-- تعاملات با بازخورد فوری
-- touch target مناسب در موبایل
-- کنتراست و focus state قابل مشاهده
-
-## ۴. اجزای مشترک
-
-Theme باید کتابخانه داخلی کوچک و قابل استفاده مجدد داشته باشد:
-
-- محیط Liquid Glass
-- هدر و ناوبری
-- کارت شیشه‌ای
-- دکمه اصلی و ثانویه
-- دکمه آیکونی
-- فیلد ورودی
-- جست‌وجو
-- Badge و وضعیت
-- لیست و آیتم لیست
-- Section
-- Empty State
-- Error State
-- Loading/Skeleton
-- Dialog و Sheet
-- Toast/Notification
-- جدول واکنش‌گرا برای Billing و Payment History
-
-## ۵. صفحات
-
-Landing، Features، Pricing، Auth، Billing و Account باید از همین توکن‌ها و اجزا استفاده کنند.
-
-## ۶. دسترس‌پذیری
-
-- semantic HTML
-- keyboard navigation
-- focus قابل مشاهده
-- label واقعی برای inputها
-- پیام خطای مرتبط با فیلد
-- کاهش حرکت برای کاربرانی که Reduced Motion انتخاب کرده‌اند
-- پشتیبانی از zoom و font scaling مرورگر
-
-## ۷. وضعیت‌ها
-
-هر تعامل API باید Loading، Success، Error و در صورت نیاز Empty/Pending را داشته باشد. صفحه نباید هنگام خطا سفید یا بی‌واکنش بماند.
-
-## ۸. اصل هماهنگی با App
-
-Theme از زبان بصری App الهام می‌گیرد؛ قرارداد عملیاتی App را کپی نمی‌کند. Orders، Products، Sync، Conflicts و Store Dashboard جزو UI تم نیستند.
+جزئیات کامل در سند جدید متمرکز شده است.
