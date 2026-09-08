@@ -41,9 +41,16 @@ function is_page($pages = null): bool { return false; }
 function get_custom_logo(): string { return ''; }
 function language_attributes(): void { echo 'lang="fa" dir="rtl"'; }
 function bloginfo(string $show = ''): void { echo $show === 'charset' ? 'UTF-8' : ($show === 'description' ? 'WooGit' : 'WooGit'); }
+function get_bloginfo(string $show = '', string $filter = 'raw'): string { return $show === 'charset' ? 'UTF-8' : ($show === 'description' ? 'WooGit' : 'WooGit'); }
 function body_class(): void { echo 'class="home"'; }
 function wp_body_open(): void {}
 function wp_date(string $format): string { return date($format); }
+function absint($value): int { return abs((int)$value); }
+function is_wp_error($value): bool { return false; }
+function is_email($value): bool { return filter_var((string)$value, FILTER_VALIDATE_EMAIL) !== false; }
+function sanitize_text_field($value): string { return trim(strip_tags((string)$value)); }
+function sanitize_key($value): string { return strtolower(preg_replace('/[^a-z0-9_\-]/', '', (string)$value)); }
+function wp_get_attachment_image_url($id, $size = 'large') { return false; }
 function wp_head(): void {
     $files = ['foundation.css','components.css','pages.css','responsive.css','theme-polish.css'];
     foreach ($files as $file) {
