@@ -39,7 +39,7 @@ jobs:
           if grep -Eiq '(^|/)(plugin|plugins|node_modules|\.git|tests|docs)(/|$)' <(find _site -type f -printf '%P\n'); then
             echo 'Preview artifact contains unrelated repository content'; exit 1
           fi
-          grep -q 'فروشگاه شما، با' _site/index.html
+          grep -q 'فروشگاهتان را با' _site/index.html
           grep -q 'wg-home-preview' _site/index.html
           grep -q 'wg-footer' _site/index.html
       - uses: actions/configure-pages@v5
