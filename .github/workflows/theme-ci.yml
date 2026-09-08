@@ -2,9 +2,9 @@ name: Theme CI
 on:
   push:
     branches: [main, theme-v1-implementation]
-    paths: ['theme/woogit/**', 'tests/theme/**', '.github/workflows/theme-ci.yml']
+    paths: ['theme/woogit/**', 'tests/theme/**', 'tools/preview/**', '.github/workflows/theme-ci.yml']
   pull_request:
-    paths: ['theme/woogit/**', 'tests/theme/**', '.github/workflows/theme-ci.yml']
+    paths: ['theme/woogit/**', 'tests/theme/**', 'tools/preview/**', '.github/workflows/theme-ci.yml']
 jobs:
   php-syntax:
     runs-on: ubuntu-latest
