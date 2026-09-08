@@ -46,7 +46,7 @@ jobs:
       - name: Required Theme structure
         run: |
           set -uo pipefail; status=0
-          for file in style.css functions.php header.php footer.php index.php 404.php front-page.php \
+          for file in style.css functions.php header.php footer.php index.php 404.php front-page.php page-pricing.php \
             inc/api/client.php inc/auth/session.php inc/portal/data.php inc/commerce/adapter.php \
             inc/admin/theme-management/settings.php inc/admin/theme-management/meta.php inc/admin/theme-management/admin.php \
             template-parts/public-page.php templates/public/home.php templates/public/payment-result.php \
@@ -76,9 +76,11 @@ jobs:
           unzip -l woogit-theme-v1.zip > /tmp/theme-zip.txt
           grep -q 'woogit/style.css' /tmp/theme-zip.txt
           grep -q 'woogit/templates/public/home.php' /tmp/theme-zip.txt
+          grep -q 'woogit/templates/public/payment-result.php' /tmp/theme-zip.txt
           grep -q 'woogit/templates/auth/register.php' /tmp/theme-zip.txt
           grep -q 'woogit/templates/portal/overview.php' /tmp/theme-zip.txt
           grep -q 'woogit/templates/portal/billing.php' /tmp/theme-zip.txt
+          grep -q 'woogit/page-pricing.php' /tmp/theme-zip.txt
           if grep -Eiq '(^|/)(plugin|plugins|node_modules|\.git)(/|$)' /tmp/theme-zip.txt; then echo 'ZIP contains forbidden non-theme content'; exit 1; fi
       - name: Upload Theme artifact
         uses: actions/upload-artifact@v4
