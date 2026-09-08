@@ -9,8 +9,8 @@
     <form data-woogit-auth="login" novalidate>
       <div class="wg-field">
         <label for="woogit-login-site-url">آدرس سایت</label>
-        <input id="woogit-login-site-url" name="site_url" type="url" inputmode="url" dir="ltr" autocomplete="url" required placeholder="https://example.com" aria-describedby="woogit-login-site-url-hint">
-        <small id="woogit-login-site-url-hint" class="wg-form-hint">آدرس کامل سایت متصل‌شده به WooGit.</small>
+        <input id="woogit-login-site-url" name="site_url" type="url" inputmode="url" dir="ltr" autocomplete="url" required placeholder="example.com" aria-describedby="woogit-login-site-url-hint">
+        <small id="woogit-login-site-url-hint" class="wg-form-hint">فقط نام دامنه سایت فروشگاه را وارد کنید؛ نیازی به https:// نیست.</small>
       </div>
       <div class="wg-field">
         <label for="woogit-login-web-password">رمز عبور وب</label>
