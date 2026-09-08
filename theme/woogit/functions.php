@@ -28,17 +28,20 @@ add_action('wp_ajax_woogit_portal_action', 'woogit_ajax_portal_action');
 function woogit_ajax_web_auth() {
   if (!check_ajax_referer('woogit_web_auth', 'nonce', false)) wp_send_json_error(['code'=>'invalid_nonce'], 403);
   $type=sanitize_key($_POST['type']??'');
-  $allowed=['login','register'];
-  if(!in_array($type,$allowed,true)) wp_send_json_error(['code'=>'invalid_request'],400);
+  if(!in_array($type,['login','register'],true)) wp_send_json_error(['code'=>'invalid_request'],400);
   $keys=['site_url','web_password'];
   if($type==='register') $keys=array_merge($keys,['wp_username','wp_application_password','consumer_key','consumer_secret']);
   $body=[];
-  foreach($keys as $key) $body[$key]=isset($_POST[$key])?sanitize_text_field(wp_unslash($_POST[$key])):'';
-  if($type==='register') $body['web_password_confirmation']=$body['web_password'];
+  foreach($keys as $key) $body[$key]=isset($_POST[$key])?(string)wp_unslash($_POST[$key]):'';
   foreach($keys as $key) if($body[$key]==='') wp_send_json_error(['code'=>'missing_field'],400);
-  $headers=[];
-  if($type==='register') $headers['Idempotency-Key']=wp_generate_uuid4();
-  $result=$type==='login'?woogit_api_post('web/login',['site_url'=>$body['site_url'],'password'=>$body['web_password']]):woogit_api_post('account/web-bootstrap',$body,$headers);
+  if($type==='register'){
+    $body['web_password_confirmation']=$body['web_password'];
+    $idempotency=sanitize_text_field(wp_unslash($_POST['idempotency_key']??''));
+    if($idempotency===''||!preg_match('/^[A-Za-z0-9._:-]{1,190}$/',$idempotency)) wp_send_json_error(['code'=>'invalid_idempotency_key'],400);
+    $result=woogit_api_post('account/web-bootstrap',$body,['Idempotency-Key'=>$idempotency]);
+  }else{
+    $result=woogit_api_post('web/login',['site_url'=>$body['site_url'],'password'=>$body['web_password']]);
+  }
   if(is_wp_error($result)){
     $status=(int)($result->get_error_data()['status']??500);
     wp_send_json_error(['code'=>$result->get_error_code(),'message'=>'امکان انجام عملیات وجود ندارد.'],$status>=400&&$status<600?$status:500);
@@ -55,7 +58,7 @@ function woogit_ajax_portal_action() {
   if($action==='logout'){
     $result=woogit_api_post('web/logout');
     woogit_clear_web_session();
-    if(is_wp_error($result)) wp_send_json_error(['code'=>'logout_local_only'],200);
+    if(is_wp_error($result)) wp_send_json_success(['logged_out'=>true]);
     wp_send_json_success(['logged_out'=>true]);
   }
   $body=[];
@@ -64,13 +67,11 @@ function woogit_ajax_portal_action() {
     if($body['email']!==''&&!is_email($body['email'])) wp_send_json_error(['code'=>'invalid_contact_email'],400);
     $result=woogit_api_post('web/account/contact-email',$body);
   }elseif($action==='password'){
-    $body['current_password']=isset($_POST['current_password'])?sanitize_text_field(wp_unslash($_POST['current_password'])):'';
-    $body['password']=isset($_POST['password'])?sanitize_text_field(wp_unslash($_POST['password'])):'';
-    $body['password_confirmation']=isset($_POST['password_confirmation'])?sanitize_text_field(wp_unslash($_POST['password_confirmation'])):'';
+    $body['current_password']=isset($_POST['current_password'])?(string)wp_unslash($_POST['current_password']):'';
+    $body['password']=isset($_POST['password'])?(string)wp_unslash($_POST['password']):'';
+    $body['password_confirmation']=isset($_POST['password_confirmation'])?(string)wp_unslash($_POST['password_confirmation']):'';
     $result=woogit_api_post('web/account/password',$body);
-  }else{
-    wp_send_json_error(['code'=>'invalid_request'],400);
-  }
+  }else wp_send_json_error(['code'=>'invalid_request'],400);
   if(is_wp_error($result)){
     $status=(int)($result->get_error_data()['status']??500);
     wp_send_json_error(['code'=>$result->get_error_code(),'message'=>'امکان انجام عملیات وجود ندارد.'],$status>=400&&$status<600?$status:500);
