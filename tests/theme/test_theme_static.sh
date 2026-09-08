@@ -13,11 +13,11 @@ if grep -q 'data-multistep' "$THEME/templates/auth/register.php"&&grep -q 'data-
 grep -q 'wg-app-preview' "$THEME/templates/public/home.php"&&pass 'home contains app preview markup'||fail 'home app preview missing'
 grep -q "templates/portal/' . \$portal_templates\[\$slug\]" "$THEME/page.php"&&grep -q "templates/auth/login" "$THEME/page.php"&&grep -q "templates/auth/register" "$THEME/page.php"&&pass 'WordPress page routing delegates to V1 templates'||fail 'page.php does not delegate V1 page routes correctly'
 grep -q 'woogit_commerce_payment_order' "$THEME/templates/public/payment-result.php"&&pass 'payment return uses scoped WooCommerce adapter'||fail 'payment return is not backed by scoped order adapter'
-grep -q 'entitlementActive' "$THEME/templates/public/payment-result.php"&&grep -q "status==='active'" "$THEME/templates/public/payment-result.php"&&pass 'payment return reconciles entitlement state'||fail 'payment return does not reconcile entitlement state'
+grep -q 'entitlementActive' "$THEME/templates/public/payment-result.php"&&grep -q "entitlement==='active'" "$THEME/templates/public/payment-result.php"&&pass 'payment return reconciles entitlement state'||fail 'payment return does not reconcile entitlement state'
 grep -q 'woogit_commerce_payment_method' "$THEME/inc/portal/data.php"&&pass 'payment method selection uses deterministic adapter rule'||fail 'payment method selection rule missing'
 grep -q 'theme-polish.css' "$THEME/inc/setup/theme.php"&&pass 'semantic theme polish stylesheet is enqueued'||fail 'semantic theme polish stylesheet missing from enqueue'
 grep -q 'WooGit.errorMessage' "$THEME/assets/js/core.js"&&pass 'central API error mapping exists'||fail 'central API error mapping missing'
 grep -q 'focusables' "$THEME/assets/js/navigation.js"&&grep -q "e.key==='Escape'" "$THEME/assets/js/navigation.js"&&pass 'mobile navigation has focus trap and Escape handling'||fail 'mobile navigation accessibility handling incomplete'
 grep -q 'data-price' "$THEME/page-pricing.php"&&grep -q 'data-woogit-variation-select' "$THEME/page-pricing.php"&&pass 'pricing exposes variation price metadata'||fail 'pricing variation metadata missing'
-grep -q "placement==='footer'" "$THEME/footer.php"&&pass 'Enamad footer placement is explicit'||fail 'Enamad footer placement handling missing'
+grep -q "\['placement'\]==='footer'" "$THEME/footer.php"&&pass 'Enamad footer placement is explicit'||fail 'Enamad footer placement handling missing'
 exit "$FAIL"
