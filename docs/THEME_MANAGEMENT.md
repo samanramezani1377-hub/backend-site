@@ -1,8 +1,8 @@
 # مدیریت نمایش و محتوای WooGit Theme
 
-> وضعیت: V1 — این فایل فقط Index مجموعه مستندات Theme Management است.
+> وضعیت: V1 — Index مجموعه مستندات Theme Management.
 
-مستندات Theme Management برای جلوگیری از ایجاد یک فایل بزرگ، به چند سند موضوعی تقسیم شده است.
+Theme Management فقط مسئول **ظاهر، محتوا و Presentation وب‌سایت رسمی WooGit** است. این بخش با منبع داده تجاری WooGit یا Customer WooCommerce یکی نیست.
 
 ## ساختار
 
@@ -24,11 +24,39 @@ docs/
     └── SECURITY-AND-BOUNDARIES.md
 ```
 
+## مرز داده و مسئولیت
+
+سه حوزه باید همیشه از هم جدا بمانند:
+
+```text
+Customer WooCommerce
+    ↓
+Products / Orders / Inventory / Media / Store Operations مشتری
+
+WooCommerce روی woogit.ir
+    ↓
+WooGit Plans / Products / Orders / Payment / Payment History / Payment State
+
+WooGit Backend
+    ↓
+Account / Auth / Web Session / Site Ownership / Entitlement / Authorization
+```
+
+Theme می‌تواند داده **WooCommerce خود `woogit.ir`** را برای نمایش Pricing، سفارش‌های WooGit، Payment Method و Payment History از طریق adapter/orchestrator مجاز مصرف کند؛ این به معنی دسترسی Theme به Customer WooCommerce نیست.
+
+Theme Management به هیچ‌وجه نباید:
+
+- به Customer WooCommerce متصل شود؛
+- credential فروشگاه مشتری را نگهداری کند؛
+- Entitlement یا Authorization را محاسبه کند؛
+- Payment یا Order state را جعل کند؛
+- به Database یا کلاس‌های داخلی Plugin برای دور زدن قرارداد دسترسی داشته باشد.
+
 ## Theme Management چیست؟
 
-Theme Management فقط برای **ظاهر، محتوا و Presentation وب‌سایت رسمی WooGit** است؛ مانند Logo، Hero، Features، How It Works، Pricing Presentation، FAQ، Footer، اطلاعات تماس، شبکه‌های اجتماعی و اینماد.
+این بخش برای تنظیمات presentation مانند Logo، Hero، Features، How It Works، Pricing Presentation، FAQ، Footer، اطلاعات تماس، شبکه‌های اجتماعی و اینماد است.
 
-این بخش با Account، Authentication، Session، Site Ownership، Entitlement، Billing، WooCommerce، Products، Orders، Sync، Inventory یا Business Logic افزونه کاری ندارد.
+**Pricing Presentation** فقط ظاهر و محتوای قابل مدیریت را کنترل می‌کند؛ قیمت، Currency، Order، Payment و وضعیت اشتراک authoritative از منابع قراردادی خود مصرف می‌شوند.
 
 ## اسناد موضوعی
 
@@ -46,15 +74,13 @@ Theme Management
     ↓
 Website Presentation / Content
     ↓
-Public Website
+WooGit Theme
+    ├── Backend Public REST API → Account / Auth / Session / Entitlement
+    └── WooCommerce woogit.ir adapter → WooGit store/payment presentation
 
-WooGit Main Plugin
+Customer WooCommerce
     ↓
-Auth / Account / Site / Billing / Entitlement / Security / API
-
-Android App
-    ↓
-WooCommerce Operations
+فقط مسیر عملیاتی App → Customer Store
 ```
 
 فایل‌های موضوعی باید کوچک و مستقل باقی بمانند و تغییرات آینده در سند مربوط به همان حوزه ثبت شوند.
