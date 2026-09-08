@@ -2,10 +2,10 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"; THEME="$ROOT/theme/woogit"; FAIL=0
 pass(){ printf 'PASS: %s\n' "$1"; }; fail(){ printf 'FAIL: %s\n' "$1"; FAIL=1; }
-for dir in "$THEME/templates/public" "$THEME/templates/auth" "$THEME/template-parts"; do
+for dir in "$THEME/templates/public" "$THEME/templates/auth" "$THEME/templates/portal" "$THEME/template-parts"; do
   if [[ -d "$dir" ]]; then pass "required template directory exists: ${dir#$THEME/}"; else fail "missing required template directory: ${dir#$THEME/}"; fi
 done
-for file in "$THEME/templates/public/home.php" "$THEME/templates/auth/login.php" "$THEME/templates/auth/register.php"; do
+for file in "$THEME/templates/public/home.php" "$THEME/templates/public/payment-result.php" "$THEME/templates/auth/login.php" "$THEME/templates/auth/register.php" "$THEME/templates/portal/overview.php" "$THEME/templates/portal/subscription.php" "$THEME/templates/portal/billing.php" "$THEME/templates/portal/payments.php" "$THEME/templates/portal/connected-site.php" "$THEME/templates/portal/account-security.php"; do
   if [[ -f "$file" ]]; then pass "required template exists: ${file#$THEME/}"; else fail "missing required template: ${file#$THEME/}"; fi
 done
 if grep -RInE 'wp_remote_(get|post|request)\(|\$wpdb|WC_[A-Za-z_]+' "$THEME/templates" "$THEME/template-parts"; then fail 'templates/template-parts contain direct infrastructure access'; else pass 'templates/template-parts stay presentation-only'; fi
