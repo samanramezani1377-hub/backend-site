@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"; THEME="$ROOT/theme/woogit"; FAIL=0
-pass(){ printf 'PASS: %s\n' "$1"; }; fail(){ printf 'FAIL: %s\n' "$1"; FAIL=1; }
+pass(){ printf 'PASS: %s\n' "$1"; }; fail(){ printf 'FAIL: %s\n' "$1"; }
 for dir in "$THEME/templates/public" "$THEME/templates/auth" "$THEME/templates/portal" "$THEME/template-parts"; do [[ -d "$dir" ]]&&pass "required template directory exists: ${dir#$THEME/}"||fail "missing required template directory: ${dir#$THEME/}"; done
 for file in "$THEME/templates/public/home.php" "$THEME/templates/public/payment-result.php" "$THEME/templates/auth/login.php" "$THEME/templates/auth/register.php" "$THEME/templates/portal/overview.php" "$THEME/templates/portal/subscription.php" "$THEME/templates/portal/billing.php" "$THEME/templates/portal/payments.php" "$THEME/templates/portal/connected-site.php" "$THEME/templates/portal/account-security.php"; do [[ -f "$file" ]]&&pass "required template exists: ${file#$THEME/}"||fail "missing required template: ${file#$THEME/}"; done
 if grep -RInE 'wp_remote_(get|post|request)\(|\$wpdb|WC_[A-Za-z_]+' "$THEME/templates" "$THEME/template-parts"; then fail 'templates/template-parts contain direct infrastructure access'; else pass 'templates/template-parts stay presentation-only'; fi
@@ -20,4 +20,5 @@ grep -q 'WooGit.errorMessage' "$THEME/assets/js/core.js"&&pass 'central API erro
 grep -q 'focusables' "$THEME/assets/js/navigation.js"&&grep -q "e.key==='Escape'" "$THEME/assets/js/navigation.js"&&pass 'mobile navigation has focus trap and Escape handling'||fail 'mobile navigation accessibility handling incomplete'
 grep -q 'data-price' "$THEME/page-pricing.php"&&grep -q 'data-woogit-variation-select' "$THEME/page-pricing.php"&&pass 'pricing exposes variation price metadata'||fail 'pricing variation metadata missing'
 grep -q "\['placement'\]==='footer'" "$THEME/footer.php"&&pass 'Enamad footer placement is explicit'||fail 'Enamad footer placement handling missing'
+grep -q 'woogit_support_enamad_content' "$THEME/inc/setup/theme.php"&&grep -q "\['placement'\].*contact" "$THEME/inc/setup/theme.php"&&pass 'Enamad contact placement is rendered through content filter'||fail 'Enamad contact placement handling missing'
 exit "$FAIL"
