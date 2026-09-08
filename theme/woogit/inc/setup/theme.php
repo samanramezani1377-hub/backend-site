@@ -27,4 +27,4 @@ function woogit_enqueue_assets() {
     'home'=>home_url('/'),
   ]);
 }
-function woogit_print_head_meta(){echo '<meta name="theme-color" content="#0b0d12">\n';}
+function woogit_print_head_meta(){echo '<meta name="theme-color" content="#080a0f">';}
