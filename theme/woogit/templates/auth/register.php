@@ -17,7 +17,8 @@
         <legend>۱. اطلاعات سایت</legend>
         <div class="wg-field">
           <label for="woogit-register-site-url">آدرس سایت</label>
-          <input id="woogit-register-site-url" name="site_url" type="url" inputmode="url" dir="ltr" autocomplete="url" required placeholder="https://example.com">
+          <input id="woogit-register-site-url" name="site_url" type="url" inputmode="url" dir="ltr" autocomplete="url" required placeholder="example.com" aria-describedby="woogit-register-site-url-hint">
+          <small id="woogit-register-site-url-hint" class="wg-form-hint">فقط نام دامنه سایت فروشگاه را وارد کنید؛ نیازی به https:// نیست.</small>
         </div>
         <button class="wg-btn wg-step-next" type="button">ادامه</button>
       </fieldset>
