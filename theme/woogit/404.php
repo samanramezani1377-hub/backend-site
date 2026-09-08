@@ -1,0 +1,1 @@
+<?php get_header(); ?><section class="wg-section"><div class="wg-container wg-card wg-prose"><span class="wg-eyebrow">404</span><h1>این صفحه پیدا نشد.</h1><p>آدرس را بررسی کنید یا به صفحه اصلی برگردید.</p><a class="wg-btn" href="<?php echo esc_url(home_url('/')); ?>">صفحه اصلی</a></div></section><?php get_footer(); ?>
