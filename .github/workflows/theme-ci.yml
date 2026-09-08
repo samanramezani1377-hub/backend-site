@@ -57,7 +57,9 @@ jobs:
       - name: Build installable Theme ZIP
         run: |
           set -euo pipefail
-          rm -rf dist woogit-theme-v1.zip; mkdir -p dist; cp -a theme/woogit dist/woogit
+          rm -rf dist woogit-theme-v1.zip
+          mkdir -p dist
+          cp -a theme/woogit dist/woogit
           find dist/woogit -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           if find dist/woogit -type l -print -quit | grep -q .; then echo 'ZIP source contains symlink'; exit 1; fi
           (cd dist && zip -qr ../woogit-theme-v1.zip woogit)
@@ -75,9 +77,23 @@ jobs:
           if grep -Eiq '(^|/)(plugin|plugins|node_modules|\.git|tests|docs|\.github)(/|$)' /tmp/theme-zip.txt; then echo 'ZIP contains forbidden non-theme content'; exit 1; fi
           if grep -Eiq '(^|/)\.[^/]+($|/)' /tmp/theme-zip.txt; then echo 'ZIP contains hidden/unrelated files'; exit 1; fi
           unzip -tq woogit-theme-v1.zip
+          rm -rf /tmp/theme-install-check
+          mkdir -p /tmp/theme-install-check
+          unzip -q woogit-theme-v1.zip -d /tmp/theme-install-check
+          test -f /tmp/theme-install-check/woogit/style.css
+          test -f /tmp/theme-install-check/woogit/functions.php
+          test -f /tmp/theme-install-check/woogit/front-page.php
+          test -f /tmp/theme-install-check/woogit/index.php
+          if find /tmp/theme-install-check -mindepth 2 -maxdepth 2 -name '*.zip' -print -quit | grep -q .; then echo 'Nested ZIP detected in install package'; exit 1; fi
       - name: Upload Theme artifact
         uses: actions/upload-artifact@v4
         with:
           name: woogit-theme-v1
+          path: woogit-theme-v1.zip
+          if-no-files-found: error
+      - name: Publish installable Theme ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: woogit-theme-v1-install
           path: woogit-theme-v1.zip
           if-no-files-found: error
