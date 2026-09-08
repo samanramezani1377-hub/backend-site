@@ -12,8 +12,8 @@ $p=$d['payments'];$orders=(array)($p['orders']??[]);$current=max(1,(int)($p['pag
       <div class="wg-card wg-empty"><h2>هنوز پرداختی ثبت نشده است.</h2><p>پس از اولین Order معتبر، سوابق اینجا نمایش داده می‌شود.</p><a class="wg-btn" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده پلن‌ها</a></div>
     <?php else: ?>
       <div class="wg-card wg-table-card"><div class="wg-table-scroll"><table class="wg-table"><thead><tr><th>Order</th><th>تاریخ</th><th>وضعیت</th><th>روش پرداخت</th><th>مبلغ</th></tr></thead><tbody>
-      <?php foreach($orders as $o): $status=sanitize_html_class((string)($o['status']??'unknown')); ?>
-        <tr><td>#<?php echo (int)($o['order_id']??0); ?></td><td><?php echo !empty($o['created_at'])?esc_html(wp_date('Y/m/d H:i',strtotime($o['created_at']))):'—'; ?></td><td><span class="wg-status wg-status--<?php echo esc_attr($status); ?>"><?php echo woogit_safe_text($o['status']??'—'); ?></span></td><td><?php echo woogit_safe_text($o['payment_method_title']??$o['payment_method']??'—'); ?></td><td><?php echo woogit_safe_text($o['total']??'—'); ?> <?php echo woogit_safe_text($o['currency']??''); ?></td></tr>
+      <?php foreach($orders as $o): $status=woogit_portal_status($o['status']??'unknown'); ?>
+        <tr><td>#<?php echo (int)($o['order_id']??0); ?></td><td><?php echo !empty($o['created_at'])&&strtotime($o['created_at'])?esc_html(wp_date('Y/m/d H:i',strtotime($o['created_at']))):'—'; ?></td><td><span class="wg-status wg-status--<?php echo esc_attr($status[1]); ?>"><?php echo woogit_safe_text($status[0]); ?></span></td><td><?php echo woogit_safe_text($o['payment_method_title']??$o['payment_method']??'—'); ?></td><td><?php echo woogit_safe_text($o['total']??'—'); ?> <?php echo woogit_safe_text($o['currency']??''); ?></td></tr>
       <?php endforeach; ?></tbody></table></div></div>
       <?php if($totalPages>1): ?>
         <nav class="wg-pagination" aria-label="صفحات پرداخت">
