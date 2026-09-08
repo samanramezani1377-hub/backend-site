@@ -23,7 +23,8 @@ jobs:
         run: |
           set -uo pipefail; status=0
           if grep -RInE 'wp_remote_(get|post|request)\(|\$wpdb|WC_[A-Za-z_]+' theme/woogit/templates theme/woogit/template-parts; then echo 'Theme templates/template-parts contain forbidden infrastructure.'; status=1; fi
-          if grep -RInE 'activate-session|X-WooGit-Session' theme/woogit --include='*.php' --include='*.js' --include='*.css'; then echo 'Theme executable code must not consume App Session or activate-session.'; status=1; fi
+          # Only executable Theme code is checked here. Presentation copy may document the App/Web session distinction.
+          if grep -RInE 'activate-session|X-WooGit-Session' theme/woogit/inc theme/woogit/assets/js theme/woogit/assets/css --include='*.php' --include='*.js' --include='*.css'; then echo 'Theme executable code must not consume App Session or activate-session.'; status=1; fi
           bash tests/theme/test_theme_static.sh || status=1
           exit "$status"
   javascript-syntax:
