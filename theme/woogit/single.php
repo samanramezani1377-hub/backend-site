@@ -1,0 +1,1 @@
+<?php get_header(); ?><section class="wg-section"><div class="wg-container wg-prose"><?php while(have_posts()):the_post(); ?><article><span class="wg-eyebrow"><?php echo esc_html(get_the_date()); ?></span><h1><?php the_title(); ?></h1><?php the_content(); ?></article><?php endwhile; ?></div></section><?php get_footer(); ?>
