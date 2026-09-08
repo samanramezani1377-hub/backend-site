@@ -1,6 +1,6 @@
 # WooGit Theme UX — Pages
 
-> قرارداد UX صفحات اصلی Theme. این سند مکمل `docs/THEME_UX_FLOW.md` است.
+> قرارداد UX صفحات اصلی Theme. Source of Truth داده‌ها طبق `docs/THEME_DATA_OWNERSHIP.md` است.
 
 ## Page Map
 
@@ -13,106 +13,71 @@
 - Features
 - How It Works
 - Pricing
-- Why WooGit / Benefits
 - FAQ
 - Final CTA
-- Full Footer
-
-App Preview باید واقعی و قابل‌فهم به نظر برسد، اما Hero نباید شلوغ شود؛ value proposition و CTA اولویت بصری دارند.
-
-Footer شامل Logo، short description، links، contact، social، Privacy، Terms، Documentation، Support، eNAMAD و Copyright است.
+- Footer
 
 ### Pricing
 
-Glass Cards؛ Plan اصلی برجسته؛ Free Trial با برجستگی ترکیبی و واضح؛ Planهای احتمالی آینده فقط در صورت نیاز به‌صورت muted و بدون جعل قیمت/مشخصات. قیمت، Currency، مدت و eligibility از Backend می‌آیند.
+قیمت، Currency، مدت و eligibility باید از منبع معتبر Pricing بیایند و hard-code نشوند. برای پلن‌های فروشی WooGit، داده محصول/پلن از WooCommerce خود `woogit.ir` می‌آید؛ entitlement و eligibility نهایی از Backend authority می‌آید.
 
 ### Login
 
 ```text
 Welcome back
-
 [ Site URL ]
 [ Password ]
-
 [ ورود ]
-
 فراموشی رمز عبور؟
 ```
 
-قرارداد V1 بر Site URL + Web Password است، نه Email/Password عمومی. Contact Email برای ارتباط با مشتری است و credential/identifier ورود محسوب نمی‌شود.
+V1 بر Site URL + Web Password است.
 
 ### Register
 
-Wizard چهارمرحله‌ای:
-
-```text
-1. فروشگاه
-   ↓
-2. اتصال
-   ↓
-3. حساب
-   ↓
-4. تأیید
-```
-
-Progress، validation و recovery واضح هستند. Secretهای WordPress/WooCommerce هرگز در browser persistence ذخیره نمی‌شوند.
+Wizard چهارمرحله‌ای فروشگاه → اتصال → حساب → تأیید. Secretهای WordPress/WooCommerce مشتری فقط در جریان request و طبق قرارداد Backend مصرف می‌شوند و persistent نمی‌شوند.
 
 ### Portal Overview
 
-Dashboard عملی و ساده شامل Welcome/account context، Subscription summary، Connected Site، Current Plan، Recent Billing و Quick Actions.
+Dashboard شامل account context، Subscription summary، Connected Site، Current Plan، Recent Billing و Quick Actions است.
 
-Products، Orders، Inventory و سایر عملیات WooCommerce نباید در Portal نمایش داده شوند.
+Portal نباید Store Dashboard عملیاتی مشتری شود.
 
 ### Subscription
 
-مدیریت کامل: Current Plan، Status، Start Date، End Date، Trial، Upgrade، Renew، Cancel و Change Plan. فقط actionهای مجاز Backend نمایش داده شوند.
+Current Plan، Status، Start/End/Renewal، Trial و actionهای مجاز از Backend authoritative نمایش داده می‌شوند.
 
 ### Billing
 
 ```text
 Billing
 
-Current Plan
-Next Billing
-Payment Method
+Current Plan       ← Backend
+Subscription state ← Backend
+Payment Method     ← WooCommerce خود woogit.ir
 ```
 
-Billing در UI یعنی وضعیت اشتراک و وضعیت مالی فعلی؛ تاریخچه تراکنش‌ها در صفحه Payments نمایش داده می‌شود.
+Billing صفحه‌ای ترکیبی است؛ Payment Method نباید از یک فیلد ساختگی Backend خوانده شود.
 
 ### Payments
 
-صفحه‌ای مستقل از Billing برای transaction/payment detail و history با statusهای canonical مانند Pending، Paid و Failed. تفاوت Billing و Payments باید در navigation، title و visual hierarchy کاملاً واضح باشد.
+صفحه مستقل برای transaction/payment detail و history خریدهای WooGit. منبع داده WooCommerce خود `woogit.ir` است، از طریق adapter مناسب Theme. Template مستقیماً query نمی‌زند.
+
+### Payment Result
+
+نتیجه بازگشت Gateway ابتدا Checking/Pending است. query string به‌تنهایی proof پرداخت نیست. نتیجه Entitlement از Backend و payment/order detail از WooCommerce خود `woogit.ir` تأیید می‌شود.
 
 ### Connected Site
 
-```text
-Connected Site
-
-● Connected
-example.com
-
-Site Status
-Connection Status
-Last verification
-
-[ Logout ]
-```
-
-`Logout` در این صفحه به خروج از Web Session و Portal اشاره دارد و باید از `POST /web/logout` استفاده کند. Logout به معنی حذف Account یا تغییر مالکیت Site نیست. Theme مستقیماً به WooCommerce مشتری متصل نمی‌شود.
+Account/Site information از Backend می‌آید. Theme مستقیماً به WooCommerce فروشگاه مشتری متصل نمی‌شود.
 
 ### Account / Security
 
-```text
-Account / Security
-├── Site URL
-├── Contact Email
-├── Password
-└── Security
-```
+Site URL، Contact Email، Password و Web Session security طبق قرارداد Backend مدیریت می‌شوند. Credentialهای WooCommerce مشتری در Portal نگهداری نمی‌شوند.
 
-Site URL اطلاعات اصلی حساب برای ورود به Portal و Login است. Contact Email فقط برای ارتباط با مشتری است و برای Login یا جایگزینی Site URL در احراز حساب استفاده نمی‌شود.
+## Terminology rule
 
-Security شامل Change Password، Logout و Logout All Sessions است. Active Sessions در V1 نمایش داده نمی‌شود.
+هرجا «WooCommerce» در این سند به کار می‌رود باید مشخص باشد منظور `WooCommerce خود woogit.ir` است یا `Customer WooCommerce`. این دو منبع داده کاملاً جدا هستند.
 
 ## Page-specific Glass Intensity
 
@@ -120,13 +85,11 @@ Security شامل Change Password، Logout و Logout All Sessions است. Active
 |---|---|
 | Home | محسوس‌تر، اما کنترل‌شده |
 | Pricing | Glass Cards |
-| Login | محدود و بسیار تمیز |
-| Register | محدود و بسیار تمیز |
-| Portal Overview | ملایم‌تر و information-first |
+| Login | محدود و تمیز |
+| Register | محدود و تمیز |
+| Portal Overview | ملایم و information-first |
 | Subscription | ملایم و کاربردی |
-| Billing | بسیار کنترل‌شده |
-| Payments | بسیار کنترل‌شده |
+| Billing | کنترل‌شده |
+| Payments | کنترل‌شده |
 | Connected Site | ملایم و status-focused |
 | Account/Security | ملایم و کاربردی |
-
-Portal و صفحات داخلی نسبت به Landing تزئینات کمتری دارند و خوانایی/تراکم اطلاعات اولویت بالاتری دارد.
