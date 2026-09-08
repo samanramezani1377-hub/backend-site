@@ -1,0 +1,14 @@
+/*
+Theme Name: WooGit
+Theme URI: https://woogit.ir/
+Author: WooGit
+Description: WooGit official website and customer portal theme, V1.
+Version: 1.0.0
+Text Domain: woogit
+Requires at least: 6.2
+Requires PHP: 7.4
+*/
+
+:root { --wg-font: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+html { direction: rtl; }
+body { margin:0; font-family:var(--wg-font); }
