@@ -1,29 +1,97 @@
 name: Theme CI
+
 on:
   push:
     branches: [main, theme-v1-implementation]
-    paths: ['theme/woogit/**', '.github/workflows/theme-ci.yml']
+    paths: ['theme/woogit/**', 'tests/theme/**', '.github/workflows/theme-ci.yml']
   pull_request:
-    paths: ['theme/woogit/**', '.github/workflows/theme-ci.yml']
+    paths: ['theme/woogit/**', 'tests/theme/**', '.github/workflows/theme-ci.yml']
+
 jobs:
-  validate:
+  php-syntax:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: PHP syntax
         run: |
-          set -euo pipefail
-          find theme/woogit -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          set -uo pipefail
+          status=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" || status=1
+          done < <(find theme/woogit -type f -name '*.php' -print0)
+          exit "$status"
+
+  boundary-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Theme boundary checks
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          status=0
           if grep -RInE 'wp_remote_(get|post|request)\(|\$wpdb|WC_[A-Za-z_]+' theme/woogit/templates theme/woogit/template-parts 2>/dev/null; then
             echo 'Theme templates/template-parts contain forbidden infrastructure.'
-            exit 1
+            status=1
           fi
           if grep -RInE 'activate-session|X-WooGit-Session' theme/woogit 2>/dev/null; then
             echo 'Theme must not consume App Session or activate-session.'
-            exit 1
+            status=1
           fi
+          bash tests/theme/test_theme_static.sh || status=1
+          exit "$status"
+
+  javascript-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JavaScript syntax
+        run: |
+          set -uo pipefail
+          status=0
+          while IFS= read -r -d '' file; do
+            node --check "$file" || status=1
+          done < <(find theme/woogit/assets/js -type f -name '*.js' -print0)
+          exit "$status"
+
+  theme-structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required Theme structure
+        run: |
+          set -uo pipefail
+          status=0
+          for file in \
+            style.css functions.php header.php footer.php index.php 404.php front-page.php \
+            inc/api/client.php inc/auth/session.php inc/portal/data.php inc/commerce/adapter.php \
+            inc/admin/theme-management/settings.php inc/admin/theme-management/meta.php \
+            inc/admin/theme-management/admin.php template-parts/public-page.php; do
+            if [[ ! -f "theme/woogit/$file" ]]; then
+              echo "Missing required Theme file: $file"
+              status=1
+            fi
+          done
+          grep -q "Theme Name: WooGit" theme/woogit/style.css || status=1
+          grep -q "wp_head" theme/woogit/header.php || status=1
+          grep -q "wp_footer" theme/woogit/footer.php || status=1
+          exit "$status"
+
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build installable Theme ZIP
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+          cp -a theme/woogit dist/woogit
+          find dist/woogit -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          (cd dist && zip -qr ../woogit-theme-v1.zip woogit)
+      - name: Upload Theme artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: woogit-theme-v1
+          path: woogit-theme-v1.zip
+          if-no-files-found: error
