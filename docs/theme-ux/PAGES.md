@@ -1,21 +1,27 @@
 # WooGit Theme UX — Pages
 
 > قرارداد UX صفحات اصلی Theme. Source of Truth داده‌ها طبق `docs/THEME_DATA_OWNERSHIP.md` است.
+>
+> **Visual baseline:** Home HTML prototype مبنای concrete کردن hierarchy، navigation، responsive intent و component usage در V1 است.
 
 ## Page Map
 
 ### Home
 
-- Header
-- Minimal Hero
+- Sticky Glass Header
+- Minimal typography-first Hero
 - Primary CTA: «دریافت WooGit»
-- WooGit App Preview: Products / Orders
-- Features
-- How It Works
+- Secondary CTA: «مشاهده پیش‌نمایش»
+- Compact non-operational WooGit visual preview
+- Why WooGit / Features
+- How It Works — 3 steps
+- Product / App Preview
 - Pricing
 - FAQ
 - Final CTA
 - Footer
+
+Home نباید به Store Dashboard عملیاتی تبدیل شود. Visual previewهای Home صرفاً presentation هستند و داده واقعی یا operational capability جدید ایجاد نمی‌کنند.
 
 ### Pricing
 
@@ -74,6 +80,22 @@ Account/Site information از Backend می‌آید. Theme مستقیماً به
 ### Account / Security
 
 Site URL، Contact Email، Password و Web Session security طبق قرارداد Backend مدیریت می‌شوند. Credentialهای WooCommerce مشتری در Portal نگهداری نمی‌شوند.
+
+## Home Navigation Contract
+
+Navigation عمومی Home در prototype به شکل زیر concrete شده است:
+
+```text
+خانه | قابلیت‌ها | نحوه کار | قیمت | مستندات | پشتیبانی
+
+[ورود] [شروع کنید]
+```
+
+در desktop، brand در سمت چپ بصری، navigation در مرکز و account/conversion actions در سمت راست بصری قرار می‌گیرند. RTL محتوای فارسی نباید این visual placement را به‌صورت ناخواسته معکوس کند.
+
+در mobile، همین semantics به Hamburger + Menu Sheet منتقل می‌شود و Sheet باید Login و CTA اصلی را نیز در دسترس قرار دهد.
+
+هر anchor/route مورد استفاده در prototype باید در implementation به مقصد واقعی یا route قراردادی متصل شود؛ dead link و placeholder مجاز نیست.
 
 ## Terminology rule
 
