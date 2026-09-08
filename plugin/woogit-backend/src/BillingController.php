@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 final class BillingController
 {
     private SessionService $sessions;
+    private WebSessionService $webSessions;
     private AccountService $accounts;
     private SiteService $sites;
     private BillingService $billing;
@@ -24,6 +25,7 @@ final class BillingController
     public function __construct()
     {
         $this->sessions = new SessionService();
+        $this->webSessions = new WebSessionService();
         $this->accounts = new AccountService();
         $this->sites = new SiteService();
         $this->billing = new BillingService();
@@ -144,7 +146,7 @@ final class BillingController
         $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
         $ipLimit=$this->rateLimits->check('billing_activate_session_ip',$this->clientIp(),self::ACTIVATE_SESSION_LIMIT,self::WINDOW_SECONDS);
         if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
-        $context=$this->authenticateAccountContext($request);if($context instanceof \WP_REST_Response)return $context;
+        $context=$this->authenticateAppContext($request);if($context instanceof \WP_REST_Response)return $context;
         $accountSiteLimit=$this->billingLimit('billing_activate_session_account_site',(string)$context['account_id'].':'.(string)$context['site_id'],self::ACTIVATE_SESSION_LIMIT);
         if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
         $sessionLimit=$this->billingLimit('billing_activate_session_session',$this->sessionKey($request),self::ACTIVATE_SESSION_LIMIT);
@@ -161,11 +163,30 @@ final class BillingController
 
     private function authenticateAccountContext(\WP_REST_Request $request): array|\WP_REST_Response
     {
+        if(trim((string)$request->get_header('X-WooGit-Web-Session'))!=='')return $this->authenticateWebContext($request);
+        return $this->authenticateAppContext($request);
+    }
+
+    private function authenticateWebContext(\WP_REST_Request $request): array|\WP_REST_Response
+    {
+        $session=$this->webSessions->authenticate((string)$request->get_header('X-WooGit-Web-Session'));
+        if($session===null)return new \WP_REST_Response(['code'=>'invalid_web_session'],401);
+        $account=$this->accounts->get((int)$session['account_id']);if(!$account)return new \WP_REST_Response(['code'=>'account_inactive'],403);
+        $site=$this->sites->getOwned((int)$session['account_id'],(int)$session['site_id']);if(!$site)return new \WP_REST_Response(['code'=>'site_not_owned'],403);
+        $session['site']=$site;
+        $session['client_type']='web';
+        return $session;
+    }
+
+    private function authenticateAppContext(\WP_REST_Request $request): array|\WP_REST_Response
+    {
         $session=$this->sessions->authenticate((string)$request->get_header('X-WooGit-Session'));
         if($session===null)return new \WP_REST_Response(['code'=>'invalid_session'],401);
         $account=$this->accounts->get((int)$session['account_id']);if(!$account)return new \WP_REST_Response(['code'=>'account_inactive'],403);
         $site=$this->sites->getOwned((int)$session['account_id'],(int)$session['site_id']);if(!$site)return new \WP_REST_Response(['code'=>'site_not_owned'],403);
-        $session['site']=$site;return $session;
+        $session['site']=$site;
+        $session['client_type']='app';
+        return $session;
     }
 
     private function billingLimit(string $bucket,string $key,int $limit): array
@@ -175,12 +196,14 @@ final class BillingController
 
     private function sessionKey(\WP_REST_Request $request): string
     {
-        $token=trim((string)$request->get_header('X-WooGit-Session'));
+        $token=trim((string)$request->get_header('X-WooGit-Web-Session'));
+        if($token==='')$token=trim((string)$request->get_header('X-WooGit-Session'));
         return hash('sha256',$token);
     }
 
     private function versionResponse(\WP_REST_Request $request): ?\WP_REST_Response
     {
+        if(trim((string)$request->get_header('X-WooGit-Web-Session'))!=='')return null;
         $result=$this->versionGate->check((string)$request->get_header('X-WooGit-App-Version'));if($result['allowed'])return null;$policy=$result['policy'];$status=$result['code']==='APP_VERSION_DEPRECATED'?426:400;
         return new \WP_REST_Response(['code'=>$result['code'],'message'=>$result['code']==='APP_VERSION_DEPRECATED'?'این نسخه از WooGit دیگر پشتیبانی نمی‌شود.':'نسخه Client نامعتبر است.','minimum_supported_version'=>$policy['minimum_supported_version'],'latest_version'=>$policy['latest_version'],'recommended_version'=>$policy['recommended_version'],'update_required'=>$result['code']==='APP_VERSION_DEPRECATED','retryable'=>false],$status);
     }
