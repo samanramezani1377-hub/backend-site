@@ -27,7 +27,7 @@ $using_default_device_image=$device_image===$default_device_image;
    <h1 id="wg-hero-title">فروشگاه شما، با <span>WooGit</span> ساده‌تر و هوشمندتر</h1>
    <p>WooGit ابزارهایی برای مدیریت و هوشمندسازی تجربه فروشگاه ووکامرس شما فراهم می‌کند؛ با یک تجربه وب تمیز، سریع و قابل اعتماد.</p>
    <div class="wg-actions">
-    <a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">دریافت WooGit <span aria-hidden="true">←</span></a>
+    <a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url(woogit_page_url('download')); ?>">دریافت WooGit <span aria-hidden="true">←</span></a>
     <a class="wg-btn wg-btn--ghost wg-btn--large" href="#wg-home-preview">مشاهده پیش‌نمایش</a>
    </div>
    <div class="wg-hero__note">بدون ذخیره‌سازی Credentialهای فروشگاه مشتری در Theme</div>
@@ -109,4 +109,4 @@ $using_default_device_image=$device_image===$default_device_image;
  </div>
 </section>
 
-<section class="wg-cta" aria-labelledby="wg-cta-title"><div class="wg-container"><h2 id="wg-cta-title">با WooGit ساده‌تر شروع کنید</h2><p>یک تجربه وب سریع، خوانا و قابل اعتماد برای شروع مسیر شما.</p><a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url(woogit_page_url('register')); ?>">دریافت WooGit</a></div></section>
+<section class="wg-cta" aria-labelledby="wg-cta-title"><div class="wg-container"><h2 id="wg-cta-title">با WooGit ساده‌تر شروع کنید</h2><p>یک تجربه وب سریع، خوانا و قابل اعتماد برای شروع مسیر شما.</p><a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url(woogit_page_url('download')); ?>">دریافت WooGit</a></div></section>
