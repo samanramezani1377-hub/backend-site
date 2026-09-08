@@ -17,6 +17,9 @@ for page in page-features.php page-how-it-works.php page-faq.php page-documentat
   if [[ -f "$THEME/$page" ]] && grep -q "template-parts/public-page.php" "$THEME/$page"; then pass "$page uses shared public renderer"; else fail "$page is missing or does not use shared public renderer"; fi
 done
 if grep -RInE "billing/activate-session|['\"]activate-session['\"]" "$THEME" --include='*.php' --include='*.js'; then fail 'App-only billing activation endpoint referenced'; else pass 'Theme billing surface excludes App-only activation'; fi
-if grep -q 'data-multistep' "$THEME/templates/auth/register.php" && grep -q 'data-step="4"' "$THEME/templates/auth/register.php"; then pass 'register is a four-step flow'; else fail 'register is not a four-step flow'; fi
+if grep -q 'data-multistep' "$THEME/templates/auth/register.php" && grep -q 'data-step="4"' "$THEME/templates/auth/register.php" && grep -q 'minlength="12"' "$THEME/templates/auth/register.php"; then pass 'register is a four-step flow with 12-character web password contract'; else fail 'register flow/password validation contract is incomplete'; fi
 if grep -q 'wg-app-preview' "$THEME/templates/public/home.php"; then pass 'home contains app preview markup'; else fail 'home app preview missing'; fi
+if grep -q "templates/portal/' . \$portal_templates\[\$slug\]" "$THEME/page.php" && grep -q "templates/auth/login" "$THEME/page.php" && grep -q "templates/auth/register" "$THEME/page.php"; then pass 'WordPress page routing delegates to V1 templates'; else fail 'page.php does not delegate V1 page routes correctly'; fi
+if grep -q 'woogit_commerce_payment_order' "$THEME/templates/public/payment-result.php"; then pass 'payment return uses scoped WooCommerce adapter'; else fail 'payment return is not backed by scoped order adapter'; fi
+if grep -q 'woogit_commerce_payment_method' "$THEME/inc/portal/data.php"; then pass 'payment method selection uses deterministic adapter rule'; else fail 'payment method selection rule missing'; fi
 exit "$FAIL"
