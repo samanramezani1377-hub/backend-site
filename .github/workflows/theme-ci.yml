@@ -23,7 +23,6 @@ jobs:
         run: |
           set -uo pipefail; status=0
           if grep -RInE 'wp_remote_(get|post|request)\(|\$wpdb|WC_[A-Za-z_]+' theme/woogit/templates theme/woogit/template-parts; then echo 'Theme templates/template-parts contain forbidden infrastructure.'; status=1; fi
-          # Only executable Theme code is checked here. Presentation copy may document the App/Web session distinction.
           if grep -RInE 'activate-session|X-WooGit-Session' theme/woogit/inc theme/woogit/assets/js theme/woogit/assets/css --include='*.php' --include='*.js' --include='*.css'; then echo 'Theme executable code must not consume App Session or activate-session.'; status=1; fi
           bash tests/theme/test_theme_static.sh || status=1
           exit "$status"
@@ -85,15 +84,9 @@ jobs:
           test -f /tmp/theme-install-check/woogit/front-page.php
           test -f /tmp/theme-install-check/woogit/index.php
           if find /tmp/theme-install-check -mindepth 2 -maxdepth 2 -name '*.zip' -print -quit | grep -q .; then echo 'Nested ZIP detected in install package'; exit 1; fi
-      - name: Upload Theme artifact
+      - name: Upload installable Theme artifact
         uses: actions/upload-artifact@v4
         with:
           name: woogit-theme-v1
-          path: woogit-theme-v1.zip
-          if-no-files-found: error
-      - name: Publish installable Theme ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: woogit-theme-v1-install
-          path: woogit-theme-v1.zip
+          path: dist/woogit
           if-no-files-found: error
