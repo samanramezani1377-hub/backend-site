@@ -2,7 +2,7 @@
 
 ## هدف
 
-Portal برای مدیریت حساب WooGit و سرویس SaaS است، نه مدیریت فروشگاه WooCommerce.
+Portal برای مدیریت حساب WooGit و سرویس SaaS است، نه مدیریت فروشگاه مشتری. منبع هر داده طبق `docs/THEME_DATA_OWNERSHIP.md` تعیین می‌شود.
 
 ## Navigation
 
@@ -16,39 +16,38 @@ Customer Portal
 └── Account / Security
 ```
 
-Navigation Portal از Navigation سایت عمومی جداست؛ فقط visual language و component system مشترک هستند.
-
 ## Overview
 
-نمای کلی باید وضعیت authoritative حساب را از Backend نمایش دهد: وضعیت اشتراک، پلن، سایت متصل و موارد ضروری حساب. UI نباید state محلی را به جای Backend مرجع قرار دهد.
+Account context، Subscription/Entitlement و Site information از Backend authoritative نمایش داده می‌شوند. داده‌های خرید و پرداخت WooGit در صورت نمایش از WooCommerce خود `woogit.ir` می‌آیند.
 
 ## Subscription
 
-نمایش plan، status، start/end/renewal dates، entitlement و actionهای مجاز مانند upgrade/renew. وضعیت‌های Trial، Active، Expired و Cancelled باید طبق قرارداد Backend نمایش داده شوند.
+Plan، status، dates، entitlement و actionهای مجاز مانند upgrade/renew طبق Backend authoritative نمایش داده می‌شوند.
 
 ## Billing و Payments
 
-Billing وضعیت سرویس و عملیات مرتبط را نمایش می‌دهد. Payment History تراکنش‌های منتشرشده توسط Backend را نمایش می‌دهد. Checkout فقط از API قراردادی استفاده می‌کند.
+Billing یک صفحه ترکیبی است:
 
-Payment Return موفقیت پرداخت را ثابت نمی‌کند؛ پس از بازگشت، وضعیت باید دوباره از Backend استعلام شود.
+```text
+Current Plan / Subscription / Entitlement → WooGit Backend
+Payment Method / Payment History / Order payment details → WooCommerce خود woogit.ir
+```
+
+Payment History تراکنش‌های خرید WooGit را از WooCommerce خود `woogit.ir` می‌گیرد، از طریق adapter مناسب Theme. Backend می‌تواند در صورت نیاز projection امن ارائه کند، اما نباید Source of Truth دوم بسازد.
+
+Checkout می‌تواند Backend orchestration داشته باشد؛ Order و Payment state در WooCommerce خود `woogit.ir` باقی می‌ماند و Entitlement توسط Backend مدیریت می‌شود.
+
+Payment Return موفقیت پرداخت را صرفاً از query string نتیجه‌گیری نمی‌کند؛ payment/order state و Subscription/Entitlement state باید از منابع authoritative بررسی شوند.
 
 ## Connected Site
 
-فقط اطلاعاتی که Backend برای نمایش منتشر می‌کند در Portal نمایش داده شود. Theme نباید از Portal مستقیماً به WooCommerce سایت مشتری وصل شود.
+اطلاعات Account/Site از Backend می‌آید. Theme نباید مستقیماً به WooCommerce **فروشگاه مشتری** وصل شود. این ممنوعیت شامل WooCommerce خود `woogit.ir` نیست.
 
 ## Account / Security
 
-این بخش برای مدیریت حساب WooGit و امنیت Web Session است، نه مدیریت Credentialهای WooCommerce.
-
-- **Site URL** شناسه/اطلاعات اصلی حساب برای ورود به Portal و احراز حساب است و Login بر مبنای Site URL + Web Password انجام می‌شود.
-- **Contact Email** صرفاً اطلاعات تماس با مشتری است و جایگزین Site URL برای Login یا شناسایی حساب در Flow ورود نیست.
-- تغییر Password، Logout و Logout All Sessions طبق قرارداد Backend انجام می‌شوند.
-- Session منقضی‌شده باید پاک و کاربر به Login هدایت شود.
-- **Active Sessions در V1 نمایش داده نمی‌شود.**
+این بخش برای مدیریت حساب WooGit و Web Session security است، نه مدیریت Credentialهای WooCommerce مشتری.
 
 ## State model
-
-هر صفحه Portal باید دست‌کم این stateها را در صورت مرتبط بودن داشته باشد:
 
 ```text
 Loading → Success
@@ -60,11 +59,10 @@ Session expired → Clear temporary state → Login
 
 ## ممنوعیت
 
-Portal نباید به این‌ها تبدیل شود:
+Portal نباید به Store Dashboard، Product Manager، Order Manager، Sync Center، Conflict Manager یا Inventory Manager فروشگاه مشتری تبدیل شود.
 
-- Store Dashboard
-- Product Manager
-- Order Manager
-- Sync Center
-- Conflict Manager
-- Inventory Manager
+## Terminology
+
+- `WooCommerce خود woogit.ir` = فروشگاه رسمی WooGit و منبع Order/Payment مربوط به خریدهای WooGit.
+- `Customer WooCommerce` = فروشگاه متصل‌شده مشتری.
+- `WooGit Backend` = مرجع Account، Session، Ownership، Entitlement و Authorization.
