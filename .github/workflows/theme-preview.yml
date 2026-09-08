@@ -1,0 +1,43 @@
+name: Theme Preview
+on:
+  push:
+    branches: [theme-v1-implementation]
+    paths:
+      - 'theme/woogit/**'
+      - 'preview/**'
+      - '.github/workflows/theme-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: theme-preview
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build preview site
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site/assets/css
+          cp preview/index.html _site/index.html
+          for file in foundation.css components.css pages.css responsive.css theme-polish.css; do
+            cp "theme/woogit/assets/css/$file" "_site/assets/css/$file"
+          done
+          touch _site/.nojekyll
+          if grep -Eiq '(^|/)(plugin|plugins|node_modules|\.git|tests|docs)(/|$)' <(find _site -type f -printf '%P\n'); then
+            echo 'Preview artifact contains unrelated repository content'; exit 1
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
