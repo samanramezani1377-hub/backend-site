@@ -1,6 +1,8 @@
 # مشخصات Theme WooGit
 
-> وضعیت: V1 — Documentation Before Implementation
+> وضعیت: **V1 — Documentation Frozen / Implementation Ready**
+>
+> این سند قرارداد سطح‌بالای Theme است. جزئیات اجرایی ریز که طبق قرارداد در زمان implementation قابل tuning هستند، نباید با این سند و اسناد مرجع Theme در تضاد باشند.
 
 Theme WooGit دو نقش دارد: وب‌سایت رسمی محصول و Customer Portal. Theme وب‌اپ عملیاتی WooGit نیست.
 
@@ -160,14 +162,25 @@ Errorها با HTTP status و canonical `code` مصرف می‌شوند، نه �
 
 Theme نباید business truth را با local state جعل کند و نباید برای دور زدن Backend یا WooCommerce خود سایت از internal Plugin APIs استفاده کند.
 
-## 8. اسناد مرجع
+## 8. اسناد مرجع V1
 
+- `THEME_DOCUMENTATION_FREEZE.md` — وضعیت Freeze و قواعد تغییر مستندات
 - `THEME_ARCHITECTURE_CONTRACT.md` — ساختار و dependency boundaries
 - `THEME_UX_FLOW.md` — UX flows و state contract
 - `THEME_API_CONTRACT.md` — REST/API contract
 - `THEME_AUTH_FLOW.md` — Web Auth/Session
+- `theme/README.md` — index و قراردادهای موضوعی Theme
 - `theme/PAGES.md` — Page Inventory
 - `theme/PORTAL.md` — Portal IA
 - `theme/DESIGN-SYSTEM.md` — Design System
+- `theme/RESPONSIVE.md` — Responsive و RTL/LTR
+- `theme/PERFORMANCE.md` — Performance و Progressive Enhancement
+- `theme/ACCESSIBILITY.md` — Accessibility و UX resilience
 - `THEME_TESTING.md` — Testing/CI
 - `THEME_MANAGEMENT.md` + `theme-management/*` — Theme content management
+
+## 9. Implementation Boundary
+
+از این نقطه به بعد، تغییرات موردنیاز برای implementation که صرفاً مربوط به tuning ریز CSS/UI هستند می‌توانند در زمان اجرا انجام شوند، مشروط به اینکه با قراردادهای frozen تناقض نداشته باشند.
+
+تغییر معماری، Source of Truth، security boundary، page inventory، navigation model، business boundary یا قرارداد API نیازمند بازکردن رسمی Freeze و ثبت تصمیم جدید است.
