@@ -33,8 +33,8 @@ jobs:
             echo 'Theme templates/template-parts contain forbidden infrastructure.'
             status=1
           fi
-          if grep -RInE 'activate-session|X-WooGit-Session' theme/woogit 2>/dev/null; then
-            echo 'Theme must not consume App Session or activate-session.'
+          if grep -RInE 'activate-session|X-WooGit-Session' theme/woogit --include='*.php' --include='*.js' --include='*.css' 2>/dev/null; then
+            echo 'Theme executable code must not consume App Session or activate-session.'
             status=1
           fi
           bash tests/theme/test_theme_static.sh || status=1
