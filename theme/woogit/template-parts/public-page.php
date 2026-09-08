@@ -84,7 +84,7 @@ get_header();
       <article class="wg-card wg-feature-card"><span class="wg-icon"><?php echo esc_html($item['icon']??sprintf('%02d',$n)); ?></span><h3><?php echo esc_html($heading); ?></h3><p><?php echo $body; ?></p></article>
     <?php endforeach; ?>
   </div>
-  <div class="wg-actions"><a class="wg-btn" href="<?php echo esc_url(woogit_page_url('register')); ?>">دریافت WooGit</a><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده قیمت</a></div>
+  <div class="wg-actions"><a class="wg-btn" href="<?php echo esc_url(woogit_page_url('download')); ?>">دریافت WooGit</a><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده قیمت</a></div>
 </section>
 <?php elseif ($slug === 'faq'): ?>
 <section class="wg-section wg-container" aria-labelledby="wg-public-section-title"><div class="wg-section-head"><span class="wg-eyebrow">راهنما</span><h2 id="wg-public-section-title"><?php echo esc_html($section_title); ?></h2></div><div class="wg-faq-list wg-faq">
@@ -101,5 +101,5 @@ get_header();
 <section class="wg-section wg-container"><article class="wg-card wg-content-card"><?php while(have_posts()):the_post();the_content();endwhile; ?></article></section>
 <?php endif; ?>
 
-<?php if(in_array($slug,['features','how-it-works','faq','documentation','support'],true)): ?><section class="wg-cta"><div class="wg-container"><span class="wg-eyebrow">WooGit</span><h2>آماده شروع هستید؟</h2><p>از مسیر رسمی WooGit وارد شوید و حساب خود را مدیریت کنید.</p><a class="wg-btn wg-btn--large" href="<?php echo esc_url(woogit_page_url('register')); ?>">دریافت WooGit</a></div></section><?php endif; ?>
+<?php if(in_array($slug,['features','how-it-works','faq','documentation','support'],true)): ?><section class="wg-cta"><div class="wg-container"><span class="wg-eyebrow">WooGit</span><h2>آماده شروع هستید؟</h2><p>از مسیر رسمی WooGit وارد شوید و حساب خود را مدیریت کنید.</p><a class="wg-btn wg-btn--large" href="<?php echo esc_url(woogit_page_url('download')); ?>">دریافت WooGit</a></div></section><?php endif; ?>
 <?php get_footer();
