@@ -1,87 +1,77 @@
 # WooGit Theme UX — Flows
 
-> قرارداد جریان‌های اصلی کاربر در Theme. Backend authority است.
+> قرارداد جریان‌های اصلی کاربر در Theme. Source of Truth هر داده طبق `docs/THEME_DATA_OWNERSHIP.md` تعیین می‌شود.
+
+## Payment and Billing boundary
+
+Billing یک صفحه ترکیبی است. وضعیت Subscription و Entitlement از WooGit Backend می‌آید؛ اما Payment Method، Payment History و Order/payment details مربوط به خریدهای WooGit از WooCommerce خود `woogit.ir` می‌آیند.
+
+```text
+Theme Portal
+  ├─ Backend API → Account / Web Session / Ownership / Subscription / Entitlement
+  │
+  └─ WooCommerce adapter → WooCommerce خود woogit.ir
+                            → Orders / Payments / Payment Method
+```
+
+WooCommerce مشتری فقط برای operational store integration است و Theme نباید مستقیماً به آن وصل شود.
 
 ## Login
 
-```text
-Login → Site URL + Web Password → Loading → POST /web/login
-Success → Web Session → Portal Overview
-Error   → Login Error State
-```
+Login → Site URL + Web Password → POST /web/login → Web Session → Portal
 
 ## Register / Web Bootstrap
 
-```text
-Register Wizard
-  → Client validation
-  → POST /account/web-bootstrap
-  → Validate + verify site
-  → Resolve/Create Account + Site
-  → Ownership validation
-  → Create Web Credential
-  → Create Web Session
-  → Portal
-```
-
-`App Session` نباید جعل شود و `/sites/verify` App-only نباید توسط Theme دور زده شود.
-
-## Portal Entry
-
-```text
-Portal URL → GET /web/me
-Valid → Portal
-401   → Login / new Web Session
-```
-
-وجود token محلی به‌تنهایی authenticated بودن را ثابت نمی‌کند.
+Register → validation → POST /account/web-bootstrap → site verification → Account/Site resolution → Web Credential → Web Session → Portal
 
 ## Subscription
 
-Backend authoritative status را نمایش می‌دهد؛ Theme نمی‌تواند Premium/Active را جعل کند. Upgrade/Renew/Cancel/Change Plan فقط طبق capability/eligibility Backend.
+Backend authoritative status را نمایش می‌دهد. Theme نباید Premium/Active یا Entitlement را محلی جعل کند.
 
-## Checkout / Billing
+## Checkout
 
 ```text
 Pricing / Subscription
-  → Select Plan
-  → Backend eligibility
+  → Backend eligibility/orchestration
   → POST /billing/checkout + Idempotency-Key
-  → Gateway
-  → Payment Return
-  → GET /billing/status
+  → WooCommerce خود woogit.ir / Gateway
+  → Payment processing
+  → Backend entitlement update
 ```
 
-Timeout-after-success باید به Unknown → re-query تبدیل شود. برای همان logical operation همان Idempotency-Key حفظ می‌شود و Checkout دوم با key جدید ممنوع است مگر عملیات جدید صریحاً آغاز شود.
+Timeout-after-success شکست قطعی نیست؛ همان logical operation باید با همان Idempotency-Key پیگیری شود.
 
 ## Payment Return
 
-`success=1` یا query مشابه proof نیست. ابتدا Checking/Pending UI و سپس نتیجه authoritative Backend.
-
-```text
-Payment Return → Checking → GET /billing/status
-Paid/Success → Success
-Pending      → bounded re-query / Pending
-Failed       → Failure + safe retry
-```
-
-Polling باید bounded و rate-limit-aware باشد.
+Query مانند `success=1` proof نیست. Theme باید payment/order state و Subscription/Entitlement state را از منابع authoritative بررسی کند.
 
 ## Payments / History
 
 ```text
-Payments → GET /web/billing/history
-records → list
-no records → Empty
-401 → Re-auth
-403 → Forbidden
-5xx → Error + Retry
+Payments
+  → WooCommerce adapter
+  → WooCommerce خود woogit.ir
+  → Order/payment records
+  → list / Empty / Error
 ```
+
+Backend در صورت نیاز می‌تواند projection امن ارائه کند، اما منبع حقیقت همچنان WooCommerce خود `woogit.ir` است.
+
+## Payment Method
+
+```text
+Billing / Payment Method
+  → WooCommerce adapter
+  → relevant WooGit Order/payment state
+  → non-sensitive presentation
+```
+
+`payment_method` و `payment_method_title` داده‌های Order/gateway هستند. `expires_at` مربوط به Entitlement/Subscription نباید expiration کارت فرض شود.
 
 ## Connected Site
 
-فقط داده‌ای نمایش داده می‌شود که Backend برای Portal منتشر کند؛ اتصال مستقیم به WooCommerce مشتری ممنوع است. در این بخش action جداگانه‌ای برای Verify Again یا Disconnect Site وجود ندارد؛ خروج از Portal با `Logout` انجام می‌شود.
+اطلاعات Account/Site از Backend می‌آید. اتصال مستقیم به WooCommerce مشتری ممنوع است؛ این ممنوعیت شامل WooCommerce خود `woogit.ir` نمی‌شود.
 
 ## Password Change / Logout
 
-پس از تغییر موفق رمز، Backend همه Web Sessionها را revoke می‌کند؛ Theme state محلی را پاک کرده و Login می‌خواهد. Logout نیز با `POST /web/logout` انجام می‌شود، Web Session را در Backend revoke می‌کند و state موقت محلی را پاک می‌کند.
+پس از تغییر موفق رمز، Backend Web Sessionهای قبلی را revoke می‌کند و Theme باید state موقت را پاک و Login مجدد را درخواست کند. Logout با `POST /web/logout` انجام می‌شود.
