@@ -49,10 +49,12 @@ jobs:
           for file in style.css functions.php header.php footer.php index.php 404.php front-page.php \
             inc/api/client.php inc/auth/session.php inc/portal/data.php inc/commerce/adapter.php \
             inc/admin/theme-management/settings.php inc/admin/theme-management/meta.php inc/admin/theme-management/admin.php \
-            template-parts/public-page.php templates/public/home.php templates/auth/login.php templates/auth/register.php; do
+            template-parts/public-page.php templates/public/home.php templates/public/payment-result.php \
+            templates/auth/login.php templates/auth/register.php templates/portal/overview.php templates/portal/subscription.php \
+            templates/portal/billing.php templates/portal/payments.php templates/portal/connected-site.php templates/portal/account-security.php; do
             if [[ ! -f "theme/woogit/$file" ]]; then echo "Missing required Theme file: $file"; status=1; fi
           done
-          for dir in templates templates/public templates/auth template-parts; do [[ -d "theme/woogit/$dir" ]] || { echo "Missing required Theme directory: $dir"; status=1; }; done
+          for dir in templates templates/public templates/auth templates/portal template-parts; do [[ -d "theme/woogit/$dir" ]] || { echo "Missing required Theme directory: $dir"; status=1; }; done
           grep -q "Theme Name: WooGit" theme/woogit/style.css || { echo 'Theme Name missing'; status=1; }
           grep -q "wp_head" theme/woogit/header.php || { echo 'wp_head missing'; status=1; }
           grep -q "wp_footer" theme/woogit/footer.php || { echo 'wp_footer missing'; status=1; }
@@ -75,6 +77,8 @@ jobs:
           grep -q 'woogit/style.css' /tmp/theme-zip.txt
           grep -q 'woogit/templates/public/home.php' /tmp/theme-zip.txt
           grep -q 'woogit/templates/auth/register.php' /tmp/theme-zip.txt
+          grep -q 'woogit/templates/portal/overview.php' /tmp/theme-zip.txt
+          grep -q 'woogit/templates/portal/billing.php' /tmp/theme-zip.txt
           if grep -Eiq '(^|/)(plugin|plugins|node_modules|\.git)(/|$)' /tmp/theme-zip.txt; then echo 'ZIP contains forbidden non-theme content'; exit 1; fi
       - name: Upload Theme artifact
         uses: actions/upload-artifact@v4
