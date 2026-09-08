@@ -15,10 +15,12 @@ $steps=woogit_theme_items('steps_json',[
  ['title'=>'انتخاب سرویس','text'=>'پلن‌ها و اطلاعات تجاری از منبع معتبر نمایش داده می‌شوند؛ قیمت و entitlement در Theme محاسبه نمی‌شوند.'],
  ['title'=>'مدیریت از پرتال','text'=>'اشتراک، Billing، پرداخت‌ها، سایت متصل و Account/Security را از Customer Portal مدیریت کنید.'],
 ]);
-$default_device_image='https://media.easy-peasy.ai/20b11164-c351-41a4-b167-3e302745223d/905d6e89-6fc3-48da-bf19-d26197f6ed81_medium.webp';
-$device_image=woogit_view('home_device_image',$default_device_image);
-$device_image=$device_image?:$default_device_image;
-$using_default_device_image=$device_image===$default_device_image;
+$default_tablet_image='https://media.easy-peasy.ai/20b11164-c351-41a4-b167-3e302745223d/905d6e89-6fc3-48da-bf19-d26197f6ed81_medium.webp';
+$default_mobile_image='https://static-cdn.techvify.com/strapi-uploads/uploads/ai_tools_for_ecommerce01_2c4e10ff90.webp';
+$tablet_image=woogit_theme_image(absint($options['hero_image_id']??0),'large')?:$default_tablet_image;
+$mobile_image=woogit_theme_image(absint($options['hero_mobile_image_id']??0),'large')?:$default_mobile_image;
+$using_default_tablet_image=$tablet_image===$default_tablet_image;
+$using_default_mobile_image=$mobile_image===$default_mobile_image;
 ?>
 <section class="wg-hero" id="home" aria-labelledby="wg-hero-title">
  <div class="wg-container wg-hero__grid">
@@ -37,16 +39,17 @@ $using_default_device_image=$device_image===$default_device_image;
    <div class="wg-home-motion-dot wg-dot-one" aria-hidden="true"></div><div class="wg-home-motion-dot wg-dot-two" aria-hidden="true"></div>
    <div class="wg-home-tablet">
     <div class="wg-tablet-screen">
-     <img src="<?php echo esc_url($device_image); ?>" alt="پیش‌نمایش رابط کاربری WooGit" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:21px;" loading="eager" decoding="async">
+     <img src="<?php echo esc_url($tablet_image); ?>" alt="پیش‌نمایش رابط کاربری WooGit در تبلت" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:21px;" loading="eager" decoding="async">
     </div>
    </div>
    <div class="wg-home-mobile">
     <div class="wg-device-notch"></div>
     <div class="wg-mobile-screen" style="padding:0;">
-     <img src="<?php echo esc_url($device_image); ?>" alt="پیش‌نمایش رابط کاربری WooGit در موبایل" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:27px;" loading="eager" decoding="async">
+     <img src="<?php echo esc_url($mobile_image); ?>" alt="پیش‌نمایش رابط کاربری WooGit در موبایل" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:27px;" loading="eager" decoding="async">
     </div>
    </div>
-   <?php if($using_default_device_image): ?><a href="https://easy-peasy.ai/" target="_blank" rel="noopener noreferrer" style="position:absolute;inset-inline-start:1rem;bottom:.35rem;font-size:.62rem;color:var(--muted);opacity:.72;z-index:4;">تصویر: Easy-Peasy.AI</a><?php endif; ?>
+   <?php if($using_default_tablet_image): ?><a href="https://easy-peasy.ai/" target="_blank" rel="noopener noreferrer" style="position:absolute;inset-inline-start:1rem;bottom:.35rem;font-size:.62rem;color:var(--muted);opacity:.72;z-index:4;">تصویر تبلت: Easy-Peasy.AI</a><?php endif; ?>
+   <?php if($using_default_mobile_image): ?><a href="https://techvify.com/ai-tools-for-ecommerce" target="_blank" rel="noopener noreferrer" style="position:absolute;inset-inline-end:1rem;bottom:.35rem;font-size:.62rem;color:var(--muted);opacity:.72;z-index:4;">تصویر موبایل: Techvify</a><?php endif; ?>
   </div>
  </div>
 </section>
