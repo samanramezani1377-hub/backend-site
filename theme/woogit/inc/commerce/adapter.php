@@ -34,7 +34,6 @@ function woogit_commerce_payment_history(int $account_id, int $site_id, int $pag
       'currency'=>(string)$order->get_currency(),
       'payment_method'=>(string)$order->get_payment_method(),
       'payment_method_title'=>(string)$order->get_payment_method_title(),
-      'transaction_id'=>(string)$order->get_transaction_id(),
       'created_at'=>$order->get_date_created() ? $order->get_date_created()->date('c') : null,
     ];
   }
@@ -60,7 +59,6 @@ function woogit_commerce_payment_order(int $account_id, int $site_id, int $order
     'currency'=>(string)$order->get_currency(),
     'payment_method'=>(string)$order->get_payment_method(),
     'payment_method_title'=>(string)$order->get_payment_method_title(),
-    'transaction_id'=>(string)$order->get_transaction_id(),
     'created_at'=>$order->get_date_created() ? $order->get_date_created()->date('c') : null,
   ];
 }
