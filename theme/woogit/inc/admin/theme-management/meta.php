@@ -17,6 +17,7 @@ function woogit_enamad_settings() {
 
 function woogit_print_head_meta() {
     $o=woogit_theme_options();
+    echo '<meta name="theme-color" content="var(--bg)">';
     $favicon=woogit_theme_image(absint($o['favicon_id']??0),'full');
     $og=woogit_theme_image(absint($o['og_image_id']??0),'large');
     if($favicon) echo '<link rel="icon" href="'.esc_url($favicon).'">';
