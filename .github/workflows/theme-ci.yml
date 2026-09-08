@@ -88,5 +88,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: woogit-theme-v1
-          path: dist/woogit
+          path: woogit-theme-v1.zip
           if-no-files-found: error
