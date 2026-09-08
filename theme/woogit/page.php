@@ -31,6 +31,11 @@ if ($slug === 'register') {
   return;
 }
 
+if ($slug === 'download') {
+  get_template_part('templates/public/download');
+  return;
+}
+
 if ($slug === 'payment-result') {
   get_template_part('templates/public/payment-result');
   return;
