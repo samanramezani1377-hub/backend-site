@@ -9,10 +9,9 @@ function woogit_portal_data() {
   $billing=(array)($status_data['billing']??$status_data);
   $accountId=(int)($status_data['account_id']??$user['account_id']??0);
   $siteId=(int)($status_data['site_id']??$user['site_id']??0);
-  $payments=($accountId>0&&$siteId>0)?woogit_commerce_payment_history($accountId,$siteId):['orders'=>[],'page'=>1,'per_page'=>20,'total'=>0,'total_pages'=>0];
-  $orders=(array)($payments['orders']??[]);
-  $paymentMethod=[];
-  foreach($orders as $order){ if(!empty($order['payment_method_title'])||!empty($order['payment_method'])){ $paymentMethod=$order; break; } }
+  $page=max(1,absint($_GET['payment_page']??1));
+  $payments=($accountId>0&&$siteId>0)?woogit_commerce_payment_history($accountId,$siteId,$page,20):['orders'=>[],'page'=>$page,'per_page'=>20,'total'=>0,'total_pages'=>0];
+  $paymentMethod=woogit_commerce_payment_method($payments);
   $site=(array)($status_data['site']??$user['site']??[]);
   return ['user'=>(array)$user,'billing'=>$billing,'payments'=>$payments,'payment_method'=>$paymentMethod,'site'=>$site,'authenticated'=>true];
 }
