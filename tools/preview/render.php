@@ -32,7 +32,7 @@ function esc_html($value): string { return htmlspecialchars((string)$value, ENT_
 function esc_attr($value): string { return esc_html($value); }
 function esc_url($value): string { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function esc_url_raw($value): string { return (string)$value; }
-function home_url(string $path = '/'): string { return rtrim('', '/') . '/' . ltrim($path, '/'); }
+function home_url(string $path = '/'): string { return '/' . ltrim($path, '/'); }
 function get_template_directory(): string { return WOOGIT_THEME_DIR; }
 function get_template_directory_uri(): string { return ''; }
 function get_option(string $key, $default = false) { return $default; }
@@ -57,6 +57,8 @@ function get_queried_object_id(): int { return 0; }
 function get_post_field(string $field, int $id): string { return ''; }
 function get_page_by_path(string $slug) { return null; }
 function get_permalink($page): string { return home_url('/'); }
+function get_header(): void { require WOOGIT_THEME_DIR . '/header.php'; }
+function get_footer(): void { require WOOGIT_THEME_DIR . '/footer.php'; }
 function get_template_part(string $slug, ?string $name = null, array $args = []): void {
     if ($slug === 'templates/public/home') {
         require WOOGIT_THEME_DIR . '/templates/public/home.php';
