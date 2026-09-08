@@ -1,0 +1,25 @@
+name: Theme Package
+on:
+  push:
+    branches: [theme-v1-implementation]
+    paths: ['theme/woogit/**', '.github/workflows/theme-package.yml']
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP
+        run: |
+          set -euo pipefail
+          find theme/woogit -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Build theme ZIP
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd theme
+          zip -qr ../dist/woogit-theme-v1.0.0.zip woogit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: woogit-theme-v1.0.0
+          path: dist/woogit-theme-v1.0.0.zip
+          if-no-files-found: error
