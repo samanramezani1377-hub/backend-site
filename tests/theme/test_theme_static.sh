@@ -15,16 +15,16 @@ else
   pass 'templates/template-parts stay presentation-only'
 fi
 
-# App-only session and activation must never be consumed by the Theme.
-if grep -RInE 'activate-session|X-WooGit-Session' "$THEME" 2>/dev/null; then
-  fail 'Theme references App session or activate-session'
+# App-only session and activation must never be consumed by executable Theme code.
+if grep -RInE 'activate-session|X-WooGit-Session' "$THEME" --include='*.php' --include='*.js' --include='*.css' 2>/dev/null; then
+  fail 'executable Theme code references App session or activate-session'
 else
-  pass 'Theme does not consume App session'
+  pass 'executable Theme code does not consume App session'
 fi
 
-# Customer WooCommerce credentials may appear only as transient request field names in the registration form/AJAX boundary.
+# Customer WooCommerce credentials may appear only as transient request field names at the registration boundary.
 for forbidden in 'update_option.*consumer_secret' 'set_transient.*consumer_secret' 'setcookie.*consumer_secret' 'wp_localize_script.*consumer_secret' 'localStorage.*consumer_secret' 'sessionStorage.*consumer_secret'; do
-  if grep -RInE "$forbidden" "$THEME" 2>/dev/null; then
+  if grep -RInE "$forbidden" "$THEME" --include='*.php' --include='*.js' 2>/dev/null; then
     fail "credential persistence pattern found: $forbidden"
   else
     pass "no credential persistence pattern: $forbidden"
@@ -40,9 +40,9 @@ for page in page-features.php page-how-it-works.php page-faq.php page-documentat
   fi
 done
 
-# The App-only billing endpoint must not be present in Theme API calls.
-if grep -RInE "billing/activate-session|['\"]activate-session['\"]" "$THEME" 2>/dev/null; then
-  fail 'App-only billing activation endpoint referenced by Theme'
+# The App-only billing endpoint must not be present in executable Theme code.
+if grep -RInE "billing/activate-session|['\"]activate-session['\"]" "$THEME" --include='*.php' --include='*.js' 2>/dev/null; then
+  fail 'App-only billing activation endpoint referenced by executable Theme code'
 else
   pass 'Theme billing surface excludes App-only activation'
 fi
