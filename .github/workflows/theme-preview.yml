@@ -4,7 +4,7 @@ on:
     branches: [theme-v1-implementation]
     paths:
       - 'theme/woogit/**'
-      - 'preview/**'
+      - 'tools/preview/**'
       - '.github/workflows/theme-preview.yml'
   workflow_dispatch:
 permissions:
@@ -22,12 +22,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build preview site
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Render actual Theme
         run: |
           set -euo pipefail
           rm -rf _site
           mkdir -p _site/assets/css
-          cp preview/index.html _site/index.html
+          php tools/preview/render.php
           for file in foundation.css components.css pages.css responsive.css theme-polish.css; do
             cp "theme/woogit/assets/css/$file" "_site/assets/css/$file"
           done
@@ -35,6 +39,9 @@ jobs:
           if grep -Eiq '(^|/)(plugin|plugins|node_modules|\.git|tests|docs)(/|$)' <(find _site -type f -printf '%P\n'); then
             echo 'Preview artifact contains unrelated repository content'; exit 1
           fi
+          grep -q 'فروشگاه شما، با' _site/index.html
+          grep -q 'wg-home-preview' _site/index.html
+          grep -q 'wg-footer' _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
