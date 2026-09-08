@@ -15,6 +15,10 @@ $steps=woogit_theme_items('steps_json',[
  ['title'=>'انتخاب سرویس','text'=>'پلن‌ها و اطلاعات تجاری از منبع معتبر نمایش داده می‌شوند؛ قیمت و entitlement در Theme محاسبه نمی‌شوند.'],
  ['title'=>'مدیریت از پرتال','text'=>'اشتراک، Billing، پرداخت‌ها، سایت متصل و Account/Security را از Customer Portal مدیریت کنید.'],
 ]);
+$default_device_image='https://media.easy-peasy.ai/20b11164-c351-41a4-b167-3e302745223d/905d6e89-6fc3-48da-bf19-d26197f6ed81_medium.webp';
+$device_image=woogit_view('home_device_image',$default_device_image);
+$device_image=$device_image?:$default_device_image;
+$using_default_device_image=$device_image===$default_device_image;
 ?>
 <section class="wg-hero" id="home" aria-labelledby="wg-hero-title">
  <div class="wg-container wg-hero__grid">
@@ -29,25 +33,20 @@ $steps=woogit_theme_items('steps_json',[
    <div class="wg-hero__note">بدون ذخیره‌سازی Credentialهای فروشگاه مشتری در Theme</div>
   </div>
 
-  <div class="wg-home-devices" id="wg-home-preview" aria-label="پیش‌نمایش بصری WooGit">
+  <div class="wg-home-devices" id="wg-home-preview" aria-label="پیش‌نمایش تصویری WooGit">
    <div class="wg-home-motion-dot wg-dot-one" aria-hidden="true"></div><div class="wg-home-motion-dot wg-dot-two" aria-hidden="true"></div>
    <div class="wg-home-tablet">
     <div class="wg-tablet-screen">
-     <div class="wg-device-bar" aria-hidden="true"><i></i><i></i><i></i></div>
-     <div class="wg-screen-top"><strong>WooGit</strong><span>فعال</span></div>
-     <div class="wg-screen-stats"><b><small>فروشگاه</small>۱</b><b><small>اشتراک</small>پرو</b><b><small>سرویس</small>✓</b></div>
-     <div class="wg-screen-chart" aria-hidden="true"><span style="height:35%"></span><span style="height:58%"></span><span style="height:44%"></span><span style="height:72%"></span><span style="height:61%"></span><span style="height:86%"></span><span style="height:68%"></span></div>
+     <img src="<?php echo esc_url($device_image); ?>" alt="پیش‌نمایش رابط کاربری WooGit" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:21px;" loading="eager" decoding="async">
     </div>
    </div>
    <div class="wg-home-mobile">
     <div class="wg-device-notch"></div>
-    <div class="wg-mobile-screen">
-     <div class="wg-mobile-brand">WooGit</div>
-     <div class="wg-mobile-card wg-mobile-ai"><small>دستیار WooGit</small><strong>چطور می‌توانم کمک کنم؟</strong></div>
-     <div class="wg-mobile-card"><small>وضعیت سرویس</small><strong>فعال</strong></div>
-     <div class="wg-mobile-card wg-mobile-list"><small>فروشگاه متصل</small><span></span><span></span></div>
+    <div class="wg-mobile-screen" style="padding:0;">
+     <img src="<?php echo esc_url($device_image); ?>" alt="پیش‌نمایش رابط کاربری WooGit در موبایل" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:27px;" loading="eager" decoding="async">
     </div>
    </div>
+   <?php if($using_default_device_image): ?><a href="https://easy-peasy.ai/" target="_blank" rel="noopener noreferrer" style="position:absolute;inset-inline-start:1rem;bottom:.35rem;font-size:.62rem;color:var(--muted);opacity:.72;z-index:4;">تصویر: Easy-Peasy.AI</a><?php endif; ?>
   </div>
  </div>
 </section>
