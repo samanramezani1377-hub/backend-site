@@ -13,7 +13,17 @@ Official WooGit website + Customer Portal theme.
 
 ## Install
 
-Copy `theme/woogit/` into `wp-content/themes/woogit/`, activate it, and create the documented pages using the slugs in `docs/theme/PAGES.md`.
+Copy `theme/woogit/` into `wp-content/themes/woogit/` and activate it. On activation, the theme creates any missing V1 pages defined in `docs/theme/PAGES.md`; existing pages are never overwritten.
+
+## V1 pages
+
+Public: Home, Features, How It Works, Pricing, FAQ, Documentation, Support, Service Status, Privacy and Terms.
+
+Auth: Login and Register / Web Bootstrap.
+
+Customer Portal: Overview, Subscription, Billing, Payments, Connected Site and Account / Security.
+
+Payment Result is available as a return/result template and is not part of the ten core UX pages.
 
 ## Management
 
