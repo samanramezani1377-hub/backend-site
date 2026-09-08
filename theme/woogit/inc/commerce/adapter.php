@@ -34,6 +34,7 @@ function woogit_commerce_payment_history(int $account_id, int $site_id, int $pag
       'currency'=>(string)$order->get_currency(),
       'payment_method'=>(string)$order->get_payment_method(),
       'payment_method_title'=>(string)$order->get_payment_method_title(),
+      'transaction_id'=>(string)$order->get_transaction_id(),
       'created_at'=>$order->get_date_created() ? $order->get_date_created()->date('c') : null,
     ];
   }
@@ -45,4 +46,22 @@ function woogit_commerce_payment_history(int $account_id, int $site_id, int $pag
     'total'=>(int)($orders->total ?? count($items)),
     'total_pages'=>(int)($orders->max_num_pages ?? ($items === [] ? 0 : 1)),
   ];
+}
+
+/**
+ * Deterministic payment-method selection: prefer the most recent paid order;
+ * only fall back to the newest order when no paid order exists.
+ */
+function woogit_commerce_payment_method(array $payments): array {
+  $orders = array_values(array_filter((array)($payments['orders'] ?? []), 'is_array'));
+  foreach ($orders as $order) {
+    if (in_array((string)($order['status'] ?? ''), ['processing','completed'], true)
+      && (!empty($order['payment_method_title']) || !empty($order['payment_method']))) {
+      return $order;
+    }
+  }
+  foreach ($orders as $order) {
+    if (!empty($order['payment_method_title']) || !empty($order['payment_method'])) return $order;
+  }
+  return [];
 }
