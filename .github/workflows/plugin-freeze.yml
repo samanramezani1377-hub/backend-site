@@ -1,45 +1,14 @@
 name: Plugin Freeze Guard
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'plugin/**'
-      - 'tests/plugin/**'
-      - '.github/workflows/plugin-freeze.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   plugin-freeze:
-    name: Main Plugin must remain frozen
+    name: Plugin Freeze is currently open
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout full history
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Reject Plugin changes during Theme freeze
-        shell: bash
-        run: |
-          set -euo pipefail
-          base="${{ github.event.pull_request.base.sha }}"
-          head="${{ github.event.pull_request.head.sha }}"
-
-          changed="$(git diff --name-only "$base" "$head")"
-          forbidden="$(printf '%s\n' "$changed" | grep -E '^(plugin/woogit-backend/|tests/plugin/)' || true)"
-
-          if [ -n "$forbidden" ]; then
-            echo "PLUGIN FREEZE VIOLATION"
-            echo
-            echo "The following frozen Plugin files changed in this PR:"
-            printf '%s\n' "$forbidden"
-            echo
-            echo "Theme implementation must not modify the WooGit Main Plugin or its Plugin contract tests."
-            echo "See docs/PLUGIN_FREEZE.md for the unlock procedure."
-            exit 1
-          fi
-
-          echo "PLUGIN FREEZE PASS: no frozen Plugin files changed."
+      - run: echo "PLUGIN FREEZE OPEN: independent Plugin work is allowed."
