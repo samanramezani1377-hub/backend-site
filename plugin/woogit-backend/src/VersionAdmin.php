@@ -10,9 +10,10 @@ final class VersionAdmin
 
     public function register(): void
     {
-        add_options_page(
+        add_submenu_page(
+            'woogit-accounts',
             'WooGit App Versions',
-            'WooGit App Versions',
+            'App Versions',
             'manage_options',
             'woogit-app-versions',
             [$this, 'render']
