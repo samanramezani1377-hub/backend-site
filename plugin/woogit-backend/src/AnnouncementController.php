@@ -32,11 +32,11 @@ final class AnnouncementController
         $items=$this->announcements->active($version,$accountId,$siteId);
         // Deprecated clients must still receive the update banner; missing versions are rejected above.
         if(!$gate['allowed']){
-            $items[]=['id'=>'system-app-version-deprecated','type'=>'critical','title'=>'نسخه اپ منسوخ شده است','message'=>'برای ادامه استفاده، اپ را به نسخه جدیدتر بروزرسانی کنید.','priority'=>100000,'display_type'=>1,'action'=>['type'=>'update','label'=>'بروزرسانی'],'dismissible'=>false,'starts_at'=>null,'expires_at'=>null];
+            $items[]=['id'=>'system-app-version-deprecated','type'=>'critical','title'=>'نسخه اپ منسوخ شده است','message'=>'برای ادامه استفاده، اپ را به نسخه جدیدتر بروزرسانی کنید.','image'=>null,'priority'=>100000,'display_type'=>4,'actions'=>[['type'=>'update','label'=>'بروزرسانی','url'=>null]],'dismissible'=>false,'notification_enabled'=>true,'notification_type'=>3,'notification_channel'=>'updates','starts_at'=>null,'expires_at'=>null];
         }
         if($accountId>0&&$siteId>0){
             $expires=$this->entitlements->getExpiresAt($accountId,$siteId);
-            if($expires!==null){$remaining=$expires-time();if($remaining>0&&$remaining<=7*DAY_IN_SECONDS)$items[]=['id'=>'system-entitlement-expiring','type'=>'warning','title'=>'اعتبار شما رو به اتمام است','message'=>'اعتبار این سایت کمتر از ۷ روز دیگر منقضی می‌شود.','priority'=>90000,'display_type'=>1,'action'=>['type'=>'billing','label'=>'تمدید اعتبار'],'dismissible'=>true,'starts_at'=>null,'expires_at'=>gmdate('Y-m-d H:i:s',$expires)];}
+            if($expires!==null){$remaining=$expires-time();if($remaining>0&&$remaining<=7*DAY_IN_SECONDS)$items[]=['id'=>'system-entitlement-expiring','type'=>'warning','title'=>'اعتبار شما رو به اتمام است','message'=>'اعتبار این سایت کمتر از ۷ روز دیگر منقضی می‌شود.','image'=>null,'priority'=>90000,'display_type'=>1,'actions'=>[['type'=>'billing','label'=>'تمدید اعتبار','url'=>null]],'dismissible'=>true,'notification_enabled'=>false,'notification_type'=>1,'notification_channel'=>'announcements','starts_at'=>null,'expires_at'=>gmdate('Y-m-d H:i:s',$expires)];}
         }
         usort($items,static fn(array $a,array $b):int=>((int)($b['priority']??0))<=>((int)($a['priority']??0)));
         return new \WP_REST_Response(['announcements'=>array_slice($items,0,AnnouncementService::MAX)],200);
