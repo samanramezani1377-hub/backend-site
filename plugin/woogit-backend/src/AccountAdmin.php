@@ -8,13 +8,21 @@ final class AccountAdmin
     public function register(): void
     {
         add_menu_page(
-            'WooGit Accounts',
-            'WooGit Accounts',
+            'WooGit',
+            'WooGit',
             'manage_options',
             'woogit-accounts',
             [$this, 'render'],
             'dashicons-admin-users',
             58
+        );
+        add_submenu_page(
+            'woogit-accounts',
+            'WooGit Accounts',
+            'Accounts',
+            'manage_options',
+            'woogit-accounts',
+            [$this, 'render']
         );
     }
 
