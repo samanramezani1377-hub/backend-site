@@ -8,7 +8,7 @@ final class AnnouncementAdmin
     private AnnouncementService $announcements;
     private const OPTION='woogit_backend_announcements';
     public function __construct(){ $this->announcements=new AnnouncementService(); }
-    public function register(): void{add_options_page('WooGit Announcements','WooGit Announcements','manage_options','woogit-announcements',[$this,'render']);}
+    public function register(): void{add_submenu_page('woogit-accounts','WooGit Announcements','Announcements','manage_options','woogit-announcements',[$this,'render']);}
     public function render(): void
     {
         if(!current_user_can('manage_options'))return;$error='';$saved=false;
