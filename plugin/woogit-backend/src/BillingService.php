@@ -27,26 +27,30 @@ final class BillingService
         add_action('milo_subscriptions_renewal_order_created', [$this, 'onMiloRenewalOrderCreated'], 20, 2);
         add_action('milo_subscriptions_renewal_payment_complete', [$this, 'onMiloRenewalPaymentComplete'], 20, 2);
 
+        // Milo exposes a dedicated product-data hook for subscription products.
+        // Keep the WooCommerce fallback for legacy subscription engines.
+        add_action('milo_subscriptions_product_data_panel', [$this, 'renderPlanFields'], 20, 1);
+        add_action('woocommerce_product_options_general_product_data', [$this, 'renderPlanFields'], 20, 0);
+        add_action('woocommerce_process_product_meta', [$this, 'savePlanFields'], 20, 1);
+
         // Keep legacy WooCommerce Subscriptions compatibility for installations that
         // still have it active. Milo takes precedence through its own lifecycle hooks.
         if (function_exists('wcs_get_subscription')) {
             add_action('woocommerce_subscription_status_active', [$this, 'onSubscriptionActive'], 20, 1);
             add_action('woocommerce_subscription_payment_complete', [$this, 'onSubscriptionPaymentComplete'], 20, 1);
         }
-
-        add_action('woocommerce_product_options_general_product_data', [$this, 'renderPlanFields']);
-        add_action('woocommerce_process_product_meta', [$this, 'savePlanFields'], 20, 1);
     }
 
-    public function renderPlanFields(): void
+    public function renderPlanFields($hookProduct = null): void
     {
         global $product_object;
-        if (!$product_object || !in_array((string)$product_object->get_type(), ['subscription', 'variable-subscription'], true)) return;
+        $product = is_object($hookProduct) ? $hookProduct : $product_object;
+        if (!$product || !$this->isSubscriptionProduct($product)) return;
 
-        $enabled = get_post_meta((int)$product_object->get_id(), self::PLAN_ENABLED_META, true);
+        $enabled = get_post_meta((int)$product->get_id(), self::PLAN_ENABLED_META, true);
         if ($enabled === '') $enabled = 'yes';
-        $key = (string)get_post_meta((int)$product_object->get_id(), self::PLAN_KEY_META, true);
-        if ($key === '') $key = sanitize_title((string)$product_object->get_name());
+        $key = (string)get_post_meta((int)$product->get_id(), self::PLAN_KEY_META, true);
+        if ($key === '') $key = sanitize_title((string)$product->get_name());
 
         echo '<div class="options_group show_if_subscription show_if_variable-subscription">';
         woocommerce_wp_checkbox([
@@ -70,7 +74,7 @@ final class BillingService
     {
         if (!current_user_can('edit_post', $productId)) return;
         $product = function_exists('wc_get_product') ? wc_get_product($productId) : null;
-        if (!$product || !in_array((string)$product->get_type(), ['subscription', 'variable-subscription'], true)) return;
+        if (!$product || !$this->isSubscriptionProduct($product)) return;
 
         $enabled = isset($_POST[self::PLAN_ENABLED_META]) ? 'yes' : 'no';
         $key = isset($_POST[self::PLAN_KEY_META]) ? sanitize_title(wp_unslash((string)$_POST[self::PLAN_KEY_META])) : '';
@@ -94,14 +98,13 @@ final class BillingService
                 'limit' => $perPage,
                 'page' => $page,
                 'paginate' => true,
-                'type' => ['subscription', 'variable-subscription'],
                 'orderby' => 'menu_order',
                 'order' => 'ASC',
             ]);
             $products = is_object($result) && isset($result->products) ? (array)$result->products : (array)$result;
 
             foreach ($products as $product) {
-                if (!$product || !$product->is_purchasable() || !$this->isPlanEnabled($product)) continue;
+                if (!$product || !$this->isSubscriptionProduct($product) || !$product->is_purchasable() || !$this->isPlanEnabled($product)) continue;
 
                 $type = (string)$product->get_type();
                 $plan = [
@@ -115,10 +118,10 @@ final class BillingService
                     'billing_interval' => (int)($product->get_meta('_subscription_period_interval') ?: 1),
                     'description' => wp_strip_all_tags((string)$product->get_short_description()),
                     'type' => $type,
-                    'requires_variation' => $type === 'variable-subscription',
+                    'requires_variation' => $this->isVariableSubscriptionProduct($product),
                 ];
 
-                if ($type === 'variable-subscription') $plan['variations'] = $this->getVariations($product);
+                if ($this->isVariableSubscriptionProduct($product)) $plan['variations'] = $this->getVariations($product);
                 $plans[] = $plan;
             }
 
@@ -145,16 +148,15 @@ final class BillingService
             return ['ok' => false, 'code' => 'plan_not_found'];
         }
 
-        $type = (string)$product->get_type();
-        if (!in_array($type, ['subscription', 'variable-subscription'], true) || !$this->isPlanEnabled($product)) {
+        if (!$this->isSubscriptionProduct($product) || !$this->isPlanEnabled($product)) {
             return ['ok' => false, 'code' => 'plan_not_subscription'];
         }
 
         $lineProduct = $product;
-        if ($type === 'variable-subscription') {
+        if ($this->isVariableSubscriptionProduct($product)) {
             if ($variationId <= 0) return ['ok' => false, 'code' => 'missing_plan_variation'];
             $variation = wc_get_product($variationId);
-            if (!$variation || $variation->get_parent_id() !== $productId || $variation->get_status() !== 'publish' || !$variation->is_purchasable() || (string)$variation->get_type() !== 'subscription_variation') {
+            if (!$variation || $variation->get_parent_id() !== $productId || $variation->get_status() !== 'publish' || !$variation->is_purchasable() || !$this->isSubscriptionProduct($variation)) {
                 return ['ok' => false, 'code' => 'invalid_plan_variation'];
             }
             $lineProduct = $variation;
@@ -421,7 +423,7 @@ final class BillingService
         if ($this->isMiloAvailable() && method_exists($order, 'get_items')) {
             foreach ((array)$order->get_items('line_item') as $item) {
                 $product = method_exists($item, 'get_product') ? $item->get_product() : null;
-                if ($product && in_array((string)$product->get_type(), ['subscription', 'variable-subscription', 'subscription_variation'], true)) return true;
+                if ($product && $this->isSubscriptionProduct($product)) return true;
             }
         }
         return false;
@@ -492,12 +494,27 @@ final class BillingService
         return $key !== '' ? $key : sanitize_title((string)$product->get_name());
     }
 
+    private function isSubscriptionProduct($product): bool
+    {
+        if (!is_object($product) || !method_exists($product, 'get_type')) return false;
+        $type = strtolower((string)$product->get_type());
+        if (in_array($type, ['subscription', 'variable-subscription', 'subscription_variation'], true)) return true;
+        return str_contains($type, 'subscription');
+    }
+
+    private function isVariableSubscriptionProduct($product): bool
+    {
+        if (!$this->isSubscriptionProduct($product)) return false;
+        $type = strtolower((string)$product->get_type());
+        return str_contains($type, 'variable') || method_exists($product, 'get_children') && !empty((array)$product->get_children());
+    }
+
     private function getVariations($product): array
     {
         $items = [];
         foreach ((array)$product->get_children() as $variationId) {
             $variation = function_exists('wc_get_product') ? wc_get_product((int)$variationId) : null;
-            if (!$variation || $variation->get_status() !== 'publish' || !$variation->is_purchasable()) continue;
+            if (!$variation || !$this->isSubscriptionProduct($variation) || $variation->get_status() !== 'publish' || !$variation->is_purchasable()) continue;
             $items[] = [
                 'id' => (int)$variation->get_id(),
                 'attributes' => array_map('strval', (array)$variation->get_attributes()),
