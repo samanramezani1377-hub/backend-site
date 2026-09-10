@@ -92,34 +92,21 @@ final class AccountsAdmin
         $now=gmdate('Y-m-d H:i:s');
         if($act==='edit'){
             $email=sanitize_email(wp_unslash((string)($_POST['email']??''))); $status=sanitize_key((string)($_POST['status']??''));
-            if($email!==''&&!is_email($email)||!in_array($status,self::ACCOUNT_STATUSES,true)) return ['error','اطلاعات حساب نامعتبر است.'];
+            if(($email!==''&&!is_email($email))||!in_array($status,self::ACCOUNT_STATUSES,true)) return ['error','اطلاعات حساب نامعتبر است.'];
             $ok=false!==$wpdb->update($a,['email'=>$email!==''?$email:null,'status'=>$status,'updated_at'=>$now],['id'=>$id],['%s','%s','%s'],['%d']);
             if($status!=='active') $this->revokeSessions($id,$now);
-            return [$ok?'success':'error',$ok?'حساب ویرایش شد.':'ویرایش ذخیره نشد.'];
+            return[$ok?'success':'error',$ok?'حساب ویرایش شد.':'ویرایش ذخیره نشد.'];
         }
         if($act==='site_status'){
             $site=absint($_POST['site_id']??0); $status=sanitize_key((string)($_POST['site_status']??''));
-            if(!$site||!in_array($status,self::SITE_STATUSES,true)) return ['error','وضعیت سایت نامعتبر است.'];
+            if(!$site||!in_array($status,self::SITE_STATUSES,true)) return['error','وضعیت سایت نامعتبر است.'];
             $ok=false!==$wpdb->update($s,['status'=>$status,'updated_at'=>$now],['id'=>$site,'account_id'=>$id],['%s','%s'],['%d','%d']);
             if($status!=='active') $this->revokeSessions($id,$now);
-            return [$ok?'success':'error',$ok?'وضعیت سایت تغییر کرد.':'وضعیت سایت ذخیره نشد.'];
-        }
-        if($act==='activate') return $this->activate($id,absint($_POST['site_id']??0),absint($_POST['product_id']??0),absint($_POST['extra_days']??0));
-        if($act==='extend'){
-            $site=absint($_POST['site_id']??0); $days=max(1,min(3650,absint($_POST['days']??0))); if(!$site||!$days)return['error','مقادیر تمدید نامعتبر است.'];
-            $row=$wpdb->get_row($wpdb->prepare("SELECT id,status,expires_at FROM {$e} WHERE account_id=%d AND site_id=%d LIMIT 1",$id,$site),ARRAY_A); if(!$row)return['error','Entitlement پیدا نشد.'];
-            $base=max(time(),strtotime((string)$row['expires_at']?:'')); $expires=gmdate('Y-m-d H:i:s',$base+$days*DAY_IN_SECONDS);
-            $ok=false!==$wpdb->update($e,['status'=>'active','expires_at'=>$expires,'updated_at'=>$now],['id'=>(int)$row['id']],['%s','%s','%s'],['%d']); $this->revokeSessions($id,$now);
-            return[$ok?'success':'error',$ok?'اعتبار '.$days.' روز تمدید شد.':'تمدید ذخیره نشد.'];
-        }
-        if($act==='deactivate'){
-            $site=absint($_POST['site_id']??0); if(!$site)return['error','Site نامعتبر است.'];
-            $ok=false!==$wpdb->update($e,['status'=>'inactive','updated_at'=>$now],['account_id'=>$id,'site_id'=>$site],['%s','%s'],['%d','%d']); $this->revokeSessions($id,$now);
-            return[$ok?'success':'error',$ok?'دسترسی بسته لغو شد.':'Entitlement پیدا نشد.'];
+            return[$ok?'success':'error',$ok?'وضعیت سایت ذخیره شد.':'وضعیت سایت ذخیره نشد.'];
         }
         if($act==='capabilities'){
             $site=absint($_POST['site_id']??0); if(!$site)return['error','Site نامعتبر است.'];
-            $raw=explode(',',sanitize_text_field(wp_unslash((string)($_POST['capabilities']??'')))); $caps=[];
+            $raw=explode(',',sanitize_text_field(wp_unslash((string)($_POST['capabilities']??''))); $caps=[];
             foreach($raw as $cap){$cap=sanitize_key(trim($cap));if($cap!==''&&!in_array($cap,$caps,true))$caps[]=$cap;}
             $row=$wpdb->get_row($wpdb->prepare("SELECT id FROM {$e} WHERE account_id=%d AND site_id=%d LIMIT 1",$id,$site),ARRAY_A);if(!$row)return['error','Entitlement پیدا نشد.'];
             $ok=false!==$wpdb->update($e,['capabilities'=>wp_json_encode($caps),'updated_at'=>$now],['id'=>(int)$row['id']],['%s','%s'],['%d']); $this->revokeSessions($id,$now);
@@ -137,6 +124,19 @@ final class AccountsAdmin
             foreach([$ws,$ss,$e,$wpdb->prefix.'woogit_idempotency',$wpdb->prefix.'woogit_operations',$s,$a] as $table) $wpdb->delete($table,['account_id'=>$id],['%d']);
             if($uid>0) wp_delete_user($uid);
             return['success','حساب، سایت، Entitlement، Session و داده‌های عملیاتی آن حذف شد؛ سفارش‌های WooCommerce دست‌نخورده ماندند.'];
+        }
+        if($act==='activate'){
+            $site=absint($_POST['site_id']??0);$productId=absint($_POST['product_id']??0);$extra=max(0,min(3650,absint($_POST['extra_days']??0)));
+            $result=$this->activate($id,$site,$productId,$extra);return[$result['error']?'error':'success',$result['error']??'بسته با موفقیت فعال شد.'];
+        }
+        if($act==='extend'){
+            $site=absint($_POST['site_id']??0);$days=max(1,min(3650,absint($_POST['days']??0)));if(!$site)return['error','Site نامعتبر است.'];
+            $row=$wpdb->get_row($wpdb->prepare("SELECT id,expires_at FROM {$e} WHERE account_id=%d AND site_id=%d LIMIT 1",$id,$site),ARRAY_A);if(!$row)return['error','Entitlement پیدا نشد.'];
+            $base=max(time(),strtotime((string)$row['expires_at']));$expires=$base+$days*DAY_IN_SECONDS;$ok=false!==$wpdb->update($e,['status'=>'active','expires_at'=>gmdate('Y-m-d H:i:s',$expires),'updated_at'=>$now],['id'=>(int)$row['id']],['%s','%s','%s'],['%d']);
+            return[$ok?'success':'error',$ok?'اعتبار تمدید شد.':'تمدید ذخیره نشد.'];
+        }
+        if($act==='deactivate'){
+            $site=absint($_POST['site_id']??0);if(!$site)return['error','Site نامعتبر است.'];$ok=false!==$wpdb->query($wpdb->prepare("UPDATE {$e} SET status='revoked',expires_at=%s,updated_at=%s WHERE account_id=%d AND site_id=%d",$now,$now,$id,$site));$this->revokeSessions($id,$now);return[$ok?'success':'error',$ok?'Entitlement غیرفعال شد.':'غیرفعال‌سازی انجام نشد.'];
         }
         return['error','عملیات ناشناخته است.'];
     }
@@ -163,8 +163,11 @@ final class AccountsAdmin
         if($old)$ok=false!==$wpdb->update($e,$data,['id'=>(int)$old],['%s','%s','%s','%s','%s'],['%d']);
         else{$data['account_id']=$id;$data['site_id']=$site;$data['created_at']=gmdate('Y-m-d H:i:s',$now);$ok=false!==$wpdb->insert($e,$data,['%s','%s','%s','%s','%s','%d','%d','%s']);}
         if(!$ok)return['error','فعال‌سازی بسته ذخیره نشد.'];
-        $this->revokeSessions($id,gmdate('Y-m-d H:i:s',$now));
-        return['success','بسته «'.$p->get_name().'» برای حساب فعال شد.'];
+        // Keep the existing Billing Session alive. The App must exchange it for
+        // an Operational Session through /billing/activate-session after the
+        // entitlement becomes active. Revoking it here would make that exchange
+        // impossible and leave the account without an App session.
+        return[];
     }
 
     private function plans():array
