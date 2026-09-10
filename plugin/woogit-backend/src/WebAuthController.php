@@ -28,7 +28,8 @@ final class WebAuthController
     }
     public function setupWebCredentials(\WP_REST_Request $request): \WP_REST_Response
     {
-        $context=$this->webContext($request);if($context instanceof \WP_REST_Response)return $context;$accountId=(int)$context['account_id'];$limit=$this->rateLimits->check('web_setup',(string)$accountId.':'.(string)$context['site_id'],5,60);if(!$limit['allowed'])return $this->rateLimited($limit['retry_after']);if($this->accounts->hasWebPassword($accountId))return new \WP_REST_Response(['code'=>'web_credentials_already_configured'],409);
+        // First-time setup is initiated by the verified App/API path. Web Session is intentionally not accepted here.
+        $context=$this->apiContext($request);if($context instanceof \WP_REST_Response)return $context;$accountId=(int)$context['account_id'];$limit=$this->rateLimits->check('web_setup',(string)$accountId.':'.(string)$context['site_id'],5,60);if(!$limit['allowed'])return $this->rateLimited($limit['retry_after']);if($this->accounts->hasWebPassword($accountId))return new \WP_REST_Response(['code'=>'web_credentials_already_configured'],409);
         $input=$request->get_json_params();$input=is_array($input)?$input:[];$password=(string)($input['password']??'');$confirmation=(string)($input['password_confirmation']??'');if(strlen($password)<12||strlen($password)>256)return new \WP_REST_Response(['code'=>'invalid_web_password'],400);if(!hash_equals($password,$confirmation))return new \WP_REST_Response(['code'=>'password_confirmation_mismatch'],400);
         if(!$this->accounts->setWebPassword($accountId,$password))return new \WP_REST_Response(['code'=>'web_password_unavailable'],500);
         return new \WP_REST_Response(['configured'=>true,'contact_email_configured'=>!empty(($this->accounts->get($accountId)['email']??'')),'identity_user_id'=>(int)($this->accounts->get($accountId)['wp_user_id']??0)],200);
