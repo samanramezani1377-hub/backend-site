@@ -29,13 +29,13 @@ function woogit_ajax_web_auth() {
   if (!check_ajax_referer('woogit_web_auth', 'nonce', false)) wp_send_json_error(['code'=>'invalid_nonce'], 403);
   $type=sanitize_key($_POST['type']??'');
   if(!in_array($type,['login','register'],true)) wp_send_json_error(['code'=>'invalid_request'],400);
-  $keys=['site_url','web_password'];
+  $keys=['site_url'];
+  if($type==='login') $keys[]='web_password';
   if($type==='register') $keys=array_merge($keys,['wp_username','wp_application_password','consumer_key','consumer_secret']);
   $body=[];
   foreach($keys as $key) $body[$key]=isset($_POST[$key])?(string)wp_unslash($_POST[$key]):'';
   foreach($keys as $key) if($body[$key]==='') wp_send_json_error(['code'=>'missing_field'],400);
   if($type==='register'){
-    $body['web_password_confirmation']=$body['web_password'];
     $idempotency=sanitize_text_field(wp_unslash($_POST['idempotency_key']??''));
     if($idempotency===''||!preg_match('/^[A-Za-z0-9._:-]{1,190}$/',$idempotency)) wp_send_json_error(['code'=>'invalid_idempotency_key'],400);
     $result=woogit_api_post('account/web-bootstrap',$body,['Idempotency-Key'=>$idempotency]);
@@ -52,7 +52,7 @@ function woogit_ajax_web_auth() {
     $ttl=$expires_at>time()?$expires_at-time():3600;
     woogit_set_web_session($token,$ttl);
   }
-  wp_send_json_success(['authenticated'=>(bool)$token]);
+  wp_send_json_success(['authenticated'=>(bool)$token,'web_password_configured'=>!empty($result['web_password_configured'])]);
 }
 
 function woogit_ajax_portal_action() {
@@ -70,6 +70,10 @@ function woogit_ajax_portal_action() {
     $body['email']=isset($_POST['email'])?sanitize_email(wp_unslash($_POST['email'])):'';
     if($body['email']!==''&&!is_email($body['email'])) wp_send_json_error(['code'=>'invalid_contact_email'],400);
     $result=woogit_api_post('web/account/contact-email',$body);
+  }elseif($action==='setup_web_credentials'){
+    $body['password']=isset($_POST['password'])?(string)wp_unslash($_POST['password']):'';
+    $body['password_confirmation']=isset($_POST['password_confirmation'])?(string)wp_unslash($_POST['password_confirmation']):'';
+    $result=woogit_api_post('account/setup-web-credentials',$body);
   }elseif($action==='password'){
     $body['current_password']=isset($_POST['current_password'])?(string)wp_unslash($_POST['current_password']):'';
     $body['password']=isset($_POST['password'])?(string)wp_unslash($_POST['password']):'';
