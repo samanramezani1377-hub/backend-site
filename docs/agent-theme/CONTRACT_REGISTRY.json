@@ -1,0 +1,14 @@
+{
+  "schema":"theme-agent-contract-registry-v1",
+  "authority":"source-code",
+  "records":[
+    {"id":"TH-TEMPLATE","source":"theme/woogit/","maps":["ARCHITECTURE.md"]},
+    {"id":"TH-ROUTE","source":"theme/woogit/","maps":["API_MAP.md"]},
+    {"id":"TH-HTTP","source":"theme/woogit/","maps":["API_MAP.md","CROSS_REPO_MAP.md"]},
+    {"id":"TH-SESSION","source":"theme/woogit/","maps":["SESSION_MAP.md"]},
+    {"id":"TH-JSON","source":"theme/woogit/","maps":["JSON_CONTRACTS.md"]},
+    {"id":"TH-FORM","source":"theme/woogit/","maps":["JSON_CONTRACTS.md","ERROR_MAP.md"]},
+    {"id":"TH-BILLING","source":"theme/woogit/","maps":["API_MAP.md","CROSS_REPO_MAP.md"]}
+  ],
+  "required_record":["id","source","symbol","line_start","line_end","trigger","request","response","errors","backend_dependency"]
+}
