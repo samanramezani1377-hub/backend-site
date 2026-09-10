@@ -16,7 +16,8 @@ foreach(['Database','IdentityService','AccountService','SiteService','Entitlemen
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{$from=(string)get_option('woogit_backend_db_version','');if($from !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install($from);$trial=new \WooGit\Backend\TrialService();$trial->registerHooks();$billing=new \WooGit\Backend\BillingService();$billing->registerHooks();(new \WooGit\Backend\AutomaticTrialMiloBridge())->registerHooks();(new \WooGit\Backend\MiloBillingAdminCompatibility())->registerHooks();(new \WooGit\Backend\ZarinPalPaymentBridge())->register();(new \WooGit\Backend\WebSessionRestBridge())->register();});
 add_action('admin_menu',static function():void{(new \WooGit\Backend\AccountsAdmin())->register();(new \WooGit\Backend\VersionAdmin())->register();(new \WooGit\Backend\AnnouncementAdmin())->register();});
-add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-accounts')return;?><style>
+add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-accounts')return;?>
+<style>
 #wpbody-content>.wrap{max-width:1500px}
 #wpbody-content>.wrap h1{font-size:28px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px}
 #wpbody-content>.wrap>p{color:#646970;font-size:14px}
@@ -37,7 +38,6 @@ add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-
 @media (max-width:900px){
  #wpbody-content>.wrap{margin-right:10px;margin-left:10px}
  #wpbody-content>.wrap h1{font-size:23px}
- #wpbody-content>.wrap>div[style*="repeat(5"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  #wpbody-content>.wrap form[method="get"]{display:flex;gap:8px;align-items:center}
  #wpbody-content>.wrap form[method="get"] input[type="search"]{min-width:0!important;width:100%;height:40px}
  #wpbody-content>.wrap table.widefat{display:block;border:0;box-shadow:none;background:transparent}
@@ -58,11 +58,11 @@ add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-
  #wpbody-content>.wrap details form{margin:8px 0!important}
 }
 @media (max-width:480px){
- #wpbody-content>.wrap>div[style*="repeat(5"]{grid-template-columns:1fr!important}
  #wpbody-content>.wrap form[method="get"]{flex-direction:column;align-items:stretch}
  #wpbody-content>.wrap form[method="get"] .button{width:100%;height:40px}
 }
-</style><?php});
+</style>
+<?php });
 add_action('init',static function():void{if(!wp_next_scheduled('woogit_backend_cleanup')) wp_schedule_event(time()+300,'daily','woogit_backend_cleanup');});
 add_action('woogit_backend_cleanup',static function():void{global $wpdb;$now=current_time('mysql',true);$old7=gmdate('Y-m-d H:i:s',time()-7*DAY_IN_SECONDS);$old2=gmdate('Y-m-d H:i:s',time()-2*DAY_IN_SECONDS);$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_sessions WHERE expires_at < %s",$now));$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_web_sessions WHERE expires_at < %s",$now));$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_idempotency WHERE updated_at < %s AND state IN ('succeeded','failed')",$old7));$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}woogit_operations WHERE expires_at IS NOT NULL AND expires_at < %s AND status IN ('succeeded','failed')",$now));$rateLimitTable=$wpdb->prefix.'woogit_rate_limits';$wpdb->query($wpdb->prepare("DELETE FROM {$rateLimitTable} WHERE window_start < %s LIMIT 1000",$old2));});
 add_action('rest_api_init',static function():void{(new \WooGit\Backend\RestController())->register();(new \WooGit\Backend\AnnouncementController())->register();(new \WooGit\Backend\BillingController())->register();(new \WooGit\Backend\WebAuthController())->register();});
