@@ -106,7 +106,7 @@ final class AccountsAdmin
         }
         if($act==='capabilities'){
             $site=absint($_POST['site_id']??0); if(!$site)return['error','Site نامعتبر است.'];
-            $raw=explode(',',sanitize_text_field(wp_unslash((string)($_POST['capabilities']??''))); $caps=[];
+            $raw=explode(',',sanitize_text_field(wp_unslash((string)($_POST['capabilities']??'')))); $caps=[];
             foreach($raw as $cap){$cap=sanitize_key(trim($cap));if($cap!==''&&!in_array($cap,$caps,true))$caps[]=$cap;}
             $row=$wpdb->get_row($wpdb->prepare("SELECT id FROM {$e} WHERE account_id=%d AND site_id=%d LIMIT 1",$id,$site),ARRAY_A);if(!$row)return['error','Entitlement پیدا نشد.'];
             $ok=false!==$wpdb->update($e,['capabilities'=>wp_json_encode($caps),'updated_at'=>$now],['id'=>(int)$row['id']],['%s','%s'],['%d']); $this->revokeSessions($id,$now);
@@ -167,7 +167,7 @@ final class AccountsAdmin
         // an Operational Session through /billing/activate-session after the
         // entitlement becomes active. Revoking it here would make that exchange
         // impossible and leave the account without an App session.
-        return[];
+        return['error'=>null];
     }
 
     private function plans():array
