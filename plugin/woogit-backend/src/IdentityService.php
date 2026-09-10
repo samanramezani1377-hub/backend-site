@@ -34,6 +34,18 @@ final class IdentityService
         if($user instanceof \WP_User)$user->set_role('customer');
         return (int)$userId;
     }
+    /** Repair a deleted/missing WordPress identity without creating a new WooGit Account. */
+    public function ensureCustomerForAccount(int $accountId): int
+    {
+        $user=$this->getUser($accountId);
+        if($user instanceof \WP_User)return (int)$user->ID;
+        $userId=$this->createCustomer();
+        if($userId<=0)return 0;
+        global $wpdb; $table=$wpdb->prefix.'woogit_accounts';
+        $updated=$wpdb->update($table,['wp_user_id'=>$userId,'updated_at'=>current_time('mysql',true)],['id'=>$accountId],['%d','%s'],['%d']);
+        if($updated===false){wp_delete_user($userId);return 0;}
+        return $userId;
+    }
     public function verifyPassword(int $accountId,string $password): bool
     {
         $user=$this->getUser($accountId);
