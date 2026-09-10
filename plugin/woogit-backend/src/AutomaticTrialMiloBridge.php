@@ -8,8 +8,8 @@ defined('ABSPATH') || exit;
  *
  * Site verification remains the trigger for the automatic trial in V1, but the
  * trial is represented by a real WooCommerce/Milo subscription instead of an
- * internal-only entitlement. A configured zero-price subscription product with
- * a 15-day trial is used as the canonical trial product.
+ * internal-only entitlement. A configured zero-price subscription product with a
+ * 15-day trial is used as the canonical trial product.
  */
 final class AutomaticTrialMiloBridge
 {
@@ -22,7 +22,11 @@ final class AutomaticTrialMiloBridge
         add_filter('rest_request_after_callbacks', [$this, 'afterSiteVerify'], 25, 3);
     }
 
-    public function afterSiteVerify($response, \WP_REST_Server $server, \WP_REST_Request $request)
+    /**
+     * WordPress passes the second filter argument as the route attributes array,
+     * not as WP_REST_Server. Keep this argument intentionally untyped.
+     */
+    public function afterSiteVerify($response, $server, \WP_REST_Request $request)
     {
         if (strpos($request->get_route(), '/woogit/v1/sites/verify') !== 0) return $response;
         if (strtoupper($request->get_method()) !== 'POST') return $response;
@@ -147,7 +151,7 @@ final class AutomaticTrialMiloBridge
         foreach ((array)$result as $product) {
             if (!$product || !method_exists($product, 'get_type')) continue;
             $type = strtolower((string)$product->get_type());
-            if (!str_contains($type, 'subscription')) continue;
+            if (strpos($type, 'subscription') === false) continue;
             if ((int)$product->get_meta('_subscription_trial_length') !== self::TRIAL_DAYS) continue;
             if ((float)$product->get_price() !== 0.0) continue;
             return $product;
