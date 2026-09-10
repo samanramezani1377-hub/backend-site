@@ -152,7 +152,7 @@ final class BillingService
     {
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_entitlements';
-        $sql = "SELECT status,starts_at,expires_at,capabilities FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1";
+        $sql = 'SELECT status,starts_at,expires_at,capabilities FROM ' . $table . ' WHERE account_id=%d AND site_id=%d LIMIT 1';
         $row = $wpdb->get_row($wpdb->prepare($sql, $accountId, $siteId), ARRAY_A);
         if (!$row) return ['status' => 'none', 'starts_at' => null, 'expires_at' => null, 'capabilities' => []];
 
@@ -160,9 +160,7 @@ final class BillingService
         $expiresAt = $row['expires_at'];
         if (in_array($status, ['trial', 'active'], true) && !empty($expiresAt)) {
             $expiresTimestamp = strtotime((string)$expiresAt);
-            if ($expiresTimestamp !== false && $expiresTimestamp <= time()) {
-                $status = 'expired';
-            }
+            if ($expiresTimestamp !== false && $expiresTimestamp <= time()) $status = 'expired';
         }
 
         $caps = json_decode((string)$row['capabilities'], true);
@@ -320,7 +318,8 @@ final class BillingService
     {
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_entitlements';
-        $existing = $wpdb->get_row($wpdb->prepare("SELECT starts_at,expires_at FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1", $accountId, $siteId), ARRAY_A);
+        $sql = 'SELECT starts_at,expires_at FROM ' . $table . ' WHERE account_id=%d AND site_id=%d LIMIT 1';
+        $existing = $wpdb->get_row($wpdb->prepare($sql, $accountId, $siteId), ARRAY_A);
         $now = time();
         $starts = $now;
         if ($existing && !empty($existing['expires_at'])) {
