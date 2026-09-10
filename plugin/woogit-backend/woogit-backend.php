@@ -15,9 +15,7 @@ define('WOOGIT_BACKEND_DIR',plugin_dir_path(__FILE__));
 foreach(['Database','IdentityService','AccountService','SiteService','EntitlementService','SessionService','WebSessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','VersionAdmin','AnnouncementService','AnnouncementAdmin','AnnouncementController','RequirementService','BillingService','TrialService','AutomaticTrialMiloBridge','MiloBillingAdminCompatibility','ZarinPalPaymentBridge','WebSessionRestBridge','RestController','BillingController','WebAuthController','AccountsAdmin','LifecycleAdmin'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{$from=(string)get_option('woogit_backend_db_version','');if($from !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install($from);$trial=new \WooGit\Backend\TrialService();$trial->registerHooks();$billing=new \WooGit\Backend\BillingService();$billing->registerHooks();(new \WooGit\Backend\AutomaticTrialMiloBridge())->registerHooks();(new \WooGit\Backend\MiloBillingAdminCompatibility())->registerHooks();(new \WooGit\Backend\ZarinPalPaymentBridge())->register();(new \WooGit\Backend\WebSessionRestBridge())->register();});
-add_action('admin_menu',static function():void{(new \WooGit\Backend\AccountsAdmin())->register();},10);
-add_action('admin_menu',static function():void{(new \WooGit\Backend\LifecycleAdmin())->register();},20);
-add_action('admin_menu',static function():void{(new \WooGit\Backend\VersionAdmin())->register();(new \WooGit\Backend\AnnouncementAdmin())->register();},20);
+add_action('admin_menu',static function():void{(new \WooGit\Backend\AccountsAdmin())->register();(new \WooGit\Backend\LifecycleAdmin())->register();(new \WooGit\Backend\VersionAdmin())->register();(new \WooGit\Backend\AnnouncementAdmin())->register();},10);
 add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-accounts')return;?>
 <style>
 #wpbody-content>.wrap{max-width:1500px}
