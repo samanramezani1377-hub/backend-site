@@ -103,7 +103,7 @@ if grep -Eq "if\(\$version===''\).*allowed.*true|if\(\$version===''\)return \['a
 contains "$version" 'minimum_supported_version' 'version gate must enforce minimum supported version'
 contains "$version" 'deprecated_versions' 'version gate must support explicit deprecated versions'
 contains "$database" 'version_compare' 'database migrations must be version gated'
-contains "$database" 'false===\$result' 'database migrations must stop on failed schema alteration'
+contains "$database" 'false[[:space:]]*===[[:space:]]*\$result' 'database migrations must stop on failed schema alteration'
 contains "$versionAdmin" 'manage_options' 'version policy admin must require administrator capability'
 contains "$versionAdmin" 'check_admin_referer' 'version policy changes must require CSRF nonce'
 contains "$versionAdmin" 'VERSION_PATTERN' 'version policy admin must validate version syntax'
