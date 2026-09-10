@@ -6,9 +6,12 @@ defined('ABSPATH') || exit;
 final class LifecycleAdmin
 {
     private const ACTION='woogit_lifecycle_admin_action';
+    private static bool $registered=false;
 
     public function register():void
     {
+        if(self::$registered)return;
+        self::$registered=true;
         add_submenu_page('woogit-accounts','WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$this,'renderSessions']);
         add_submenu_page('woogit-accounts','WooGit Trials','Trialها','manage_options','woogit-trials',[$this,'renderTrials']);
     }
