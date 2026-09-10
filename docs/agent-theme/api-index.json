@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "project": "WooGit Theme",
+  "repository": "samanramezani1377-hub/backend-site",
+  "surface": "theme/woogit",
+  "branch_index": "main",
+  "source_of_truth": "Theme source + backend web contracts",
+  "map_policy": "CODE_TO_MAP_REQUIRED; MAP_TO_CODE_NOT_REQUIRED",
+  "shared_apis": [
+    {"id":"API-003","method":"GET","path":"/wp-json/woogit/v1/billing/plans","role":"billing plan discovery"},
+    {"id":"API-004","method":"GET","path":"/wp-json/woogit/v1/billing/status","role":"billing status"},
+    {"id":"API-005","method":"POST","path":"/wp-json/woogit/v1/billing/checkout","role":"checkout where web flow uses API"}
+  ],
+  "forbidden_app_contracts": ["X-WooGit-Session","/wp-json/woogit/v1/billing/activate-session"],
+  "rules": ["Every Theme code contract change updates the relevant maps.","Map-only changes never require code changes.","Never infer Theme JSON from App DTOs."]
+}
