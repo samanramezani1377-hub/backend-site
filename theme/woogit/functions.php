@@ -73,7 +73,7 @@ function woogit_ajax_portal_action() {
   }elseif($action==='setup_web_credentials'){
     $body['password']=isset($_POST['password'])?(string)wp_unslash($_POST['password']):'';
     $body['password_confirmation']=isset($_POST['password_confirmation'])?(string)wp_unslash($_POST['password_confirmation']):'';
-    $result=woogit_api_post('account/setup-web-credentials',$body);
+    $result=woogit_api_post('web/account/setup-password',$body);
   }elseif($action==='password'){
     $body['current_password']=isset($_POST['current_password'])?(string)wp_unslash($_POST['current_password']):'';
     $body['password']=isset($_POST['password'])?(string)wp_unslash($_POST['password']):'';
