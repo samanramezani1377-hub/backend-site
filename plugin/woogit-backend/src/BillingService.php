@@ -152,14 +152,17 @@ final class BillingService
     {
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_entitlements';
-        $row = $wpdb->get_row($wpdb->prepare("SELECT status,starts_at,expires_at,capabilities FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1", $accountId, $siteId), ARRAY_A);
+        $sql = "SELECT status,starts_at,expires_at,capabilities FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1";
+        $row = $wpdb->get_row($wpdb->prepare($sql, $accountId, $siteId), ARRAY_A);
         if (!$row) return ['status' => 'none', 'starts_at' => null, 'expires_at' => null, 'capabilities' => []];
 
         $status = strtolower(trim((string)$row['status']));
         $expiresAt = $row['expires_at'];
         if (in_array($status, ['trial', 'active'], true) && !empty($expiresAt)) {
             $expiresTimestamp = strtotime((string)$expiresAt);
-            if ($expiresTimestamp !== false && $expiresTimestamp <= time()) $status = 'expired';
+            if ($expiresTimestamp !== false && $expiresTimestamp <= time()) {
+                $status = 'expired';
+            }
         }
 
         $caps = json_decode((string)$row['capabilities'], true);
