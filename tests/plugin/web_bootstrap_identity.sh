@@ -14,14 +14,20 @@ grep -Fq '$this->rateLimits->check('\''web_bootstrap_ip'\''' <<<"$block" || fail
 grep -Fq '$this->proxy->verify($base' <<<"$block" || fail 'Web Bootstrap must verify the real WooCommerce site through the Backend proxy'
 grep -Fq '$this->accounts->create()' <<<"$block" || fail 'Web Bootstrap must create the Account only after site verification'
 grep -Fq '$this->sites->findOrCreate' <<<"$block" || fail 'Web Bootstrap must resolve/create the Site through SiteService'
-grep -Fq '$this->accounts->setWebPassword' <<<"$block" || fail 'Web Bootstrap must create the Web credential in Backend'
 grep -Fq '$this->webSessions->issue' <<<"$block" || fail 'Web Bootstrap must issue a Web Session, not an App Session'
 grep -Fq '$this->sessions->issue' <<<"$block" && fail 'Web Bootstrap must not issue an App Session'
-grep -Fq '$this->entitlements->grantTrial' <<<"$block" || fail 'Web Bootstrap must initialize the Backend entitlement/trial state'
+grep -Fq 'web_password_configured' <<<"$block" || fail 'Web Bootstrap must return Web Password configuration state'
+grep -Fq '$this->accounts->hasWebPassword' <<<"$block" || fail 'Web Bootstrap must read existing Web Password configuration state'
 grep -Fq '$this->idempotency->completeVerify' <<<"$block" || fail 'Web Bootstrap result must be persisted through encrypted verify idempotency storage'
 
+if grep -Fq '$this->accounts->setWebPassword' <<<"$block"; then
+  fail 'Web Bootstrap must not create or validate the Web Password; password setup belongs to the dedicated endpoint'
+fi
+if grep -Eiq "web_password|password_confirmation|invalid_web_password" <<<"$block"; then
+  fail 'Web Bootstrap must not accept or validate Web Password fields'
+fi
 if grep -Eiq 'error_log|wp_json_encode\(\$input|var_dump|print_r' <<<"$block"; then
   fail 'Web Bootstrap must not log or dump customer credentials'
 fi
 
-echo 'PASS: Web Bootstrap is Backend-owned, Web-session-only, verified, rate-limited and idempotent'
+echo 'PASS: Web Bootstrap verifies the store, resolves the account/site, issues a Web Session, and leaves Web Password setup to the dedicated post-bootstrap flow'
