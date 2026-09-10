@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project": "WooGit Backend",
+  "repository": "samanramezani1377-hub/backend-site",
+  "branch": "main",
+  "source_of_truth": "plugin source code",
+  "map_policy": "CODE_TO_MAP_REQUIRED; MAP_TO_CODE_NOT_REQUIRED",
+  "apis": [
+    {"id":"API-001","method":"POST","path":"/wp-json/woogit/v1/sites/verify","source":"RestController::finishVerifiedContext","auth":"credential verification","session":"billing+optional-operational"},
+    {"id":"API-002","method":"VARIES","path":"/wp-json/woogit/v1/forward","source":"RestController/WooCommerceProxy","auth":"session","session":"operational"},
+    {"id":"API-003","method":"GET","path":"/wp-json/woogit/v1/billing/plans","source":"BillingController","auth":"public","session":"none"},
+    {"id":"API-004","method":"GET","path":"/wp-json/woogit/v1/billing/status","source":"BillingController::status","auth":"account context","session":"billing"},
+    {"id":"API-005","method":"POST","path":"/wp-json/woogit/v1/billing/checkout","source":"BillingController::checkout","auth":"account context","session":"billing","idempotency":true},
+    {"id":"API-006","method":"POST","path":"/wp-json/woogit/v1/billing/activate-session","source":"BillingController::activateSession","auth":"session","session":"billing","returns":"operational"}
+  ],
+  "json_keys": ["account_id","site_id","session","billing_session","scope","access_enabled","billing_required","status","starts_at","expires_at","capabilities","trial_used","code","message","data"],
+  "rules": ["Every code contract change updates the relevant maps in the same change.","Map-only edits never require code edits.","Implementation source remains authoritative."]
+}
