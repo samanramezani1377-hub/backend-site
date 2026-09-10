@@ -10,7 +10,8 @@ final class AccountsAdmin
 
     public function register():void
     {
-        add_menu_page('WooGit Accounts','WooGit Accounts','manage_options','woogit-accounts',[$this,'render'],'dashicons-admin-users',56);
+        add_menu_page('WooGit','WooGit','manage_options','woogit-accounts',[$this,'render'],'dashicons-admin-users',56);
+        add_submenu_page('woogit-accounts','مدیریت Accounts','Accounts','manage_options','woogit-accounts',[$this,'render']);
     }
 
     public function render():void
@@ -107,7 +108,7 @@ final class AccountsAdmin
         if($act==='extend'){
             $site=absint($_POST['site_id']??0); $days=max(1,min(3650,absint($_POST['days']??0))); if(!$site||!$days)return['error','مقادیر تمدید نامعتبر است.'];
             $row=$wpdb->get_row($wpdb->prepare("SELECT id,status,expires_at FROM {$e} WHERE account_id=%d AND site_id=%d LIMIT 1",$id,$site),ARRAY_A); if(!$row)return['error','Entitlement پیدا نشد.'];
-            $base=max(time,strtotime((string)$row['expires_at']?:'')); $expires=gmdate('Y-m-d H:i:s',$base+$days*DAY_IN_SECONDS);
+            $base=max(time(),strtotime((string)$row['expires_at']?:'')); $expires=gmdate('Y-m-d H:i:s',$base+$days*DAY_IN_SECONDS);
             $ok=false!==$wpdb->update($e,['status'=>'active','expires_at'=>$expires,'updated_at'=>$now],['id'=>(int)$row['id']],['%s','%s','%s'],['%d']); $this->revokeSessions($id,$now);
             return[$ok?'success':'error',$ok?'اعتبار '.$days.' روز تمدید شد.':'تمدید ذخیره نشد.'];
         }
