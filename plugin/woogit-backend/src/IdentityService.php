@@ -61,8 +61,15 @@ final class IdentityService
             $user=$this->getUser($accountId);
         }
         if(!$user)return false;
-        wp_set_password($password,$user->ID);
-        $updated=update_user_meta($user->ID,self::WEB_PASSWORD_META,'1');
-        return $updated!==false;
+
+        $updatedUser=wp_update_user(['ID'=>(int)$user->ID,'user_pass'=>$password]);
+        if(is_wp_error($updatedUser))return false;
+
+        $freshUser=get_userdata((int)$user->ID);
+        if(!$freshUser instanceof \WP_User || !wp_check_password($password,$freshUser->user_pass,$freshUser->ID))return false;
+
+        $updatedMeta=update_user_meta($freshUser->ID,self::WEB_PASSWORD_META,'1');
+        if($updatedMeta===false && get_user_meta($freshUser->ID,self::WEB_PASSWORD_META,true)!=='1')return false;
+        return $this->isPasswordConfigured($accountId);
     }
 }
