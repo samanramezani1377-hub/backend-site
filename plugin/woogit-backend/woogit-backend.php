@@ -16,11 +16,16 @@ foreach(['Database','IdentityService','AccountService','SiteService','Entitlemen
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{$from=(string)get_option('woogit_backend_db_version','');if($from !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install($from);$trial=new \WooGit\Backend\TrialService();$trial->registerHooks();$billing=new \WooGit\Backend\BillingService();$billing->registerHooks();(new \WooGit\Backend\AutomaticTrialMiloBridge())->registerHooks();(new \WooGit\Backend\MiloBillingAdminCompatibility())->registerHooks();(new \WooGit\Backend\ZarinPalPaymentBridge())->register();(new \WooGit\Backend\WebSessionRestBridge())->register();});
 add_action('admin_menu',static function():void{
-    add_menu_page('WooGit','WooGit','manage_options','woogit',static function():void{(new \WooGit\Backend\AccountsAdmin())->render();},'dashicons-admin-users',56);
-    add_submenu_page('woogit','مدیریت Accounts','Accounts','manage_options','woogit-accounts',static function():void{(new \WooGit\Backend\AccountsAdmin())->render();});
-    (new \WooGit\Backend\LifecycleAdmin())->register();
-    (new \WooGit\Backend\VersionAdmin())->register();
-    (new \WooGit\Backend\AnnouncementAdmin())->register();
+    $accounts=new \WooGit\Backend\AccountsAdmin();
+    $lifecycle=new \WooGit\Backend\LifecycleAdmin();
+    $version=new \WooGit\Backend\VersionAdmin();
+    $announcement=new \WooGit\Backend\AnnouncementAdmin();
+    add_menu_page('WooGit','WooGit','manage_options','woogit',[$accounts,'render'],'dashicons-admin-users',56);
+    add_submenu_page('woogit','مدیریت Accounts','Accounts','manage_options','woogit-accounts',[$accounts,'render']);
+    add_submenu_page('woogit','WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$lifecycle,'renderSessions']);
+    add_submenu_page('woogit','WooGit Trials','Trialها','manage_options','woogit-trials',[$lifecycle,'renderTrials']);
+    add_submenu_page('woogit','WooGit App Versions','App Versions','manage_options','woogit-app-versions',[$version,'render']);
+    add_submenu_page('woogit','WooGit Announcements','Announcements','manage_options','woogit-announcements',[$announcement,'render']);
 },10);
 add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-accounts')return;?>
 <style>
