@@ -1,0 +1,14 @@
+{
+  "schema":"backend-agent-contract-registry-v1",
+  "authority":"source-code",
+  "records":[
+    {"id":"BE-ROUTE","source":"plugin/","maps":["API_MAP.md","JSON_CONTRACTS.md"]},
+    {"id":"BE-AUTH","source":"plugin/","maps":["SESSION_MAP.md","ERROR_MAP.md"]},
+    {"id":"BE-ACCOUNT","source":"plugin/","maps":["DATA_FLOW.md"]},
+    {"id":"BE-ENTITLEMENT","source":"plugin/","maps":["SESSION_MAP.md","DATA_FLOW.md"]},
+    {"id":"BE-SESSION","source":"plugin/","maps":["SESSION_MAP.md"]},
+    {"id":"BE-BILLING","source":"plugin/","maps":["API_MAP.md","JSON_CONTRACTS.md"]},
+    {"id":"BE-WC","source":"plugin/","maps":["ERROR_MAP.md","DATA_FLOW.md"]}
+  ],
+  "required_record":["id","source","symbol","line_start","line_end","route","request","response","errors","consumers"]
+}
