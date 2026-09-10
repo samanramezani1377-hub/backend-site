@@ -41,6 +41,8 @@ final class AccountService
     public function hasWebPassword(int $accountId): bool { return (new IdentityService())->isPasswordConfigured($accountId); }
     public function setWebPassword(int $accountId, string $password): bool { return (new IdentityService())->setPassword($accountId, $password); }
     public function verifyWebPassword(int $accountId, string $password): bool { return (new IdentityService())->verifyPassword($accountId, $password); }
+    /** Recreates a deleted central WordPress identity while preserving the same WooGit Account. */
+    public function ensureIdentity(int $accountId): bool { return (new IdentityService())->ensureCustomerForAccount($accountId) > 0; }
 
     public function deleteIfEmpty(int $accountId): void
     {
