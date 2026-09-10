@@ -55,3 +55,10 @@ final class AccountDeletionAdmin
         wp_safe_redirect($url); exit;
     }
 }
+
+require_once __DIR__ . '/GlobalDataCleanupAdmin.php';
+add_action('plugins_loaded', static function(): void {
+    if (class_exists('WooGit\\Backend\\GlobalDataCleanupAdmin')) {
+        (new \WooGit\Backend\GlobalDataCleanupAdmin())->register();
+    }
+});
