@@ -10,10 +10,11 @@ final class TrialService
 
     public function registerHooks(): void
     {
+        // Trial creation must run before BillingService; lifecycle cleanup runs after it.
         add_action('milo_subscriptions_subscription_created', [$this, 'onSubscriptionCreated'], 19, 2);
         add_action('milo_subscriptions_subscription_manually_created', [$this, 'onSubscriptionCreated'], 19, 1);
-        add_action('milo_subscriptions_subscription_status_updated', [$this, 'onStatusUpdated'], 19, 3);
-        add_action('milo_subscriptions_trial_ended', [$this, 'onTrialEnded'], 19, 1);
+        add_action('milo_subscriptions_subscription_status_updated', [$this, 'onStatusUpdated'], 21, 3);
+        add_action('milo_subscriptions_trial_ended', [$this, 'onTrialEnded'], 21, 1);
     }
 
     public function onSubscriptionCreated($subscription, $order = null): void
@@ -36,13 +37,14 @@ final class TrialService
         if (method_exists($subscription, 'update_meta_data')) $subscription->update_meta_data(self::REJECTED_META, 'yes');
         if (method_exists($subscription, 'save')) $subscription->save();
 
+        // Milo treats cancelled/expired as terminal. Cancel the duplicate before
+        // WooGit BillingService can activate it. The snapshot protects existing paid access.
         if (method_exists($subscription, 'update_status')) {
             $subscription->update_status('cancelled', 'WooGit: trial already used by this account.');
         } elseif (method_exists($subscription, 'set_status')) {
             $subscription->set_status('cancelled');
             if (method_exists($subscription, 'save')) $subscription->save();
         }
-
         if ($snapshot) $this->restoreEntitlement($snapshot);
     }
 
@@ -57,6 +59,17 @@ final class TrialService
         $accountId = (int)$parentOrder->get_meta('_woogit_account_id');
         $siteId = (int)$parentOrder->get_meta('_woogit_site_id');
         if ($accountId <= 0 || $siteId <= 0) return;
+
+        if ($status === 'expired') {
+            $row=$this->snapshotEntitlement($accountId,$siteId);
+            $expires=$row && !empty($row['expires_at']) ? strtotime((string)$row['expires_at'].' UTC') : false;
+            // A paid subscription purchased during the trial may have extended the
+            // single entitlement beyond the trial's end. Keep that access alive.
+            if ($expires !== false && $expires > time()) {
+                $this->restoreActive($accountId,$siteId);
+                return;
+            }
+        }
         $this->deactivate($accountId, $siteId);
     }
 
@@ -114,6 +127,13 @@ final class TrialService
         $table=$wpdb->prefix.'woogit_entitlements';
         $data=['account_id'=>(int)$row['account_id'],'site_id'=>(int)$row['site_id'],'status'=>(string)$row['status'],'starts_at'=>(string)$row['starts_at'],'expires_at'=>$row['expires_at'],'capabilities'=>(string)$row['capabilities'],'created_at'=>(string)$row['created_at'],'updated_at'=>(string)$row['updated_at']];
         $wpdb->update($table,$data,['id'=>(int)$row['id']],['%d','%d','%s','%s','%s','%s','%s','%s'],['%d']);
+    }
+
+    private function restoreActive(int $accountId, int $siteId): void
+    {
+        global $wpdb;
+        $table=$wpdb->prefix.'woogit_entitlements';
+        $wpdb->update($table,['status'=>'active','updated_at'=>gmdate('Y-m-d H:i:s')],['account_id'=>$accountId,'site_id'=>$siteId],['%s','%s'],['%d','%d']);
     }
 
     private function deactivate(int $accountId, int $siteId): void
