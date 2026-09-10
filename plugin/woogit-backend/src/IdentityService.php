@@ -62,8 +62,8 @@ final class IdentityService
         }
         if(!$user)return false;
 
-        $updatedUser=wp_update_user(['ID'=>(int)$user->ID,'user_pass'=>$password]);
-        if(is_wp_error($updatedUser))return false;
+        // Use WordPress' canonical password API instead of updating the user row directly.
+        wp_set_password($password,(int)$user->ID);
 
         $freshUser=get_userdata((int)$user->ID);
         if(!$freshUser instanceof \WP_User || !wp_check_password($password,$freshUser->user_pass,$freshUser->ID))return false;
