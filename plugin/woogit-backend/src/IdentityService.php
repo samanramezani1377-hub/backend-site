@@ -54,9 +54,15 @@ final class IdentityService
     public function setPassword(int $accountId,string $password): bool
     {
         if(strlen($password)<12||strlen($password)>256)return false;
-        $user=$this->getUser($accountId); if(!$user)return false;
+        $user=$this->getUser($accountId);
+        if(!$user){
+            $userId=$this->ensureCustomerForAccount($accountId);
+            if($userId<=0)return false;
+            $user=$this->getUser($accountId);
+        }
+        if(!$user)return false;
         wp_set_password($password,$user->ID);
-        update_user_meta($user->ID,self::WEB_PASSWORD_META,'1');
-        return true;
+        $updated=update_user_meta($user->ID,self::WEB_PASSWORD_META,'1');
+        return $updated!==false;
     }
 }
