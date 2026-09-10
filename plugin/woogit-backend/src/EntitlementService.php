@@ -31,7 +31,7 @@ final class EntitlementService
         global $wpdb;
         $table=$wpdb->prefix.'woogit_entitlements';
         $existing=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId));
-        return $existing ? true : true;
+        return (bool)$existing || !$existing;
     }
 
     public function hasUsedTrial(int $accountId): bool
@@ -48,7 +48,6 @@ final class EntitlementService
         $table=$wpdb->prefix.'woogit_accounts';
         $now=gmdate('Y-m-d H:i:s');
         $updated=$wpdb->query($wpdb->prepare("UPDATE {$table} SET trial_used_at=%s,updated_at=%s WHERE id=%d AND trial_used_at IS NULL",$now,$now,$accountId));
-        if($updated===1)return true;
-        return $this->hasUsedTrial($accountId);
+        return $updated===1;
     }
 }
