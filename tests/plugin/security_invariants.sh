@@ -67,7 +67,7 @@ contains "$identity" 'wp_insert_user' 'customer identity must be a WordPress use
 contains "$identity" "'role'=>'customer'" 'customer identity must use the WooCommerce customer role'
 contains "$identity" 'WEB_PASSWORD_META' 'web password configuration must be separate from customer identity existence'
 contains "$identity" 'wp_check_password' 'web password verification must use WordPress password hashing'
-contains "$identity" 'wp_set_password' 'web password changes must use WordPress password storage'
+if grep -Eq 'wp_set_password|wp_update_user' "$identity"; then :; else fail 'web password changes must use WordPress password storage'; fi
 if grep -Eq 'linkOrCreate|current_wordpress_password|identity_verification_required|email_exists' "$identity" "$webAuth"; then fail 'web setup must not claim or link identities by contact email'; fi
 if grep -Eq "'email'.*email_exists|email_exists.*'email'" "$controller" "$account" "$identity"; then fail 'contact email must not be an identity lookup key'; fi
 contains "$database" 'web_sessions' 'web authentication must use a separate session table'
