@@ -47,7 +47,11 @@ function woogit_ajax_web_auth() {
     wp_send_json_error(['code'=>$result->get_error_code(),'message'=>'امکان انجام عملیات وجود ندارد.'],$status>=400&&$status<600?$status:500);
   }
   $token=$result['web_session']??($result['session']??'');
-  if($token) woogit_set_web_session($token, isset($result['expires_in'])?(int)$result['expires_in']:3600);
+  if($token){
+    $expires_at=(int)($result['expires_at']??0);
+    $ttl=$expires_at>time()?$expires_at-time():3600;
+    woogit_set_web_session($token,$ttl);
+  }
   wp_send_json_success(['authenticated'=>(bool)$token]);
 }
 
