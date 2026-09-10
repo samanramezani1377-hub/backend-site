@@ -41,14 +41,17 @@ final class Database
     }
     private static function migrateAccountIdentity(string $prefix): bool
     {
-        global $wpdb;$table=$prefix.'accounts';$column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'wp_user_id'));if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN wp_user_id BIGINT UNSIGNED NULL AFTER email");if(false===$result)return false;}
-        $indexes=$wpdb->get_results("SHOW INDEX FROM {$table}",ARRAY_A);$hasUnique=false;foreach($indexes as $index)if(($index['Key_name']??'')==='wp_user_id'&&(int)($index['Non_unique']??1)===0)$hasUnique=true;if(!$hasUnique&&false===$wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY wp_user_id (wp_user_id)"))return false;return true;
+        global $wpdb;$table=$prefix.'accounts';$column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'wp_user_id'));if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN wp_user_id BIGINT UNSIGNED NULL AFTER email");if(false===$result)return false;}$indexes=$wpdb->get_results("SHOW INDEX FROM {$table}",ARRAY_A);$hasUnique=false;foreach($indexes as $index)if(($index['Key_name']??'')==='wp_user_id'&&(int)($index['Non_unique']??1)===0)$hasUnique=true;if(!$hasUnique&&false===$wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY wp_user_id (wp_user_id)"))return false;return true;
     }
     private static function migrateTrialUsage(string $prefix): bool
     {
-        global $wpdb;$table=$prefix.'accounts';$column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'trial_used_at'));if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN trial_used_at DATETIME NULL AFTER web_password_hash");if(false===$result)return false;}
-        $index=$wpdb->get_row($wpdb->prepare("SHOW INDEX FROM {$table} WHERE Key_name=%s",'trial_used_at'));if(!$index&&false===$wpdb->query("ALTER TABLE {$table} ADD KEY trial_used_at (trial_used_at)"))return false;
-        $updated=$wpdb->query("UPDATE {$table} a INNER JOIN {$prefix}entitlements e ON e.account_id=a.id SET a.trial_used_at=COALESCE(a.trial_used_at,e.starts_at) WHERE a.trial_used_at IS NULL AND e.status='trial'");
-        return false!==$updated;
+        global $wpdb;$table=$prefix.'accounts';$column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'trial_used_at'));if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN trial_used_at DATETIME NULL AFTER web_password_hash");if(false===$result)return false;}$index=$wpdb->get_row($wpdb->prepare("SHOW INDEX FROM {$table} WHERE Key_name=%s",'trial_used_at'));if(!$index&&false===$wpdb->query("ALTER TABLE {$table} ADD KEY trial_used_at (trial_used_at)"))return false;$updated=$wpdb->query("UPDATE {$table} a INNER JOIN {$prefix}entitlements e ON e.account_id=a.id SET a.trial_used_at=COALESCE(a.trial_used_at,e.starts_at) WHERE a.trial_used_at IS NULL AND e.status='trial'");return false!==$updated;
     }
 }
+
+require_once __DIR__ . '/AccountDeletionAdmin.php';
+add_action('plugins_loaded', static function(): void {
+    if (class_exists('WooGit\\Backend\\AccountDeletionAdmin')) {
+        (new \WooGit\Backend\AccountDeletionAdmin())->register();
+    }
+});
