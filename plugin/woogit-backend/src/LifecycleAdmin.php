@@ -6,14 +6,14 @@ defined('ABSPATH') || exit;
 final class LifecycleAdmin
 {
     private const ACTION='woogit_lifecycle_admin_action';
-    private static bool $registered=false;
 
     public function register():void
     {
-        if(self::$registered)return;
-        self::$registered=true;
-        add_submenu_page('woogit-accounts','WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$this,'renderSessions']);
-        add_submenu_page('woogit-accounts','WooGit Trials','Trialها','manage_options','woogit-trials',[$this,'renderTrials']);
+        // Register these as real top-level admin pages instead of submenus.
+        // This avoids WordPress resolving the child screen against a parent
+        // slug that may be altered/filtered by another admin registration.
+        add_menu_page('WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$this,'renderSessions'],'dashicons-clock',56.2);
+        add_menu_page('WooGit Trials','Trialها','manage_options','woogit-trials',[$this,'renderTrials'],'dashicons-tickets-alt',56.3);
     }
 
     public function renderSessions():void
