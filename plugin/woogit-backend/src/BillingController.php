@@ -62,7 +62,12 @@ final class BillingController
         if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
         $sessionLimit=$this->billingLimit('billing_status_session',$this->sessionKey($request),self::STATUS_LIMIT);
         if(!$sessionLimit['allowed'])return $this->rateLimited($sessionLimit['retry_after']);
-        return new \WP_REST_Response(['account_id'=>(int)$context['account_id'],'site_id'=>(int)$context['site_id'],'billing'=>$this->billing->getStatus((int)$context['account_id'],(int)$context['site_id'])],200);
+        $accountId=(int)$context['account_id'];
+        $siteId=(int)$context['site_id'];
+        $billing=$this->billing->getStatus($accountId,$siteId);
+        $billing['trial_used']=$this->entitlements->hasUsedTrial($accountId);
+        $billing['trial_available']=!$billing['trial_used'];
+        return new \WP_REST_Response(['account_id'=>$accountId,'site_id'=>$siteId,'billing'=>$billing],200);
     }
 
     public function checkout(\WP_REST_Request $request): \WP_REST_Response
