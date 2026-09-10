@@ -7,11 +7,7 @@ final class LifecycleAdmin
 {
     private const ACTION='woogit_lifecycle_admin_action';
 
-    public function register():void
-    {
-        add_submenu_page('woogit','WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$this,'renderSessions']);
-        add_submenu_page('woogit','WooGit Trials','Trialها','manage_options','woogit-trials',[$this,'renderTrials']);
-    }
+    public function register():void{}
 
     public function renderSessions():void
     {
