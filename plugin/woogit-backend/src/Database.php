@@ -11,7 +11,7 @@ final class Database
         require_once ABSPATH.'wp-admin/includes/upgrade.php';
         $charset=$wpdb->get_charset_collate();
         $prefix=$wpdb->prefix.'woogit_';
-        dbDelta("CREATE TABLE {$prefix}accounts (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,email VARCHAR(190) NULL,wp_user_id BIGINT UNSIGNED NULL,web_password_hash VARCHAR(255) NULL,status VARCHAR(32) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY wp_user_id (wp_user_id),KEY status (status)) {$charset};");
+        dbDelta("CREATE TABLE {$prefix}accounts (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,email VARCHAR(190) NULL,wp_user_id BIGINT UNSIGNED NULL,web_password_hash VARCHAR(255) NULL,trial_used_at DATETIME NULL,status VARCHAR(32) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY wp_user_id (wp_user_id),KEY status (status),KEY trial_used_at (trial_used_at)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}sites (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,canonical_url TEXT NOT NULL,host VARCHAR(190) NOT NULL,status VARCHAR(32) NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY host (host),UNIQUE KEY account_id (account_id),KEY status (status)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}sessions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,scope VARCHAR(20) NULL,token_hash CHAR(64) NOT NULL,expires_at DATETIME NOT NULL,revoked_at DATETIME NULL,created_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY token_hash (token_hash),KEY account_site (account_id,site_id),KEY account_site_scope (account_id,site_id,scope),KEY expires_at (expires_at)) {$charset};");
         dbDelta("CREATE TABLE {$prefix}web_sessions (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,account_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,token_hash CHAR(64) NOT NULL,expires_at DATETIME NOT NULL,revoked_at DATETIME NULL,created_at DATETIME NOT NULL,PRIMARY KEY (id),UNIQUE KEY token_hash (token_hash),KEY account_site (account_id,site_id),KEY expires_at (expires_at)) {$charset};");
@@ -23,6 +23,7 @@ final class Database
         if(version_compare($fromVersion ?: '0.0.0','0.3.5','<') && !self::migrateWebAuth($prefix)){error_log('[WooGit Backend] Database migration to web authentication failed; database version was not advanced.');return;}
         if(version_compare($fromVersion ?: '0.0.0','0.3.6','<') && !self::migrateAccountSiteUniqueness($prefix)){error_log('[WooGit Backend] Database migration to one-account-one-site failed; database version was not advanced.');return;}
         if(version_compare($fromVersion ?: '0.0.0','0.3.7','<') && !self::migrateAccountIdentity($prefix)){error_log('[WooGit Backend] Database migration to WordPress customer identity failed; database version was not advanced.');return;}
+        if(version_compare($fromVersion ?: '0.0.0','0.3.8','<') && !self::migrateTrialUsage($prefix)){error_log('[WooGit Backend] Database migration to one-time trial usage failed; database version was not advanced.');return;}
         if(false===get_option('woogit_backend_version_policy',false))add_option('woogit_backend_version_policy',['latest_version'=>WOOGIT_BACKEND_VERSION,'recommended_version'=>WOOGIT_BACKEND_VERSION,'minimum_supported_version'=>'0.0.0','deprecated_versions'=>[]], '', false);
         update_option('woogit_backend_db_version',WOOGIT_BACKEND_VERSION,false);
     }
@@ -42,5 +43,12 @@ final class Database
     {
         global $wpdb;$table=$prefix.'accounts';$column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'wp_user_id'));if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN wp_user_id BIGINT UNSIGNED NULL AFTER email");if(false===$result)return false;}
         $indexes=$wpdb->get_results("SHOW INDEX FROM {$table}",ARRAY_A);$hasUnique=false;foreach($indexes as $index)if(($index['Key_name']??'')==='wp_user_id'&&(int)($index['Non_unique']??1)===0)$hasUnique=true;if(!$hasUnique&&false===$wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY wp_user_id (wp_user_id)"))return false;return true;
+    }
+    private static function migrateTrialUsage(string $prefix): bool
+    {
+        global $wpdb;$table=$prefix.'accounts';$column=$wpdb->get_row($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s",'trial_used_at'));if(!$column){$result=$wpdb->query("ALTER TABLE {$table} ADD COLUMN trial_used_at DATETIME NULL AFTER web_password_hash");if(false===$result)return false;}
+        $index=$wpdb->get_row($wpdb->prepare("SHOW INDEX FROM {$table} WHERE Key_name=%s",'trial_used_at'));if(!$index&&false===$wpdb->query("ALTER TABLE {$table} ADD KEY trial_used_at (trial_used_at)"))return false;
+        $updated=$wpdb->query("UPDATE {$table} a INNER JOIN {$prefix}entitlements e ON e.account_id=a.id SET a.trial_used_at=COALESCE(a.trial_used_at,e.starts_at) WHERE a.trial_used_at IS NULL AND e.status='trial'");
+        return false!==$updated;
     }
 }
