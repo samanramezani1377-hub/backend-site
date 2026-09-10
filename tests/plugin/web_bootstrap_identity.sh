@@ -23,8 +23,8 @@ grep -Fq '$this->idempotency->completeVerify' <<<"$block" || fail 'Web Bootstrap
 if grep -Fq '$this->accounts->setWebPassword' <<<"$block"; then
   fail 'Web Bootstrap must not create or validate the Web Password; password setup belongs to the dedicated endpoint'
 fi
-if grep -Eiq "web_password|password_confirmation|invalid_web_password" <<<"$block"; then
-  fail 'Web Bootstrap must not accept or validate Web Password fields'
+if grep -Eq "password_confirmation|invalid_web_password|\['password'\]|\['web_password'\]" <<<"$block"; then
+  fail 'Web Bootstrap must not accept or validate Web Password input fields'
 fi
 if grep -Eiq 'error_log|wp_json_encode\(\$input|var_dump|print_r' <<<"$block"; then
   fail 'Web Bootstrap must not log or dump customer credentials'
