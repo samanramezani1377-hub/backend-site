@@ -50,7 +50,7 @@
       <fieldset data-step="4" hidden>
         <legend>۴. بررسی و اتصال</legend>
         <div class="wg-review" data-register-review></div>
-        <p class="wg-hint">با اتصال، Backend ابتدا اعتبار WordPress و WooCommerce و سپس وضعیت حساب WooGit و رمز عبور وب را بررسی می‌کند.</p>
+        <p class="wg-hint">با اتصال، Backend اعتبار WordPress و WooCommerce و وضعیت حساب WooGit را بررسی می‌کند.</p>
         <div class="wg-step-actions"><button class="wg-btn wg-btn--ghost wg-step-prev" type="button">ویرایش</button><button class="wg-btn wg-btn--large" type="submit">اتصال امن فروشگاه</button></div>
       </fieldset>
       <div class="wg-form-message" role="status" aria-live="polite"></div>
