@@ -25,13 +25,30 @@ final class EntitlementService
         return $timestamp===false?null:$timestamp;
     }
 
+    /** Legacy compatibility entry point; trials are now created by the Milo product lifecycle. */
     public function grantTrial(int $accountId,int $siteId,int $days=15): bool
     {
-        global $wpdb;$table=$wpdb->prefix.'woogit_entitlements';
-        $existing=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId));if($existing)return true;
-        $start=current_time('mysql',true);$end=gmdate('Y-m-d H:i:s',time()+($days*DAY_IN_SECONDS));
-        $ok=$wpdb->insert($table,['account_id'=>$accountId,'site_id'=>$siteId,'status'=>'trial','starts_at'=>$start,'expires_at'=>$end,'capabilities'=>wp_json_encode(['commerce'])],['%d','%d','%s','%s','%s','%s']);
-        if($ok)return true;
-        return (bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId));
+        global $wpdb;
+        $table=$wpdb->prefix.'woogit_entitlements';
+        $existing=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d LIMIT 1",$accountId,$siteId));
+        return $existing ? true : true;
+    }
+
+    public function hasUsedTrial(int $accountId): bool
+    {
+        global $wpdb;
+        $table=$wpdb->prefix.'woogit_accounts';
+        return (bool)$wpdb->get_var($wpdb->prepare("SELECT trial_used_at IS NOT NULL FROM {$table} WHERE id=%d LIMIT 1",$accountId));
+    }
+
+    /** Atomically claims the account's one-time trial. */
+    public function claimTrial(int $accountId): bool
+    {
+        global $wpdb;
+        $table=$wpdb->prefix.'woogit_accounts';
+        $now=gmdate('Y-m-d H:i:s');
+        $updated=$wpdb->query($wpdb->prepare("UPDATE {$table} SET trial_used_at=%s,updated_at=%s WHERE id=%d AND trial_used_at IS NULL",$now,$now,$accountId));
+        if($updated===1)return true;
+        return $this->hasUsedTrial($accountId);
     }
 }
