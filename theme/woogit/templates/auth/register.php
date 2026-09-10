@@ -9,7 +9,7 @@
     <div class="wg-stepper" aria-label="مراحل اتصال" role="list">
       <span class="is-active" role="listitem">۱<span>سایت</span></span>
       <span role="listitem">۲<span>دسترسی</span></span>
-      <span role="listitem">۳<span>حساب</span></span>
+      <span role="listitem">۳<span>فروشگاه</span></span>
       <span role="listitem">۴<span>تأیید</span></span>
     </div>
     <form data-woogit-auth="register" data-multistep novalidate>
@@ -36,12 +36,7 @@
         <div class="wg-step-actions"><button class="wg-btn wg-btn--ghost wg-step-prev" type="button">بازگشت</button><button class="wg-btn wg-step-next" type="button">ادامه</button></div>
       </fieldset>
       <fieldset data-step="3" hidden>
-        <legend>۳. حساب WooGit</legend>
-        <div class="wg-field">
-          <label for="woogit-register-web-password">رمز عبور وب</label>
-          <input id="woogit-register-web-password" name="web_password" type="password" autocomplete="new-password" minlength="12" required>
-          <small class="wg-form-hint">حداقل ۱۲ کاراکتر.</small>
-        </div>
+        <legend>۳. دسترسی WooCommerce</legend>
         <div class="wg-field">
           <label for="woogit-register-consumer-key">Consumer Key</label>
           <input id="woogit-register-consumer-key" name="consumer_key" type="text" dir="ltr" autocomplete="off" required>
@@ -55,7 +50,7 @@
       <fieldset data-step="4" hidden>
         <legend>۴. بررسی و اتصال</legend>
         <div class="wg-review" data-register-review></div>
-        <p class="wg-hint">با اتصال، Backend احراز هویت، مالکیت سایت و دسترسی لازم را بررسی می‌کند.</p>
+        <p class="wg-hint">با اتصال، Backend ابتدا اعتبار WordPress و WooCommerce و سپس وضعیت حساب WooGit و رمز عبور وب را بررسی می‌کند.</p>
         <div class="wg-step-actions"><button class="wg-btn wg-btn--ghost wg-step-prev" type="button">ویرایش</button><button class="wg-btn wg-btn--large" type="submit">اتصال امن فروشگاه</button></div>
       </fieldset>
       <div class="wg-form-message" role="status" aria-live="polite"></div>
