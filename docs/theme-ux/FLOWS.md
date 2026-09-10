@@ -22,7 +22,18 @@ Login → Site URL + Web Password → POST /web/login → Web Session → Portal
 
 ## Register / Web Bootstrap
 
-Register → validation → POST /account/web-bootstrap → site verification → Account/Site resolution → Web Credential → Web Session → Portal
+```text
+Register
+  → validation of Site URL + WordPress + WooCommerce credentials
+  → POST /account/web-bootstrap
+  → site verification
+  → Account/Site resolution
+  → Web Session
+  → if web_password_configured=false: Account Security / Set Web Password
+  → otherwise: Portal
+```
+
+Web Password بخشی از Register و Web Bootstrap نیست. رمز فقط در endpoint مستقل `POST /account/setup-web-credentials` برای اولین تنظیم ایجاد می‌شود؛ این endpoint در صورت وجود رمز قبلی نباید آن را overwrite کند.
 
 ## Subscription
 
