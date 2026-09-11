@@ -167,9 +167,11 @@ Site Ownership در این سند به معنای **کنترل معتبر فنی
 
 Subscription و Entitlement مرجع Backend هستند و Account/Plan منقضی نباید outbound request داشته باشد.
 
+در WordPress اصلی WooGit، **WooCommerce مسئول Product/Order/Payment و Milo Subscriptions مسئول Subscription lifecycle** است. Milo جایگزین WooCommerce Subscriptions در V1 است و Backend باید lifecycle آن را از طریق hookهای `milo_subscriptions_*` به Entitlement داخلی همگام کند.
+
 ## ۹. Billing API
 
-Billing در V1 روی WordPress اصلی WooGit و WooCommerce/WooCommerce Subscriptions انجام می‌شود. App نباید وضعیت پرداخت را خودش تعیین کند.
+Billing در V1 روی WordPress اصلی WooGit و WooCommerce + Milo Subscriptions انجام می‌شود. App نباید وضعیت پرداخت را خودش تعیین کند.
 
 Endpoints:
 
@@ -180,18 +182,18 @@ POST /api/v1/billing/checkout
 POST /api/v1/billing/activate-session
 ```
 
-`billing/plans` فقط پلن‌های Subscription قابل فروش و منتشرشده WooCommerce را برمی‌گرداند؛ قیمت و مدت در App hard-code نمی‌شود.
+`billing/plans` فقط پلن‌های Subscription قابل فروش و منتشرشده WooCommerce/Milo را برمی‌گرداند؛ قیمت و مدت در App hard-code نمی‌شود.
 
 `billing/checkout` فقط با WooGit Session معتبر اجرا می‌شود و Account/Site را از Session می‌گیرد، نه از مقادیر قابل جعل Client. Backend یک WooCommerce order مرتبط با همان Account/Site می‌سازد و `payment_url` را برمی‌گرداند تا App صفحه پرداخت وب را باز کند.
 
-پرداخت مستقیماً به Account/Site متصل به Order ثبت می‌شود. موفقیت پرداخت از Client پذیرفته نمی‌شود. WooCommerce/WooCommerce Subscriptions مرجع وضعیت پرداخت و Subscription هستند و Backend از hookهای سروری وضعیت را به Entitlement داخلی همگام می‌کند.
+پرداخت مستقیماً به Account/Site متصل به Order ثبت می‌شود. موفقیت پرداخت از Client پذیرفته نمی‌شود. WooCommerce مرجع سفارش/پرداخت و Milo مرجع Subscription lifecycle است؛ Backend از eventهای server-side این دو لایه وضعیت را به Entitlement داخلی همگام می‌کند.
 
 پس از فعال‌شدن Subscription:
 
 ```text
-WooCommerce Subscription
+WooCommerce Order / Payment
         ↓
-server-side billing event
+Milo Subscription lifecycle event
         ↓
 Account + Site from immutable order metadata
         ↓
