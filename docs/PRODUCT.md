@@ -78,7 +78,9 @@ Backend Proxy عمومی URL دلخواه نیست. مقصد از Site Identity 
 
 ## ۷. Billing
 
-Trial رایگان ۱۵ روزه و Subscription/Entitlement در سمت Backend کنترل می‌شوند. WooCommerce/WooCommerce Subscriptions روی WordPress اصلی WooGit مرجع فروش و چرخه Billing هستند؛ Authorization نهایی با WooGit Backend است.
+Trial رایگان ۱۵ روزه و Subscription/Entitlement در سمت Backend کنترل می‌شوند. روی WordPress اصلی WooGit، **WooCommerce موتور فروش و سفارش/پرداخت است و Milo Subscriptions موتور Subscription و چرخه Renewal، Trial، Cancellation و وضعیت Subscription است**. Authorization نهایی با WooGit Backend است.
+
+Milo Subscriptions جایگزین WooCommerce Subscriptions در معماری V1 است و Backend باید از lifecycle و hookهای Milo برای همگام‌سازی Subscription/Entitlement استفاده کند.
 
 ## ۸. Currency و داده فروشگاه
 
