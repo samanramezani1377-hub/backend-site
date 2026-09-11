@@ -17,7 +17,7 @@ function woogit_portal_data() {
 }
 
 function woogit_plans() {
-  $v=woogit_api_get('billing/plans');
+  $v=woogit_api_get('billing/web-plans');
   return is_wp_error($v)?[]:(array)($v['plans']??$v);
 }
 
