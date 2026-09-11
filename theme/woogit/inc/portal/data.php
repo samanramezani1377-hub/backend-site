@@ -18,7 +18,18 @@ function woogit_portal_data() {
 
 function woogit_plans() {
   $v=woogit_api_get('billing/web-plans');
-  return is_wp_error($v)?[]:(array)($v['plans']??$v);
+  $plans=is_wp_error($v)?[]:(array)($v['plans']??$v);
+  // The zero-price 15-day trial belongs to WooCommerce/Milo on this site.
+  // Keep it out of the App billing contract and append it only to Theme pricing.
+  $trial=woogit_commerce_trial_plan();
+  if($trial) {
+    $exists=false;
+    foreach($plans as $plan){
+      if(is_array($plan) && (int)($plan['id']??0)===(int)$trial['id']){$exists=true;break;}
+    }
+    if(!$exists) $plans[]=$trial;
+  }
+  return $plans;
 }
 
 function woogit_portal_value(array $data, array $keys, $fallback='') {
