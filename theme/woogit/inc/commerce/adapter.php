@@ -78,3 +78,53 @@ function woogit_commerce_payment_method(array $payments): array {
   }
   return [];
 }
+
+/**
+ * Returns the canonical WooCommerce/Milo trial product for the public Theme.
+ * This intentionally bypasses WooGit BillingService so App billing contracts stay untouched.
+ * Supports the current V1 shape: zero price + 15-day subscription, and Milo's native
+ * 15-day free-trial metadata when present.
+ */
+function woogit_commerce_trial_plan(): array {
+  if (!function_exists('wc_get_products')) return [];
+  $products = wc_get_products(['status'=>'publish','limit'=>100,'return'=>'objects','orderby'=>'menu_order','order'=>'ASC']);
+  $fallback = null;
+  foreach ((array)$products as $product) {
+    if (!is_object($product) || !method_exists($product,'get_type')) continue;
+    $type = strtolower((string)$product->get_type());
+    if (strpos($type,'subscription') === false) continue;
+    $enabled = get_post_meta((int)$product->get_id(), '_woogit_plan_enabled', true);
+    if ($enabled !== '' && !in_array($enabled,['yes','1'],true)) continue;
+    if ((float)$product->get_price() !== 0.0) continue;
+    $trialLength=(int)$product->get_meta('_subscription_trial_length');
+    $period=strtolower((string)$product->get_meta('_subscription_period'));
+    $interval=max(1,(int)($product->get_meta('_subscription_period_interval') ?: 1));
+    $is15Day=$trialLength===15 || ($period==='day' && $interval===15);
+    if (!$is15Day) continue;
+    $key=sanitize_title((string)get_post_meta((int)$product->get_id(), '_woogit_plan_key', true));
+    $name=strtolower((string)$product->get_name());
+    if ($key==='trial' || $key==='free-t' || $key==='free_t' || strpos($name,'trial')!==false || strpos($name,'آزمایشی')!==false) {
+      $fallback=$product;
+      break;
+    }
+    if ($fallback===null) $fallback=$product;
+  }
+  if (!$fallback) return [];
+  $id=(int)$fallback->get_id();
+  $url=function_exists('get_permalink') ? (string)get_permalink($id) : '';
+  return [
+    'id'=>$id,
+    'key'=>sanitize_title((string)get_post_meta($id,'_woogit_plan_key',true)) ?: 'trial',
+    'name'=>(string)$fallback->get_name(),
+    'price'=>'0',
+    'regular_price'=>(string)$fallback->get_regular_price(),
+    'currency'=>function_exists('get_woocommerce_currency') ? (string)get_woocommerce_currency() : '',
+    'billing_period'=>(string)$fallback->get_meta('_subscription_period'),
+    'billing_interval'=>(int)($fallback->get_meta('_subscription_period_interval') ?: 1),
+    'description'=>wp_strip_all_tags((string)$fallback->get_short_description()),
+    'type'=>(string)$fallback->get_type(),
+    'requires_variation'=>false,
+    'trial_days'=>15,
+    'web_checkout_url'=>$url,
+  ];
+}
