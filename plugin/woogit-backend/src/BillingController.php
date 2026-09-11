@@ -39,6 +39,7 @@ final class BillingController
     public function register(): void
     {
         register_rest_route('woogit/v1', '/billing/plans', ['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'plans']]);
+        register_rest_route('woogit/v1', '/billing/web-plans', ['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'webPlans']]);
         register_rest_route('woogit/v1', '/billing/status', ['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'status']]);
         register_rest_route('woogit/v1', '/billing/checkout', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'checkout']]);
         register_rest_route('woogit/v1', '/billing/activate-session', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'activateSession']]);
@@ -48,6 +49,13 @@ final class BillingController
     {
         $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
         $limit=$this->rateLimits->check('billing_plans_ip',$this->clientIp(),self::PLANS_LIMIT,self::WINDOW_SECONDS);
+        if(!$limit['allowed'])return $this->rateLimited($limit['retry_after']);
+        return new \WP_REST_Response(['plans'=>$this->billing->getPlans()],200);
+    }
+
+    public function webPlans(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $limit=$this->rateLimits->check('billing_web_plans_ip',$this->clientIp(),self::PLANS_LIMIT,self::WINDOW_SECONDS);
         if(!$limit['allowed'])return $this->rateLimited($limit['retry_after']);
         return new \WP_REST_Response(['plans'=>$this->billing->getPlans()],200);
     }
