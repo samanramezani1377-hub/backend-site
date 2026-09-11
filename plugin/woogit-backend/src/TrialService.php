@@ -7,6 +7,7 @@ final class TrialService
 {
     private const REJECTED_META = '_woogit_trial_rejected';
     private const CLAIMED_META = '_woogit_trial_claimed';
+    private const TRIAL_DAYS = 15;
 
     public function registerHooks(): void
     {
@@ -96,10 +97,22 @@ final class TrialService
 
     private function productHasTrial($product): bool
     {
+        if (!is_object($product) || !method_exists($product, 'get_meta')) return false;
         if ((int)$product->get_meta('_subscription_trial_length') > 0) return true;
+        if ((float)$product->get_price() === 0.0) {
+            $period = strtolower((string)$product->get_meta('_subscription_period'));
+            $interval = max(1, (int)($product->get_meta('_subscription_period_interval') ?: 1));
+            if ($period === 'day' && $interval === self::TRIAL_DAYS) return true;
+        }
         if (method_exists($product, 'get_parent_id') && (int)$product->get_parent_id() > 0 && function_exists('wc_get_product')) {
             $parent = wc_get_product((int)$product->get_parent_id());
-            return $parent ? (int)$parent->get_meta('_subscription_trial_length') > 0 : false;
+            if (!$parent) return false;
+            if ((int)$parent->get_meta('_subscription_trial_length') > 0) return true;
+            if ((float)$parent->get_price() === 0.0) {
+                $period = strtolower((string)$parent->get_meta('_subscription_period'));
+                $interval = max(1, (int)($parent->get_meta('_subscription_period_interval') ?: 1));
+                return $period === 'day' && $interval === self::TRIAL_DAYS;
+            }
         }
         return false;
     }
