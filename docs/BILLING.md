@@ -16,20 +16,20 @@
 ```text
 WordPress اصلی WooGit
 ├── WooCommerce
-├── WooCommerce Subscriptions
+├── Milo Subscriptions
 ├── WooGit Main Plugin
 └── WooGit Theme
 ```
 
-`WooCommerce` مسئول فروش و پرداخت سفارش‌ها است و `WooCommerce Subscriptions` مرجع چرخه اشتراک تجاری مانند دوره، Renewal، Cancellation و وضعیت اشتراک است.
+`WooCommerce` مسئول محصولات، سفارش و پرداخت است و `Milo Subscriptions` مرجع چرخه Subscription مانند Trial، Billing Period، Renewal، Cancellation، Switching و وضعیت Subscription است. Milo در حالت WooCommerce با محصولات، Cart، Checkout و Orders خود WooCommerce یکپارچه می‌شود.
 
-`WooGit Main Plugin` با WooCommerce Subscriptions یکپارچه می‌شود و وضعیت Billing را به مدل داخلی WooGit یعنی `Account`، `Subscription` و `Entitlement` منتقل/تطبیق می‌دهد.
+`WooGit Main Plugin` با lifecycle و hookهای Milo یکپارچه می‌شود و وضعیت Billing را به مدل داخلی WooGit یعنی `Account`، `Subscription` و `Entitlement` منتقل/تطبیق می‌دهد.
 
-**نکته:** WooCommerce Subscriptions جایگزین Authorization داخلی WooGit نیست. برای درخواست‌های محافظت‌شده، WooGit Main Plugin همچنان مرجع نهایی مجوز و Entitlement است.
+**نکته:** Milo Subscriptions جایگزین WooCommerce Subscriptions در V1 است و جایگزین Authorization داخلی WooGit نیست. برای درخواست‌های محافظت‌شده، WooGit Backend همچنان مرجع نهایی مجوز و Entitlement است.
 
 ## ۳. دوره آزمایشی
 
-دوره آزمایشی در سمت سرور و هنگام واجد شرایط شدن حساب ایجاد می‌شود.
+دوره آزمایشی در سمت سرور و هنگام واجد شرایط شدن حساب ایجاد می‌شود و در Milo به‌صورت Subscription واقعی ثبت می‌شود.
 
 ```text
 trial_started_at
@@ -41,7 +41,7 @@ status = trial
 
 ## ۴. مدت پولی
 
-خرید یک Subscription Product باید طبق قانون محصول، مدت مجاز دسترسی را ایجاد یا افزایش دهد.
+خرید یک Subscription Product در Milo باید طبق قانون محصول، مدت مجاز دسترسی را ایجاد یا افزایش دهد.
 
 نمونه:
 
@@ -55,12 +55,12 @@ status = trial
 
 ## ۵. Renewal و Cancellation
 
-چرخه Renewal و Cancellation در V1 توسط `WooCommerce Subscriptions` مدیریت می‌شود. WooGit Main Plugin باید تغییرات معتبر وضعیت Subscription را دریافت و مدل داخلی دسترسی را همگام کند.
+چرخه Renewal و Cancellation در V1 توسط `Milo Subscriptions` مدیریت می‌شود. WooGit Main Plugin باید تغییرات معتبر وضعیت Subscription را از hookهای Milo دریافت و مدل داخلی دسترسی را همگام کند.
 
 ```text
-WooCommerce Subscription
+WooCommerce Order / Payment
         ↓
-Billing event / verified state
+Milo Subscription lifecycle event
         ↓
 WooGit Main Plugin
         ↓
@@ -108,10 +108,10 @@ isAllowed(account, site, capability):
 
 ## ۹. مرز درگاه پرداخت
 
-رویدادهای پرداخت و Renewal باید از مسیرهای رسمی و قابل‌تأیید WooCommerce/WooCommerce Subscriptions به Backend منتقل شوند. رویدادهای دریافتی باید Idempotent پردازش شوند.
+رویدادهای پرداخت از مسیرهای رسمی و قابل‌تأیید WooCommerce و رویدادهای Subscription از lifecycle رسمی Milo به Backend منتقل می‌شوند. رویدادهای دریافتی باید Idempotent پردازش شوند.
 
 ```text
-Payment / Renewal Event
+Payment / Subscription Event
  -> بررسی اصالت و وضعیت
  -> ثبت تراکنش به‌صورت Idempotent
  -> به‌روزرسانی Subscription / Entitlement
@@ -134,7 +134,7 @@ Payment / Renewal Event
 - مدت نگهداری تحلیل؛
 - محدودیت چت.
 
-محصولات Subscription و قیمت‌های فروش در WooCommerce مدیریت می‌شوند و WooGit Main Plugin باید mapping مشخصی بین محصول/Subscription و Plan داخلی داشته باشد.
+محصولات Subscription و قیمت‌های فروش در WooCommerce/Milo مدیریت می‌شوند و WooGit Main Plugin باید mapping مشخصی بین Product/Variation، Milo Subscription و Plan داخلی داشته باشد.
 
 ## ۱۱. رفتار انقضا
 
@@ -157,13 +157,16 @@ Payment / Renewal Event
 
 فقط WooGit Backend می‌تواند مجوز دسترسی صادر کند.
 
-## ۱۳. مرز WooCommerce و WooGit
+## ۱۳. مرز WooCommerce، Milo و WooGit
 
 ```text
-WooCommerce / Subscriptions
-    = فروش، سفارش پرداخت، Renewal و Cancellation
+WooCommerce
+    = Product، Order و Payment
 
-WooGit Main Plugin
+Milo Subscriptions
+    = Subscription، Trial، Billing Period، Renewal، Cancellation و Subscription Status
+
+WooGit Main Plugin / Backend
     = Account، Site، Subscription داخلی، Entitlement و Authorization
 
 Customer WooCommerce
@@ -190,7 +193,7 @@ Session
 
 ### ۱۴.۱ پلن‌ها
 
-`GET /api/v1/billing/plans` پلن‌های Subscription منتشرشده و قابل خرید WooCommerce را برمی‌گرداند. App قیمت، ارز یا مدت را hard-code نمی‌کند.
+`GET /api/v1/billing/plans` پلن‌های Subscription منتشرشده و قابل خرید WooCommerce/Milo را برمی‌گرداند. App قیمت، ارز یا مدت را hard-code نمی‌کند.
 
 ### ۱۴.۲ ایجاد پرداخت
 
@@ -200,7 +203,7 @@ Session
 
 ### ۱۴.۳ تأیید پرداخت و فعال‌سازی
 
-پرداخت از سمت App تأیید نمی‌شود. پس از پرداخت موفق، WooCommerce و WooCommerce Subscriptions رویدادهای سروری خود را اجرا می‌کنند. WooGit Backend از همان رویدادهای سروری، Account/Site موجود در metadata سفارش را resolve کرده و Entitlement را به `active` تبدیل می‌کند.
+پرداخت از سمت App تأیید نمی‌شود. پس از پرداخت موفق، WooCommerce رویدادهای پرداخت خود را اجرا می‌کند و Milo lifecycle مربوط به Subscription را اجرا می‌کند. WooGit Backend از رویدادهای server-side، Account/Site موجود در metadata سفارش را resolve کرده و Entitlement را به `active` تبدیل می‌کند.
 
 ```text
 App
@@ -211,14 +214,16 @@ WooCommerce Order
  ↓
 Payment Gateway
  ↓
-WooCommerce / Subscriptions server-side event
+WooCommerce payment event
+ ↓
+Milo Subscription lifecycle
  ↓
 WooGit Entitlement = active
  ↓
 /forward مجاز می‌شود
 ```
 
-Renewal نیز از مسیر Subscription به Backend همگام می‌شود. لغو اشتراک دسترسی را زودتر از سیاست انقضای واقعی قطع نمی‌کند؛ پس از پایان entitlement، `/forward` دوباره مسدود می‌شود.
+Renewal نیز از مسیر lifecycle Milo به Backend همگام می‌شود. لغو اشتراک دسترسی را زودتر از سیاست انقضای واقعی قطع نمی‌کند؛ پس از پایان entitlement، `/forward` دوباره مسدود می‌شود.
 
 ## ۱۵. Billing Anti-Abuse / Rate Limiting
 
