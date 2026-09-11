@@ -35,6 +35,7 @@ function woogit_portal_status($value, $fallback='نامشخص') {
   $map=[
     'active'=>['فعال','success'],'enabled'=>['فعال','success'],'paid'=>['پرداخت‌شده','success'],'completed'=>['تکمیل‌شده','success'],'success'=>['موفق','success'],'connected'=>['متصل','success'],
     'pending'=>['در انتظار','warning'],'processing'=>['در حال پردازش','warning'],'on-hold'=>['در انتظار','warning'],'trial'=>['آزمایشی','warning'],
+    'none'=>['بدون اشتراک','muted'],
     'inactive'=>['غیرفعال','muted'],'disabled'=>['غیرفعال','muted'],'cancelled'=>['لغوشده','danger'],'canceled'=>['لغوشده','danger'],'failed'=>['ناموفق','danger'],'error'=>['خطا','danger'],'expired'=>['منقضی‌شده','danger'],'disconnected'=>['قطع‌شده','danger']
   ];
   return $map[$key]??[(string)($value!==''?$value:$fallback),'muted'];
