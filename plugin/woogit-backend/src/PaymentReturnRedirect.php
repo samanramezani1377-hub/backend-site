@@ -20,8 +20,7 @@ final class PaymentReturnRedirect
     {
         if (!isset($_SERVER['HTTP_X_WOOGIT_APP_VERSION']) || trim((string)$_SERVER['HTTP_X_WOOGIT_APP_VERSION']) === '') return;
         if (!is_object($order) && function_exists('wc_get_order')) $order = wc_get_order((int)$orderId);
-        if (!is_object($order) || !method_exists($order, 'get_created_via') || !method_exists($order, 'update_meta_data')) return;
-        if ((string)$order->get_created_via() !== 'woogit') return;
+        if (!is_object($order) || !method_exists($order, 'update_meta_data')) return;
         $order->update_meta_data(self::CONTEXT_META, self::APP_CONTEXT);
         $order->save();
     }
