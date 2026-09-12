@@ -9,6 +9,7 @@ final class SessionService
     public const SCOPE_OPERATIONAL = 'operational';
     private const BILLING_TTL_SECONDS = 86400;
     private const ACTIVATION_LOCK_TIMEOUT = 5;
+    private const ISSUE_LOCK_TIMEOUT = 5;
 
     public function authenticate(string $token): ?array
     {
@@ -46,6 +47,11 @@ final class SessionService
         if($lock!==1)return null;
         try{
             if($wpdb->query('START TRANSACTION')===false)return null;
+            $limit=(new EntitlementService())->getSessionLimit($accountId,$siteId);
+            if($limit!==null){
+                $active=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE account_id=%d AND site_id=%d AND scope=%s AND revoked_at IS NULL AND expires_at > %s",$accountId,$siteId,self::SCOPE_OPERATIONAL,current_time('mysql',true)));
+                if($active >= $limit){$wpdb->query('ROLLBACK');return null;}
+            }
             $billing=$wpdb->get_row($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d AND scope=%s AND revoked_at IS NULL AND expires_at > %s ORDER BY id DESC LIMIT 1 FOR UPDATE",$accountId,$siteId,self::SCOPE_BILLING,current_time('mysql',true)),ARRAY_A);
             if(!$billing){$wpdb->query('ROLLBACK');return null;}
             $token='wgs_'.bin2hex(random_bytes(32));
@@ -97,11 +103,29 @@ final class SessionService
         if ($ttlSeconds < 300 || !in_array($scope, [self::SCOPE_BILLING, self::SCOPE_OPERATIONAL], true)) return null;
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_sessions';
-        $token = 'wgs_' . bin2hex(random_bytes(32));
-        $hash = hash('sha256', $token);
-        $now = current_time('mysql', true);
-        $expires = gmdate('Y-m-d H:i:s', time() + $ttlSeconds);
-        $ok = $wpdb->insert($table, ['account_id'=>$accountId,'site_id'=>$siteId,'scope'=>$scope,'token_hash'=>$hash,'expires_at'=>$expires,'created_at'=>$now], ['%d','%d','%s','%s','%s','%s']);
-        return $ok ? $token : null;
+        $lockName='woogit.issue.'.$accountId.'.'.$siteId.'.'.$scope;
+        $lock=(int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,%d)', $lockName, self::ISSUE_LOCK_TIMEOUT));
+        if($lock!==1)return null;
+        try{
+            if($wpdb->query('START TRANSACTION')===false)return null;
+            if($scope===self::SCOPE_OPERATIONAL){
+                $limit=(new EntitlementService())->getSessionLimit($accountId,$siteId);
+                if($limit!==null){
+                    $now=current_time('mysql',true);
+                    $active=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE account_id=%d AND site_id=%d AND scope=%s AND revoked_at IS NULL AND expires_at > %s",$accountId,$siteId,self::SCOPE_OPERATIONAL,$now));
+                    if($active >= $limit){$wpdb->query('ROLLBACK');return null;}
+                }
+            }
+            $token = 'wgs_' . bin2hex(random_bytes(32));
+            $hash = hash('sha256', $token);
+            $now = current_time('mysql', true);
+            $expires = gmdate('Y-m-d H:i:s', time() + $ttlSeconds);
+            $ok = $wpdb->insert($table, ['account_id'=>$accountId,'site_id'=>$siteId,'scope'=>$scope,'token_hash'=>$hash,'expires_at'=>$expires,'created_at'=>$now], ['%d','%d','%s','%s','%s','%s']);
+            if(!$ok){$wpdb->query('ROLLBACK');return null;}
+            if($wpdb->query('COMMIT')===false){$wpdb->query('ROLLBACK');return null;}
+            return $token;
+        }finally{
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lockName));
+        }
     }
 }
