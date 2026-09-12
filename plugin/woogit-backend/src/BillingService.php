@@ -238,7 +238,9 @@ final class BillingService
         if ($status === '' && method_exists($subscription, 'has_status')) $status = $subscription->has_status(['active', 'pending-cancel']) ? 'active' : 'inactive';
         if (!in_array($status, ['active', 'pending-cancel'], true)) return;
         $end = method_exists($subscription, 'get_time') ? (int)$subscription->get_time('end') : 0;
-        $this->activate($accountId, $siteId, (int)$subscription->get_id(), $end > 0 ? $end : null);
+        $start = method_exists($subscription, 'get_time') ? (int)$subscription->get_time('start') : 0;
+        $duration = ($end > 0 && $start > 0 && $end > $start) ? ($end - $start) : null;
+        $this->activate($accountId, $siteId, (int)$subscription->get_id(), $end > 0 ? $end : null, $duration);
     }
 
     private function syncMiloSubscriptionEnd($subscription): void
@@ -316,17 +318,22 @@ final class BillingService
         return has_action('milo_subscriptions_subscription_created') !== false || has_action('milo_subscriptions_renewal_payment_complete') !== false;
     }
 
-    private function activate(int $accountId, int $siteId, ?int $subscriptionId, ?int $expiresTimestamp): void
+    private function activate(int $accountId, int $siteId, ?int $subscriptionId, ?int $expiresTimestamp, ?int $subscriptionDuration = null): void
     {
         global $wpdb;
         $table = $wpdb->prefix . 'woogit_entitlements';
         $sql = 'SELECT starts_at,expires_at FROM ' . $table . ' WHERE account_id=%d AND site_id=%d LIMIT 1';
         $existing = $wpdb->get_row($wpdb->prepare($sql, $accountId, $siteId), ARRAY_A);
         $now = time();
-        $starts = $now;
+        $old = 0;
         if ($existing && !empty($existing['expires_at'])) {
-            $old = strtotime((string)$existing['expires_at']);
-            if ($old > $now) $starts = $old;
+            $old = strtotime((string)$existing['expires_at']) ?: 0;
+        }
+        $starts = $now;
+        if ($old > $now) $starts = $old;
+        if ($subscriptionId && $expiresTimestamp && $old > $now && $expiresTimestamp <= $old) {
+            $extension = $subscriptionDuration ?: ($expiresTimestamp - $now);
+            if ($extension > 0) $expiresTimestamp = $old + $extension;
         }
         $expires = $expiresTimestamp && $expiresTimestamp > $starts ? gmdate('Y-m-d H:i:s', $expiresTimestamp) : null;
         if ($subscriptionId && !$expires) return;
