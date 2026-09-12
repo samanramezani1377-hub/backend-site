@@ -7,10 +7,23 @@ final class PaymentReturnRedirect
 {
     private const ACCOUNT_META = '_woogit_account_id';
     private const SITE_META = '_woogit_site_id';
+    private const CONTEXT_META = '_woogit_payment_context';
+    private const APP_CONTEXT = 'app';
 
     public function register(): void
     {
+        add_action('woocommerce_new_order', [$this, 'markAppOrder'], 20, 2);
         add_filter('woocommerce_get_return_url', [$this, 'filterReturnUrl'], 20, 2);
+    }
+
+    public function markAppOrder($orderId, $order = null): void
+    {
+        if (!isset($_SERVER['HTTP_X_WOOGIT_APP_VERSION']) || trim((string)$_SERVER['HTTP_X_WOOGIT_APP_VERSION']) === '') return;
+        if (!is_object($order) && function_exists('wc_get_order')) $order = wc_get_order((int)$orderId);
+        if (!is_object($order) || !method_exists($order, 'get_created_via') || !method_exists($order, 'update_meta_data')) return;
+        if ((string)$order->get_created_via() !== 'woogit') return;
+        $order->update_meta_data(self::CONTEXT_META, self::APP_CONTEXT);
+        $order->save();
     }
 
     public function filterReturnUrl(string $returnUrl, $order): string
@@ -29,6 +42,11 @@ final class PaymentReturnRedirect
         $pageUrl = get_permalink($page);
         if (!$pageUrl) return $returnUrl;
 
-        return add_query_arg(['order_id' => (int)$order->get_id()], $pageUrl);
+        $args = ['order_id' => (int)$order->get_id()];
+        if ((string)$order->get_meta(self::CONTEXT_META) === self::APP_CONTEXT) {
+            $args['app'] = '1';
+            $args['return_to'] = 'woogit';
+        }
+        return add_query_arg($args, $pageUrl);
     }
 }
