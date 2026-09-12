@@ -46,7 +46,7 @@ get_header();
 <?php if ($order_id > 0): ?><div class="wg-status wg-status--<?php echo esc_attr($state); ?>" role="status">سفارش #<?php echo (int)$order_id; ?></div><?php endif; ?>
 </div>
 <div class="wg-actions" style="justify-content:center;margin-top:28px;">
-<a class="wg-btn" href="<?php echo esc_url(add_query_arg(['app' => '1', 'order_id' => $order_id, 'return_to' => 'woogit'], woogit_page_url('payment-result'))); ?>">بازگشت به WooGit</a>
+<a class="wg-btn" href="<?php echo esc_url(add_query_arg(['app' => '1', 'order_id' => $order_id, 'return_to' => 'woogit', 'close_app' => '1'], woogit_page_url('payment-result'))); ?>">بازگشت به WooGit</a>
 </div>
 </div></div></section>
 <?php get_footer(); ?>
