@@ -37,7 +37,11 @@ if ($slug === 'download') {
 }
 
 if ($slug === 'payment-result') {
-  get_template_part('templates/public/payment-result');
+  if (isset($_GET['app']) && (string)$_GET['app'] === '1') {
+    get_template_part('templates/public/payment-result-app');
+  } else {
+    get_template_part('templates/public/payment-result');
+  }
   return;
 }
 
