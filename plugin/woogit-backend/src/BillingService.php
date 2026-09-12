@@ -202,7 +202,7 @@ final class BillingService
             $this->syncMiloSubscription($subscription);
             return;
         }
-        if (in_array($status, ['cancelled', 'expired'], true)) $this->deactivateForSubscription($subscription);
+        if (in_array($status, ['cancelled', 'expired'], true)) $this->syncMiloSubscriptionEnd($subscription);
     }
 
     public function onMiloRenewalOrderCreated($renewalOrder, $subscription): void
@@ -237,10 +237,25 @@ final class BillingService
         $status = method_exists($subscription, 'get_status') ? strtolower((string)$subscription->get_status()) : '';
         if ($status === '' && method_exists($subscription, 'has_status')) $status = $subscription->has_status(['active', 'pending-cancel']) ? 'active' : 'inactive';
         if (!in_array($status, ['active', 'pending-cancel'], true)) return;
-        $nextPayment = method_exists($subscription, 'get_time') ? (int)$subscription->get_time('next_payment') : 0;
         $end = method_exists($subscription, 'get_time') ? (int)$subscription->get_time('end') : 0;
-        $expires = $nextPayment > 0 ? $nextPayment : ($end > 0 ? $end : null);
-        $this->activate($accountId, $siteId, (int)$subscription->get_id(), $expires);
+        $this->activate($accountId, $siteId, (int)$subscription->get_id(), $end > 0 ? $end : null);
+    }
+
+    private function syncMiloSubscriptionEnd($subscription): void
+    {
+        if (!is_object($subscription) || !method_exists($subscription, 'get_id')) return;
+        $parentOrder = $this->subscriptionParentOrder($subscription);
+        $accountId = $parentOrder ? (int)$parentOrder->get_meta(self::ACCOUNT_META) : (int)$this->objectMeta($subscription, self::ACCOUNT_META);
+        $siteId = $parentOrder ? (int)$parentOrder->get_meta(self::SITE_META) : (int)$this->objectMeta($subscription, self::SITE_META);
+        if ($accountId <= 0 || $siteId <= 0) return;
+        $end = method_exists($subscription, 'get_time') ? (int)$subscription->get_time('end') : 0;
+        if ($end > 0) {
+            $this->activate($accountId, $siteId, (int)$subscription->get_id(), $end);
+            return;
+        }
+        global $wpdb;
+        $table = $wpdb->prefix . 'woogit_entitlements';
+        $wpdb->update($table, ['status' => 'inactive', 'updated_at' => gmdate('Y-m-d H:i:s')], ['account_id' => $accountId, 'site_id' => $siteId], ['%s', '%s'], ['%d', '%d']);
     }
 
     private function syncSubscription(int $subscriptionId): void
@@ -299,17 +314,6 @@ final class BillingService
     private function isMiloAvailable(): bool
     {
         return has_action('milo_subscriptions_subscription_created') !== false || has_action('milo_subscriptions_renewal_payment_complete') !== false;
-    }
-
-    private function deactivateForSubscription($subscription): void
-    {
-        $parentOrder = $this->subscriptionParentOrder($subscription);
-        $accountId = $parentOrder ? (int)$parentOrder->get_meta(self::ACCOUNT_META) : (int)$this->objectMeta($subscription, self::ACCOUNT_META);
-        $siteId = $parentOrder ? (int)$parentOrder->get_meta(self::SITE_META) : (int)$this->objectMeta($subscription, self::SITE_META);
-        if ($accountId <= 0 || $siteId <= 0) return;
-        global $wpdb;
-        $table = $wpdb->prefix . 'woogit_entitlements';
-        $wpdb->update($table, ['status' => 'inactive', 'updated_at' => gmdate('Y-m-d H:i:s')], ['account_id' => $accountId, 'site_id' => $siteId], ['%s', '%s'], ['%d', '%d']);
     }
 
     private function activate(int $accountId, int $siteId, ?int $subscriptionId, ?int $expiresTimestamp): void
