@@ -20,7 +20,10 @@ if grep -q 'invalid_web_password' "$THEME/assets/js/auth.js"; then fail 'auth.js
 grep -q 'id="wg-home-preview"' "$THEME/templates/public/home.php"&&pass 'home contains app preview markup'||fail 'home app preview missing'
 grep -q "templates/portal/' . \$portal_templates\[\$slug\]" "$THEME/page.php"&&grep -q "templates/auth/login" "$THEME/page.php"&&grep -q "templates/auth/register" "$THEME/page.php"&&pass 'WordPress page routing delegates to V1 templates'||fail 'page.php does not delegate V1 page routes correctly'
 grep -q 'woogit_commerce_payment_order' "$THEME/templates/public/payment-result.php"&&pass 'payment return uses scoped WooCommerce adapter'||fail 'payment return is not backed by scoped order adapter'
-grep -q 'entitlementActive' "$THEME/templates/public/payment-result.php"&&grep -q "entitlement==='active'" "$THEME/templates/public/payment-result.php"&&pass 'payment return reconciles entitlement state'||fail 'payment return does not reconcile entitlement state'
+# Entitlement authority belongs to the Backend. The Theme return page may read the backend billing status to
+# present the final state, but it must not reconcile/activate entitlement itself. App reconciliation happens after
+# the WebView closes. Keep this test aligned with that boundary instead of requiring an activation side effect.
+grep -q 'billing/status' "$THEME/templates/public/payment-result.php"&&grep -q 'entitlement_active' "$THEME/templates/public/payment-result.php"&&grep -q "entitlement === 'active'" "$THEME/templates/public/payment-result.php"&&pass 'payment return reads backend entitlement state without reconciling it'||fail 'payment return entitlement-state handling is missing'
 grep -q 'woogit_commerce_payment_method' "$THEME/inc/portal/data.php"&&pass 'payment method selection uses deterministic adapter rule'||fail 'payment method selection rule missing'
 grep -q 'theme-polish.css' "$THEME/inc/setup/theme.php"&&pass 'semantic theme polish stylesheet is enqueued'||fail 'semantic theme polish stylesheet missing from enqueue'
 grep -q 'WooGit.errorMessage' "$THEME/assets/js/core.js"&&pass 'central API error mapping exists'||fail 'central API error mapping missing'
