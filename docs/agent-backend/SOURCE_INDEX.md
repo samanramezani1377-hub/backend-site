@@ -8,12 +8,13 @@ The executable backend is the WordPress plugin under `plugin/woogit-backend/`.
 2. `plugin/woogit-backend/src/RestController.php` — REST routing/controller boundary and request dispatch.
 3. `plugin/woogit-backend/src/BillingController.php` — billing REST boundary.
 4. `plugin/woogit-backend/src/BillingService.php` — billing orchestration/persistence boundary.
-5. `plugin/woogit-backend/src/SessionService.php` — Billing/Operational session lifecycle.
-6. `plugin/woogit-backend/src/AccountService.php` / site/account services — identity and ownership.
-7. `plugin/woogit-backend/src/EntitlementService.php` and related entitlement logic — plan access.
-8. `plugin/woogit-backend/src/WooCommerceProxy.php` / `ProxyPolicy.php` — customer API forwarding/security boundary.
-9. `plugin/woogit-backend/src/IdempotencyService.php` / `OperationService.php` — checkout/operation safety.
-10. `plugin/woogit-backend/src/` remaining services/repositories/models — runtime implementation.
+5. `plugin/woogit-backend/src/MiloEntitlementReconciler.php` — paid-order entitlement stacking/reconciliation boundary for Milo billing.
+6. `plugin/woogit-backend/src/SessionService.php` — Billing/Operational session lifecycle.
+7. `plugin/woogit-backend/src/AccountService.php` / site/account services — identity and ownership.
+8. `plugin/woogit-backend/src/EntitlementService.php` and related entitlement logic — plan access.
+9. `plugin/woogit-backend/src/WooCommerceProxy.php` / `ProxyPolicy.php` — customer API forwarding/security boundary.
+10. `plugin/woogit-backend/src/IdempotencyService.php` / `OperationService.php` — checkout/operation safety.
+11. `plugin/woogit-backend/src/` remaining services/repositories/models — runtime implementation.
 
 ## Contract anchors
 | Area | Source |
@@ -21,6 +22,7 @@ The executable backend is the WordPress plugin under `plugin/woogit-backend/`.
 | Verify site | `src/RestController.php` (`/sites/verify` flow) |
 | Forward customer API | `src/RestController.php` + `src/WooCommerceProxy.php` |
 | Billing plans/status/checkout | `src/BillingController.php` + `src/BillingService.php` |
+| Paid subscription entitlement stacking/reconciliation | `src/MiloEntitlementReconciler.php` |
 | Billing → Operational session exchange | `src/BillingController.php` + `src/SessionService.php` |
 | Session scope/TTL | `src/SessionService.php` |
 | WooCommerce outbound policy | `src/WooCommerceProxy.php` + `src/ProxyPolicy.php` |
