@@ -1,3 +1,5 @@
+# Keep this suite intentionally source-level: it validates security invariants without
+# requiring a live WordPress installation. Full CI still runs the project's PHP tests.
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -5,7 +7,7 @@ PLUGIN="$ROOT/plugin/woogit-backend"
 fail(){ echo "FAIL: $1" >&2; exit 1; }
 contains(){ local file="$1" pattern="$2" label="$3"; grep -Eq "$pattern" "$file" || fail "$label"; }
 while IFS= read -r -d '' file; do php -l "$file" >/dev/null || fail "PHP syntax: $file"; done < <(find "$PLUGIN" -type f -name '*.php' -print0)
-controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; billing="$PLUGIN/src/BillingService.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; identity="$PLUGIN/src/IdentityService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"; requirement="$PLUGIN/src/RequirementService.php"
+controller="$PLUGIN/src/RestController.php"; billingController="$PLUGIN/src/BillingController.php"; billing="$PLUGIN/src/BillingService.php"; policy="$PLUGIN/src/ProxyPolicy.php"; proxy="$PLUGIN/src/WooCommerceProxy.php"; idempotency="$PLUGIN/src/IdempotencyService.php"; operations="$PLUGIN/src/OperationService.php"; database="$PLUGIN/src/Database.php"; account="$PLUGIN/src/AccountService.php"; identity="$PLUGIN/src/IdentityService.php"; site="$PLUGIN/src/SiteService.php"; bootstrap="$PLUGIN/woogit-backend.php"; rate="$PLUGIN/src/RateLimitService.php"; version="$PLUGIN/src/VersionGate.php"; versionAdmin="$PLUGIN/src/VersionAdmin.php"; announcement="$PLUGIN/src/AnnouncementService.php"; announcementController="$PLUGIN/src/AnnouncementController.php"; announcementAdmin="$PLUGIN/src/AnnouncementAdmin.php"; webSession="$PLUGIN/src/WebSessionService.php"; webAuth="$PLUGIN/src/WebAuthController.php"; requirement="$PLUGIN/src/RequirementService.php"; session="$PLUGIN/src/SessionService.php"; sessionPlanAdmin="$PLUGIN/src/SessionPlanAdmin.php"; entitlement="$PLUGIN/src/EntitlementService.php"
 contains "$controller" 'getOwned' 'controller must enforce Site ownership'
 contains "$controller" 'X-WooGit-Session' 'controller must require WooGit Session'
 contains "$controller" 'APP_VERSION_DEPRECATED' 'controller must enforce deprecated-version gate'
@@ -130,4 +132,11 @@ contains "$requirement" 'numeric type is an opaque wire value' 'requirement type
 contains "$webAuth" 'requirements->build' 'requirements endpoint must use generic requirement service'
 if grep -Eq "'type'=>'(account_setup|contact_metadata)'" "$webAuth"; then fail 'requirements endpoint must not emit string semantic types'; fi
 contains "$bootstrap" 'RequirementService' 'generic requirement service must be bootstrapped'
+contains "$session" 'getSessionLimit' 'session issuance must evaluate the current plan session limit'
+contains "$session" 'GET_LOCK' 'session issuance must serialize concurrent limit checks'
+contains "$session" 'COUNT\(\*\).*SCOPE_OPERATIONAL' 'session limit must count active operational sessions'
+contains "$entitlement" 'getSessionLimit' 'entitlement service must resolve plan session limits'
+contains "$entitlement" '_woogit_max_sessions' 'session limit must come from plan configuration'
+contains "$sessionPlanAdmin" '_woogit_max_sessions' 'plan session limit must be persisted on the subscription product'
+contains "$bootstrap" 'SessionPlanAdmin' 'plan session-limit admin must be bootstrapped'
 echo "security invariants: PASS"
