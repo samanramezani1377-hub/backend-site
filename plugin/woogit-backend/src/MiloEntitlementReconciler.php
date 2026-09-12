@@ -4,10 +4,10 @@ namespace WooGit\Backend;
 defined('ABSPATH') || exit;
 
 /**
- * Rebuilds WooGit entitlement expiry from successful WooGit subscription payments.
+ * Rebuilds WooGit entitlement expiry from successful WooCommerce subscription payments.
  *
  * Milo owns subscription scheduling. WooGit entitlement represents paid access,
- * so the paid orders are the durable source for stacking purchased periods.
+ * so paid orders are the durable source for stacking purchased periods.
  */
 final class MiloEntitlementReconciler
 {
@@ -21,6 +21,7 @@ final class MiloEntitlementReconciler
         add_action('woocommerce_payment_complete', [$this, 'onOrderPaid'], 25, 1);
         add_action('woocommerce_order_status_processing', [$this, 'onOrderPaid'], 25, 1);
         add_action('woocommerce_order_status_completed', [$this, 'onOrderPaid'], 25, 1);
+        add_action('woocommerce_order_status_on-hold', [$this, 'onOrderPaid'], 25, 1);
         add_action('milo_subscriptions_renewal_payment_complete', [$this, 'onMiloRenewalPaid'], 25, 2);
         add_filter('rest_request_before_callbacks', [$this, 'beforeBillingStatus'], 5, 3);
     }
@@ -52,7 +53,7 @@ final class MiloEntitlementReconciler
 
     /**
      * Reconcile before the billing-status response so already-paid historical
-     * orders are fixed without requiring the customer to buy another period.
+     * orders are fixed without requiring another purchase.
      */
     public function beforeBillingStatus($response, $handler, $request)
     {
@@ -61,8 +62,6 @@ final class MiloEntitlementReconciler
         if ($request->get_route() !== '/woogit/v1/billing/status') return $response;
 
         $webToken = trim((string)$request->get_header('X-WooGit-Web-Session'));
-        $accountId = 0;
-        $siteId = 0;
         if ($webToken !== '') {
             $session = (new WebSessionService())->authenticate($webToken);
         } else {
@@ -83,12 +82,15 @@ final class MiloEntitlementReconciler
     {
         if ($accountId <= 0 || $siteId <= 0 || !function_exists('wc_get_orders')) return;
 
+        // Do not rely only on processing/completed: some gateways leave a paid
+        // order on-hold while the payment callback finishes. We determine paid
+        // state from date_paid and exclude only terminal non-paid/refunded states.
         $orders = wc_get_orders([
             'limit' => 500,
             'orderby' => 'date',
             'order' => 'ASC',
             'return' => 'objects',
-            'status' => ['processing', 'completed'],
+            'status' => 'any',
             'meta_query' => [
                 ['key' => self::ACCOUNT_META, 'value' => (string)$accountId, 'compare' => '='],
                 ['key' => self::SITE_META, 'value' => (string)$siteId, 'compare' => '='],
@@ -98,20 +100,30 @@ final class MiloEntitlementReconciler
         $cursor = 0;
         $firstPaidAt = 0;
         $found = false;
+        $excludedStatuses = ['pending', 'failed', 'cancelled', 'refunded', 'trash'];
+
         foreach ((array)$orders as $order) {
             if (!is_object($order)) continue;
-            $duration = $this->orderDurationSeconds($order);
-            if ($duration <= 0) continue;
+            $status = strtolower((string)($order->get_status() ?? ''));
+            if (in_array($status, $excludedStatuses, true)) continue;
+
             $paidAt = 0;
             if (method_exists($order, 'get_date_paid')) {
                 $datePaid = $order->get_date_paid();
                 if ($datePaid) $paidAt = $datePaid->getTimestamp();
             }
-            if ($paidAt <= 0 && method_exists($order, 'get_date_created')) {
-                $dateCreated = $order->get_date_created();
-                if ($dateCreated) $paidAt = $dateCreated->getTimestamp();
+            // Processing/completed are treated as paid even on stores/gateways
+            // that do not persist a paid timestamp.
+            if ($paidAt <= 0 && in_array($status, ['processing', 'completed'], true)) {
+                if (method_exists($order, 'get_date_created')) {
+                    $dateCreated = $order->get_date_created();
+                    if ($dateCreated) $paidAt = $dateCreated->getTimestamp();
+                }
             }
             if ($paidAt <= 0) continue;
+
+            $duration = $this->orderDurationSeconds($order);
+            if ($duration <= 0) continue;
             if ($firstPaidAt <= 0) $firstPaidAt = $paidAt;
             if ($cursor < $paidAt) $cursor = $paidAt;
             $cursor += $duration;
