@@ -79,6 +79,37 @@ final class SessionService
         ));
     }
 
+    /** Reconciles existing active sessions after a plan limit changes. */
+    public function reconcileSessionLimits(): int
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'woogit_sessions';
+        $rows = $wpdb->get_results("SELECT DISTINCT account_id, site_id FROM {$table} WHERE scope='operational' AND revoked_at IS NULL AND expires_at > UTC_TIMESTAMP()", ARRAY_A);
+        $revokedTotal = 0;
+        $entitlements = new EntitlementService();
+        foreach ((array)$rows as $row) {
+            $accountId=(int)$row['account_id'];$siteId=(int)$row['site_id'];
+            $limit=$entitlements->getSessionLimit($accountId,$siteId);
+            if($limit===null)continue;
+            $lockName='woogit.limit.'.$accountId.'.'.$siteId;
+            $lock=(int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,1)', $lockName));
+            if($lock!==1)continue;
+            try{
+                $ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM {$table} WHERE account_id=%d AND site_id=%d AND scope=%s AND revoked_at IS NULL AND expires_at > %s ORDER BY id DESC",$accountId,$siteId,self::SCOPE_OPERATIONAL,current_time('mysql',true)));
+                if(count($ids)>$limit){
+                    $excess=array_slice(array_map('intval',$ids),$limit);
+                    if($excess){
+                        $placeholders=implode(',',array_fill(0,count($excess),'%d'));
+                        $now=current_time('mysql',true);
+                        $revoked=$wpdb->query($wpdb->prepare("UPDATE {$table} SET revoked_at=%s WHERE id IN ({$placeholders})",array_merge([$now],$excess)));
+                        if($revoked!==false)$revokedTotal+=(int)$revoked;
+                    }
+                }
+            }finally{$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lockName));}
+        }
+        return $revokedTotal;
+    }
+
     public function revoke(string $token): bool
     {
         $token = trim($token);
