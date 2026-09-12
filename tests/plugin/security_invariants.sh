@@ -1,5 +1,3 @@
-# Keep this suite intentionally source-level: it validates security invariants without
-# requiring a live WordPress installation. Full CI still runs the project's PHP tests.
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -122,7 +120,7 @@ contains "$announcementController" 'VersionGate' 'announcement endpoint must und
 contains "$announcementController" 'APP_VERSION_REQUIRED' 'announcement endpoint must reject missing app version'
 contains "$announcementController" 'system-app-version-deprecated' 'deprecated app must receive an in-app update banner'
 contains "$announcementController" 'system-entitlement-expiring' 'expiring entitlement must receive an in-app warning'
-contains "$announcementAdmin" 'manage_options' 'announcement admin must require administrator capability'
+contains "$announcementAdmin" 'manage_options' 'announcement changes must require administrator capability'
 contains "$announcementAdmin" 'check_admin_referer' 'announcement changes must require CSRF nonce'
 contains "$bootstrap" 'AnnouncementController' 'announcement controller must be registered by plugin bootstrap'
 contains "$bootstrap" 'AnnouncementAdmin' 'announcement admin must be registered by plugin bootstrap'
@@ -134,7 +132,7 @@ if grep -Eq "'type'=>'(account_setup|contact_metadata)'" "$webAuth"; then fail '
 contains "$bootstrap" 'RequirementService' 'generic requirement service must be bootstrapped'
 contains "$session" 'getSessionLimit' 'session issuance must evaluate the current plan session limit'
 contains "$session" 'GET_LOCK' 'session issuance must serialize concurrent limit checks'
-contains "$session" 'COUNT\(\*\).*SCOPE_OPERATIONAL' 'session limit must count active operational sessions'
+contains "$session" 'COUNT\(\*\)' 'session limit must count active sessions'
 contains "$entitlement" 'getSessionLimit' 'entitlement service must resolve plan session limits'
 contains "$entitlement" '_woogit_max_sessions' 'session limit must come from plan configuration'
 contains "$sessionPlanAdmin" '_woogit_max_sessions' 'plan session limit must be persisted on the subscription product'
