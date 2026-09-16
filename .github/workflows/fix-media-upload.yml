@@ -1,0 +1,67 @@
+name: Apply media upload header fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: "!contains(github.event.head_commit.message, 'Preserve media Content-Disposition')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch media proxy headers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          rest = Path('plugin/woogit-backend/src/RestController.php')
+          text = rest.read_text()
+          old = "$rawBody=(string)$request->get_body();$contentType=(string)$request->get_header('content-type');$maxBody="
+          new = "$rawBody=(string)$request->get_body();$contentType=(string)$request->get_header('content-type');$contentDisposition=preg_replace('/[\\r\\n]+/','',(string)$request->get_header('content-disposition'))??'';$maxBody="
+          if old not in text:
+              raise SystemExit('RestController anchor not found')
+          text = text.replace(old, new, 1)
+          old = "$query,$rawBody,$contentType);$status="
+          new = "$query,$rawBody,$contentType,$contentDisposition);$status="
+          if old not in text:
+              raise SystemExit('RestController proxy call anchor not found')
+          text = text.replace(old, new, 1)
+          rest.write_text(text)
+
+          proxy = Path('plugin/woogit-backend/src/WooCommerceProxy.php')
+          text = proxy.read_text()
+          old = "public function forward(string $baseUrl,string $path,string $method,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret,array $query,string $rawBody,string $contentType): array"
+          new = "public function forward(string $baseUrl,string $path,string $method,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret,array $query,string $rawBody,string $contentType,string $contentDisposition=''): array"
+          if old not in text:
+              raise SystemExit('WooCommerceProxy signature anchor not found')
+          text = text.replace(old, new, 1)
+          old = "if($contentType!=='')$headers['Content-Type']=$contentType;"
+          new = "if($contentType!=='')$headers['Content-Type']=$contentType;if($isWordPressMedia&&$contentDisposition!=='')$headers['Content-Disposition']=$contentDisposition;"
+          if old not in text:
+              raise SystemExit('WooCommerceProxy header anchor not found')
+          text = text.replace(old, new, 1)
+          proxy.write_text(text)
+          PY
+
+          git diff --check
+          git diff -- plugin/woogit-backend/src/RestController.php plugin/woogit-backend/src/WooCommerceProxy.php
+
+      - name: Commit changes and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plugin/woogit-backend/src/RestController.php plugin/woogit-backend/src/WooCommerceProxy.php .github/workflows/fix-media-upload.yml
+          git rm .github/workflows/fix-media-upload.yml
+          git commit -m "fix: Preserve media Content-Disposition [skip ci]"
+          git push origin HEAD:main
