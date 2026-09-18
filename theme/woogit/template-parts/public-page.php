@@ -32,7 +32,7 @@ switch ($slug) {
     $items = woogit_theme_items('faq_json', $defaults['faq']);
     break;
   case 'documentation':
-    $intro = woogit_safe_text($options['documentation_intro'] ?? 'راهنمای استفاده و قراردادهای کلیدی WooGit در یک نقطه.');
+    $intro = woogit_safe_text($options['documentation_intro'] ?? 'راهنمای شروع و استفاده از WooGit برای مدیریت فروشگاه از موبایل.');
     $section_title = 'شروع سریع';
     break;
   case 'support':
