@@ -64,4 +64,30 @@ function woogit_sanitize_theme_options($input) {
 }
 
 function woogit_theme_option($key, $default = '') { $options=woogit_theme_options(); return array_key_exists($key,$options) ? $options[$key] : $default; }
+/**
+ * One-time migration for the public content collections.
+ * Older Theme versions could persist a partially populated repeater.
+ * That stored JSON then took precedence over the defaults and made the
+ * public site appear to contain only one item.
+ */
+function woogit_theme_migrate_content_collections() {
+    $version = '2026-09-19-v1-content-collections';
+    if (get_option('woogit_theme_content_migration') === $version) return;
+
+    $options = get_option('woogit_theme_options', []);
+    if (!is_array($options)) $options = [];
+
+    foreach (['features_json', 'steps_json', 'faq_json'] as $key) {
+        $raw = $options[$key] ?? '';
+        $items = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (is_array($items) && count($items) <= 1) {
+            unset($options[$key]);
+        }
+    }
+
+    update_option('woogit_theme_options', $options);
+    update_option('woogit_theme_content_migration', $version, false);
+}
+add_action('after_setup_theme', 'woogit_theme_migrate_content_collections', 20);
+
 function woogit_theme_media_data($id, $size='medium') { $id=absint($id); return ['id'=>$id,'url'=>$id?woogit_theme_image($id,$size):'']; }
