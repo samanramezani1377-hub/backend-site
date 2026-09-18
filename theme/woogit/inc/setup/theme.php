@@ -16,5 +16,12 @@ function woogit_provision_pages(){
   ];foreach($pages as $slug=>$page)woogit_provision_page($slug,$page[0],$page[1]);
 }
 add_action('after_switch_theme','woogit_provision_pages');
+function woogit_ensure_download_page(){
+  $version='2026-09-19-v2-download-page';
+  if(get_option('woogit_download_page_migration')===$version)return;
+  woogit_provision_page('download','دریافت WooGit','');
+  update_option('woogit_download_page_migration',$version,false);
+}
+add_action('after_setup_theme','woogit_ensure_download_page',30);
 function woogit_support_enamad_content($content){if(!is_page('support')||!in_the_loop()||!is_main_query())return $content;$s=woogit_enamad_settings();if(empty($s['enabled'])||($s['placement']??'footer')!=='contact')return $content;$o=woogit_theme_options();$img=woogit_theme_image($o['enamad_image_id']??0,'medium');$html='<section class="wg-enamad wg-contact-enamad" aria-label="نماد اعتماد الکترونیکی"><h3>اعتماد و احراز هویت</h3>';if($img){$image='<img src="'.esc_url($img).'" alt="'.esc_attr($s['alt_text']?:'نماد اعتماد الکترونیکی').'" loading="lazy" width="120" height="120">';$html.=$s['verification_url']?'<a href="'.esc_url($s['verification_url']).'" target="_blank" rel="noopener noreferrer">'.$image.'</a>':$image;}elseif($s['verification_url'])$html.='<a class="wg-badge" href="'.esc_url($s['verification_url']).'" target="_blank" rel="noopener noreferrer">مشاهده نماد اعتماد</a>';return $content.$html.'</section>';}
 add_filter('the_content','woogit_support_enamad_content',20);
