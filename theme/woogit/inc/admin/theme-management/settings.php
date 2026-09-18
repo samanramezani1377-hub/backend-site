@@ -91,47 +91,60 @@ function woogit_theme_migrate_content_collections() {
 add_action('after_setup_theme', 'woogit_theme_migrate_content_collections', 20);
 
 function woogit_theme_normalize_capability_content() {
-    $version = '2026-09-19-v3-capability-content';
+    $version = '2026-09-19-v4-capability-content';
     if (get_option('woogit_theme_capability_migration') === $version) return;
 
     $options = get_option('woogit_theme_options', []);
     if (!is_array($options)) $options = [];
 
+    // Reconcile stored defaults instead of replacing the whole collection. This keeps
+    // administrator-added custom entries while bringing known Theme-owned entries up to date.
     $features = isset($options['features_json']) ? json_decode((string)$options['features_json'], true) : [];
     if (is_array($features)) {
-        $features = array_values(array_filter($features, function($item) {
-            if (!is_array($item)) return false;
-            $title = (string)($item['title'] ?? '');
-            return $title !== 'عملیات گروهی مشتریان' && $title !== 'عملیات گروهی کوپن‌ها';
-        }));
-        $has_ai = false;
+        $feature_updates = [
+            'درون‌ریزی و برون‌ریزی محصولات' => 'محصولات را همراه با اطلاعات، دسته‌بندی‌ها، ویژگی‌ها، تصاویر و Variationها در قالب بسته WooGit درون‌ریزی یا برون‌ریزی کنید.',
+            'مدیریت هوشمند با AI' => 'از قابلیت‌های هوش مصنوعی WooGit برای تعامل هوشمند با فروشگاه و استفاده از ابزارهای مدیریتی اپلیکیشن بهره بگیرید.',
+        ];
+        $seen = [];
+        $normalized = [];
         foreach ($features as $item) {
-            if ((string)($item['title'] ?? '') === 'مدیریت هوشمند با AI') { $has_ai = true; break; }
+            if (!is_array($item)) continue;
+            $title = (string)($item['title'] ?? '');
+            if ($title === 'عملیات گروهی مشتریان' || $title === 'عملیات گروهی کوپن‌ها') continue;
+            if (isset($seen[$title])) continue;
+            if (isset($feature_updates[$title])) $item['description'] = $feature_updates[$title];
+            $normalized[] = $item;
+            $seen[$title] = true;
         }
-        if (!$has_ai) {
-            $features[] = ['title'=>'مدیریت هوشمند با AI','description'=>'از قابلیت‌های هوش مصنوعی WooGit برای تعامل هوشمند با فروشگاه و استفاده از ابزارهای مدیریتی اپلیکیشن بهره بگیرید.','icon'=>'✧','image_id'=>0,'enabled'=>true];
+        if (!isset($seen['مدیریت هوشمند با AI'])) {
+            $normalized[] = ['title'=>'مدیریت هوشمند با AI','description'=>$feature_updates['مدیریت هوشمند با AI'],'icon'=>'✧','image_id'=>0,'enabled'=>true];
         }
-        $options['features_json'] = wp_json_encode($features, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        $options['features_json'] = wp_json_encode($normalized, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     }
 
+    $faq_updates = [
+        'WooGit چیست؟' => 'WooGit اپلیکیشن مدیریت فروشگاه WooCommerce است که ابزارهای مدیریت سفارش‌ها، محصولات، موجودی، مشتریان و کوپن‌ها، تحلیل فروش و کوپن، فاکتور PDF، انتقال محصولات، بارکد و SKU و قابلیت‌های هوش مصنوعی را از طریق موبایل در اختیار شما قرار می‌دهد.',
+        'با WooGit چه کارهایی می‌توانم انجام دهم؟' => 'می‌توانید سفارش‌ها و محصولات را مدیریت کنید، موجودی را بررسی کنید، مشتریان و کوپن‌ها را مدیریت کنید، وضعیت چند سفارش را به‌صورت گروهی تغییر دهید، با بارکد یا SKU محصول را پیدا کنید، فاکتور PDF داشته باشید، محصولات را انتقال دهید و تحلیل فروش و استفاده از کوپن‌ها را ببینید.',
+        'آیا مدیریت مشتریان هم وجود دارد؟' => 'بله. می‌توانید اطلاعات مشتریان را مشاهده، ایجاد، ویرایش و حذف کنید و جزئیات و سفارش‌های مرتبط با هر مشتری را بررسی کنید.',
+        'آیا می‌توانم کوپن‌ها را مدیریت کنم؟' => 'بله. می‌توانید کوپن‌ها را مشاهده، ایجاد و ویرایش و حذف کنید و نوع تخفیف، مبلغ، تاریخ انقضا، محدودیت‌های استفاده، محصولات و دسته‌بندی‌های مرتبط و میزان استفاده را بررسی کنید.',
+        'آیا WooGit قابلیت هوش مصنوعی دارد؟' => 'بله. قابلیت AI تکمیل شده است و برای تعامل هوشمند با فروشگاه و استفاده از ابزارهای مدیریتی WooGit در اپلیکیشن ارائه می‌شود.',
+    ];
     $faq = isset($options['faq_json']) ? json_decode((string)$options['faq_json'], true) : [];
     if (is_array($faq)) {
-        foreach ($faq as &$item) {
+        $seen = [];
+        $normalized = [];
+        foreach ($faq as $item) {
             if (!is_array($item)) continue;
-            $q = (string)($item['question'] ?? '');
-            if ($q === 'آیا مدیریت مشتریان هم وجود دارد؟') {
-                $item['answer'] = 'بله. می‌توانید اطلاعات مشتریان را مشاهده، ایجاد، ویرایش و حذف کنید و جزئیات و سفارش‌های مرتبط با هر مشتری را بررسی کنید.';
-            } elseif ($q === 'آیا می‌توانم کوپن‌ها را مدیریت کنم؟') {
-                $item['answer'] = 'بله. می‌توانید کوپن‌ها را مشاهده، ایجاد، ویرایش و حذف کنید و نوع، مبلغ، محدودیت‌ها، تاریخ انقضا، محصولات و دسته‌بندی‌های مرتبط و میزان استفاده را بررسی کنید.';
-            } elseif ($q === 'با WooGit چه کارهایی می‌توانم انجام دهم؟') {
-                $item['answer'] = 'می‌توانید سفارش‌ها و محصولات را مدیریت کنید، موجودی را بررسی کنید، مشتریان و کوپن‌ها را مدیریت کنید، وضعیت چند سفارش را به‌صورت گروهی تغییر دهید، فاکتور PDF داشته باشید، محصولات را انتقال دهید و تحلیل فروش و استفاده از کوپن‌ها را ببینید.';
-            }
+            $question = (string)($item['question'] ?? '');
+            if (!$question || isset($seen[$question])) continue;
+            if (isset($faq_updates[$question])) $item['answer'] = $faq_updates[$question];
+            $normalized[] = $item;
+            $seen[$question] = true;
         }
-        unset($item);
-        $has_ai_faq = false;
-        foreach ($faq as $item) if (is_array($item) && (string)($item['question'] ?? '') === 'آیا WooGit قابلیت هوش مصنوعی دارد؟') { $has_ai_faq = true; break; }
-        if (!$has_ai_faq) $faq[] = ['question'=>'آیا WooGit قابلیت هوش مصنوعی دارد؟','answer'=>'بله. قابلیت AI تکمیل شده است و برای تعامل هوشمند با فروشگاه و استفاده از ابزارهای مدیریتی WooGit در اپلیکیشن ارائه می‌شود.','enabled'=>true];
-        $options['faq_json'] = wp_json_encode($faq, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        if (!isset($seen['آیا WooGit قابلیت هوش مصنوعی دارد؟'])) {
+            $normalized[] = ['question'=>'آیا WooGit قابلیت هوش مصنوعی دارد؟','answer'=>$faq_updates['آیا WooGit قابلیت هوش مصنوعی دارد؟'],'enabled'=>true];
+        }
+        $options['faq_json'] = wp_json_encode($normalized, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     }
 
     update_option('woogit_theme_options', $options);
