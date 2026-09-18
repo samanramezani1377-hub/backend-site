@@ -23,5 +23,19 @@ function woogit_ensure_download_page(){
   update_option('woogit_download_page_migration',$version,false);
 }
 add_action('after_setup_theme','woogit_ensure_download_page',30);
+function woogit_migrate_documentation_content(){
+  $version='2026-09-19-v1-ai-documentation';
+  if(get_option('woogit_documentation_migration')===$version)return;
+  $page=get_page_by_path('documentation');
+  if($page && is_a($page,'WP_Post')){
+    $old='<p>راهنمای استفاده از WooGit برای مدیریت روزمره فروشگاه WooCommerce از موبایل.</p><h2>شروع کار</h2><ol><li>اپلیکیشن WooGit را نصب کنید.</li><li>فروشگاه WooCommerce خود را متصل کنید.</li><li>مشتریان و کوپن‌ها را مدیریت کنید و سپس تحلیل فروش را بررسی کنید.</li></ol><h2>با WooGit چه کارهایی انجام می‌دهید؟</h2><ul><li>سفارش‌های فروشگاه را مشاهده و مدیریت می‌کنید.</li><li>محصولات، SKU، بارکد، ویژگی‌ها و تصاویر را مدیریت می‌کنید.</li><li>موجودی، فروش و استفاده از کوپن‌ها را از موبایل بررسی می‌کنید.</li><li>با Live Update تغییرات سفارش‌ها را سریع‌تر دنبال می‌کنید.</li></ul>';
+    if((string)$page->post_content===$old){
+      wp_update_post(['ID'=>(int)$page->ID,'post_content'=>'<p>راهنمای قابلیت‌ها و شروع استفاده از WooGit؛ اپلیکیشن مدیریت فروشگاه WooCommerce از موبایل.</p><h2>شروع کار</h2><ol><li>اپلیکیشن WooGit را نصب کنید.</li><li>فروشگاه WooCommerce خود را متصل کنید.</li><li>سفارش‌ها، محصولات، موجودی، مشتریان و کوپن‌ها را مدیریت کنید.</li><li>برای تحلیل فروش و استفاده از کوپن‌ها، بخش تحلیل را بررسی کنید.</li></ol><h2>قابلیت‌های اصلی</h2><ul><li>مدیریت سفارش‌ها، جزئیات سفارش، Live Update و تغییر گروهی وضعیت سفارش‌ها.</li><li>مدیریت محصولات، Variationها، SKU، بارکد، ویژگی‌ها، تصاویر و موجودی.</li><li>مدیریت مشتریان و کوپن‌ها و مشاهده اطلاعات مرتبط با آن‌ها.</li><li>تحلیل فروش و تحلیل استفاده از کوپن‌ها در بازه‌های مختلف.</li><li>فاکتور و خروجی PDF و انتقال محصولات با درون‌ریزی و برون‌ریزی.</li><li>قابلیت هوش مصنوعی برای تعامل هوشمند با فروشگاه و ابزارهای مدیریتی WooGit.</li></ul>']);
+    }
+  }
+  update_option('woogit_documentation_migration',$version,false);
+}
+add_action('after_setup_theme','woogit_migrate_documentation_content',35);
+
 function woogit_support_enamad_content($content){if(!is_page('support')||!in_the_loop()||!is_main_query())return $content;$s=woogit_enamad_settings();if(empty($s['enabled'])||($s['placement']??'footer')!=='contact')return $content;$o=woogit_theme_options();$img=woogit_theme_image($o['enamad_image_id']??0,'medium');$html='<section class="wg-enamad wg-contact-enamad" aria-label="نماد اعتماد الکترونیکی"><h3>اعتماد و احراز هویت</h3>';if($img){$image='<img src="'.esc_url($img).'" alt="'.esc_attr($s['alt_text']?:'نماد اعتماد الکترونیکی').'" loading="lazy" width="120" height="120">';$html.=$s['verification_url']?'<a href="'.esc_url($s['verification_url']).'" target="_blank" rel="noopener noreferrer">'.$image.'</a>':$image;}elseif($s['verification_url'])$html.='<a class="wg-badge" href="'.esc_url($s['verification_url']).'" target="_blank" rel="noopener noreferrer">مشاهده نماد اعتماد</a>';return $content.$html.'</section>';}
 add_filter('the_content','woogit_support_enamad_content',20);
