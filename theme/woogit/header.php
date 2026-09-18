@@ -5,7 +5,7 @@ $portal=woogit_is_portal();
 $managed_logo=woogit_theme_image($options['logo_id']??0,'medium');
 $brand_name=$options['brand_name']??'WooGit';
 $logo=$managed_logo?'<a class="wg-brand" href="'.esc_url(home_url('/')).'" aria-label="'.esc_attr($brand_name).'"><img src="'.esc_url($managed_logo).'" alt="'.esc_attr($brand_name).'" style="max-height:48px;width:auto;display:block"></a>':get_custom_logo();
-?><!doctype html><html <?php language_attributes(); ?>><head><meta charset="<?php bloginfo('charset'); ?>"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="<?php echo esc_attr($options['tagline']??get_bloginfo('description')); ?>"><?php wp_head(); ?></head><body <?php body_class(); ?>><?php wp_body_open(); ?><a class="wg-skip" href="#main">پرش به محتوا</a>
+?><!doctype html><html <?php language_attributes(); ?>><head><meta charset="<?php bloginfo('charset'); ?>"><meta name="viewport" content="width=device-width, initial-scale=1"><?php wp_head(); ?></head><body <?php body_class(); ?>><?php wp_body_open(); ?><a class="wg-skip" href="#main">پرش به محتوا</a>
 <header class="wg-header"><div class="wg-container wg-header__inner">
 <?php if($logo): ?><div class="wg-brand-wrap"><?php echo $logo; ?></div><?php else: ?><a class="wg-brand" href="<?php echo esc_url(home_url('/')); ?>" aria-label="<?php echo esc_attr($brand_name); ?>"><?php echo esc_html($brand_name); ?></a><?php endif; ?>
 <button class="wg-menu-toggle" type="button" aria-expanded="false" aria-controls="wg-nav" aria-label="باز کردن منوی اصلی"><span class="wg-menu-icon" aria-hidden="true"><i></i><i></i><i></i></span><span class="screen-reader-text">منو</span></button>
