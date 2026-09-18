@@ -69,7 +69,7 @@ get_header();
       <article class="wg-card wg-feature-card"><span class="wg-icon"><?php echo esc_html($item['icon']??sprintf('%02d',$n)); ?></span><h3><?php echo esc_html($heading); ?></h3><p><?php echo $body; ?></p></article>
     <?php endforeach; ?>
   </div>
-  <div class="wg-actions"><a class="wg-btn" href="<?php echo esc_url(woogit_page_url('download')); ?>">دریافت WooGit</a><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده قیمت</a></div>
+  <div class="wg-actions"><a class="wg-btn wg-btn--primary" href="<?php echo esc_url(woogit_page_url('download')); ?>">نصب اپ WooGit</a><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده قیمت</a></div>
 </section>
 <?php elseif ($slug === 'faq'): ?>
 <section class="wg-section wg-container" aria-labelledby="wg-public-section-title"><div class="wg-section-head"><span class="wg-eyebrow">راهنما</span><h2 id="wg-public-section-title"><?php echo esc_html($section_title); ?></h2></div><div class="wg-faq-list wg-faq">
@@ -77,7 +77,7 @@ get_header();
 <?php elseif ($slug === 'documentation'): ?>
 <section class="wg-section wg-container"><div class="wg-grid wg-grid--3"><article class="wg-card"><span class="wg-eyebrow">01</span><h2>سفارش‌ها</h2><p>سفارش‌ها را از موبایل مشاهده، بررسی و مدیریت کنید و تغییرات آن‌ها را سریع‌تر دنبال کنید.</p></article><article class="wg-card"><span class="wg-eyebrow">02</span><h2>محصولات و موجودی</h2><p>محصولات را جستجو و ویرایش کنید، SKU و بارکد را برای دسترسی سریع‌تر به کار ببرید و موجودی را کنترل کنید.</p></article><article class="wg-card"><span class="wg-eyebrow">03</span><h2>مشتریان و کوپن‌ها</h2><p>مشتریان و کوپن‌ها را مدیریت کنید و برای کارهای تکراری از عملیات گروهی استفاده کنید.</p></article></div><div class="wg-card wg-content-card"><h2>تحلیل فروش و کوپن</h2><p>فروش را در بازه‌های زمانی مختلف بررسی کنید و میزان استفاده از کوپن‌ها را برای درک بهتر عملکرد فروشگاه دنبال کنید.</p></div></section>
 <?php elseif ($slug === 'support'): ?>
-<section class="wg-section wg-container"><div class="wg-grid wg-grid--2"><article class="wg-card"><span class="wg-eyebrow">اتصال</span><h2>مشکل ورود یا اتصال</h2><p>آدرس فروشگاه و وضعیت اتصال را بررسی کنید. Credentialهای حساس را در پیام پشتیبانی قرار ندهید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('login')); ?>">ورود</a></article><article class="wg-card"><span class="wg-eyebrow">سرویس</span><h2>مشکل اشتراک یا پرداخت</h2><p>موضوع را مشخص کنید؛ سفارش، محصول، موجودی، مشتری، کوپن یا تحلیل فروش و راهنمای مربوط را بررسی کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('service-status')); ?>">وضعیت سرویس</a></article></div></section>
+<section class="wg-section wg-container"><div class="wg-grid wg-grid--2"><article class="wg-card"><span class="wg-eyebrow">اتصال</span><h2>مشکل ورود یا اتصال</h2><p>آدرس فروشگاه و وضعیت اتصال را بررسی کنید. Credentialهای حساس را در پیام پشتیبانی قرار ندهید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('login')); ?>">ورود</a></article><article class="wg-card"><span class="wg-eyebrow">سرویس</span><h2>مشکل اشتراک یا پرداخت</h2><p>اگر درباره اشتراک یا پرداخت سؤال دارید، ابتدا وضعیت حساب و راهنمای مربوط را بررسی کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('service-status')); ?>">وضعیت سرویس</a></article></div></section>
 <?php elseif ($slug === 'service-status'): ?>
 <section class="wg-section wg-container"><div class="wg-card wg-status-card"><div><span class="wg-eyebrow">Live source</span><h2>منبع وضعیت زنده متصل نیست</h2><p>برای جلوگیری از نمایش وضعیت ساختگی، سرویس تا زمان دریافت داده معتبر با وضعیت نامشخص نمایش داده می‌شود.</p></div><span class="wg-badge">نامشخص</span></div></section>
 <?php elseif ($slug === 'privacy' || $slug === 'terms'): ?>
@@ -86,5 +86,5 @@ get_header();
 <section class="wg-section wg-container"><article class="wg-card wg-content-card"><?php while(have_posts()):the_post();the_content();endwhile; ?></article></section>
 <?php endif; ?>
 
-<?php if(in_array($slug,['features','how-it-works','faq','documentation','support'],true)): ?><section class="wg-cta"><div class="wg-container"><span class="wg-eyebrow">WooGit</span><h2>آماده شروع هستید؟</h2><p>از مسیر رسمی WooGit وارد شوید و حساب خود را مدیریت کنید.</p><a class="wg-btn wg-btn--large" href="<?php echo esc_url(woogit_page_url('download')); ?>">دریافت WooGit</a></div></section><?php endif; ?>
+<?php if(in_array($slug,['features','how-it-works','faq','documentation','support'],true)): ?><section class="wg-cta"><div class="wg-container"><span class="wg-eyebrow">WooGit</span><h2>آماده‌اید WooGit را روی موبایل داشته باشید؟</h2><p>اپلیکیشن WooGit را نصب کنید و مدیریت فروشگاه را از موبایل شروع کنید.</p><a class="wg-btn wg-btn--large" href="<?php echo esc_url(woogit_page_url('download')); ?>">نصب اپ WooGit</a></div></section><?php endif; ?>
 <?php get_footer();
