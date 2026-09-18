@@ -19,11 +19,5 @@ function woogit_print_head_meta() {
     $o=woogit_theme_options();
     echo '<meta name="theme-color" content="var(--bg)">';
     $favicon=woogit_theme_image(absint($o['favicon_id']??0),'full');
-    $og=woogit_theme_image(absint($o['og_image_id']??0),'large');
     if($favicon) echo '<link rel="icon" href="'.esc_url($favicon).'">';
-    if($og) {
-        echo '<meta property="og:image" content="'.esc_url($og).'">';
-        echo '<meta name="twitter:card" content="summary_large_image">';
-        echo '<meta name="twitter:image" content="'.esc_url($og).'">';
-    }
 }
