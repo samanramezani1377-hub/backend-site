@@ -21,7 +21,7 @@ $refunded = $order_status === 'refunded';
 if ($paid) {
     $state = 'success';
     $title = 'پرداخت با موفقیت انجام شد';
-    $message = 'پرداخت شما ثبت شد. وضعیت اشتراک در WooGit در حال به‌روزرسانی است.';
+    $message = 'پرداخت شما ثبت شد. وضعیت اشتراک WooGit در حال به‌روزرسانی است.';
 } elseif ($pending) {
     $state = 'pending';
     $title = 'پرداخت در حال بررسی است';
