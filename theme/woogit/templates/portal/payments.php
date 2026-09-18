@@ -7,11 +7,11 @@ $p=$d['payments'];$orders=(array)($p['orders']??[]);$current=max(1,(int)($p['pag
 ?>
 <section class="wg-section wg-portal">
   <div class="wg-container">
-    <div class="wg-section__head"><div><span class="wg-eyebrow">Payments</span><h1>تاریخچه پرداخت‌ها</h1><p>سوابق خرید WooGit از WooCommerce رسمی سایت نمایش داده می‌شود.</p></div></div>
+    <div class="wg-section__head"><div><span class="wg-eyebrow">پرداخت‌ها</span><h1>تاریخچه پرداخت‌ها</h1><p>سوابق پرداخت‌های شما در این بخش نمایش داده می‌شود.</p></div></div>
     <?php if(!$orders): ?>
-      <div class="wg-card wg-empty"><h2>هنوز پرداختی ثبت نشده است.</h2><p>پس از اولین Order معتبر، سوابق اینجا نمایش داده می‌شود.</p><a class="wg-btn" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده پلن‌ها</a></div>
+      <div class="wg-card wg-empty"><h2>هنوز پرداختی ثبت نشده است.</h2><p>پس از اولین پرداخت، سوابق آن در اینجا نمایش داده می‌شود.</p><a class="wg-btn" href="<?php echo esc_url(woogit_page_url('pricing')); ?>">مشاهده پلن‌ها</a></div>
     <?php else: ?>
-      <div class="wg-card wg-table-card"><div class="wg-table-scroll"><table class="wg-table"><thead><tr><th>Order</th><th>تاریخ</th><th>وضعیت</th><th>روش پرداخت</th><th>مبلغ</th></tr></thead><tbody>
+      <div class="wg-card wg-table-card"><div class="wg-table-scroll"><table class="wg-table"><thead><tr><th>شناسه پرداخت</th><th>تاریخ</th><th>وضعیت</th><th>روش پرداخت</th><th>مبلغ</th></tr></thead><tbody>
       <?php foreach($orders as $o): $status=woogit_portal_status($o['status']??'unknown'); ?>
         <tr><td>#<?php echo (int)($o['order_id']??0); ?></td><td><?php echo !empty($o['created_at'])&&strtotime($o['created_at'])?esc_html(wp_date('Y/m/d H:i',strtotime($o['created_at']))):'—'; ?></td><td><span class="wg-status wg-status--<?php echo esc_attr($status[1]); ?>"><?php echo woogit_safe_text($status[0]); ?></span></td><td><?php echo woogit_safe_text($o['payment_method_title']??$o['payment_method']??'—'); ?></td><td><?php echo woogit_safe_text($o['total']??'—'); ?> <?php echo woogit_safe_text($o['currency']??''); ?></td></tr>
       <?php endforeach; ?></tbody></table></div></div>
