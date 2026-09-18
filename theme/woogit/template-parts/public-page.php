@@ -79,7 +79,15 @@ get_header();
 <?php elseif ($slug === 'support'): ?>
 <section class="wg-section wg-container"><div class="wg-grid wg-grid--2"><article class="wg-card"><span class="wg-eyebrow">اتصال</span><h2>مشکل ورود یا اتصال</h2><p>آدرس فروشگاه و وضعیت اتصال را بررسی کنید. Credentialهای حساس را در پیام پشتیبانی قرار ندهید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('login')); ?>">ورود</a></article><article class="wg-card"><span class="wg-eyebrow">سرویس</span><h2>مشکل اشتراک یا پرداخت</h2><p>اگر درباره اشتراک یا پرداخت سؤال دارید، ابتدا وضعیت حساب و راهنمای مربوط را بررسی کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url(woogit_page_url('service-status')); ?>">وضعیت سرویس</a></article></div></section>
 <?php elseif ($slug === 'service-status'): ?>
-<section class="wg-section wg-container"><div class="wg-card wg-status-card"><div><span class="wg-eyebrow">Live source</span><h2>منبع وضعیت زنده متصل نیست</h2><p>برای جلوگیری از نمایش وضعیت ساختگی، سرویس تا زمان دریافت داده معتبر با وضعیت نامشخص نمایش داده می‌شود.</p></div><span class="wg-badge">نامشخص</span></div></section>
+<section class="wg-section wg-container" aria-labelledby="wg-status-title">
+  <div class="wg-section-head"><div><span class="wg-eyebrow">وضعیت سرویس</span><h2 id="wg-status-title">وضعیت فعلی WooGit</h2></div><button type="button" class="wg-btn wg-btn--ghost" data-woogit-status-refresh>بررسی مجدد</button></div>
+  <div class="wg-grid wg-grid--3 wg-service-status-grid">
+    <article class="wg-card wg-status-card" data-woogit-service-card="website"><div><span class="wg-eyebrow">وب‌سایت</span><h3>سایت WooGit</h3><p>این صفحه از وب‌سایت WooGit با موفقیت بارگذاری شده است.</p></div><span class="wg-status wg-status--success" data-woogit-service-state>فعال</span></article>
+    <article class="wg-card wg-status-card" data-woogit-service-card="api"><div><span class="wg-eyebrow">API</span><h3>API و سرویس وب</h3><p>با یک درخواست سبک به یکی از مسیرهای عمومی موجود، دسترسی سرویس بررسی می‌شود.</p></div><span class="wg-status" data-woogit-service-state>در حال بررسی…</span></article>
+    <article class="wg-card wg-status-card" data-woogit-service-card="portal"><div><span class="wg-eyebrow">حساب</span><h3>پرتال و حساب</h3><p>این بخش بدون ورود به حساب شما بررسی می‌شود و از نشست یا اطلاعات شخصی استفاده نمی‌کند.</p></div><span class="wg-status" data-woogit-service-state>در حال بررسی…</span></article>
+  </div>
+  <div class="wg-card wg-service-status-meta"><p><strong>آخرین بررسی:</strong> <time data-woogit-status-time>—</time></p><p><strong>زمان پاسخ سرویس:</strong> <span data-woogit-status-latency>—</span></p><p class="wg-hint" data-woogit-status-note>بررسی خودکار فقط در بارگذاری صفحه انجام می‌شود؛ بررسی دستی نیز محدود شده تا درخواست‌های اضافی به سرویس ارسال نشود.</p></div>
+</section>
 <?php elseif ($slug === 'privacy' || $slug === 'terms'): ?>
 <section class="wg-section wg-container"><article class="wg-card wg-content-card"><?php while(have_posts()):the_post();the_content();endwhile; ?></article></section>
 <?php else: ?>
