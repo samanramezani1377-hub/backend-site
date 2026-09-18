@@ -13,7 +13,7 @@ get_header();
       <span class="wg-eyebrow">Android</span>
       <h2>مدیریت فروشگاه از موبایل</h2>
       <p>سفارش‌ها و محصولات فروشگاهتان را بررسی کنید، وضعیت فروشگاه را دنبال کنید و کارهای روزمره را بدون وابستگی به کامپیوتر انجام دهید.</p>
-      <a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url(home_url('/')); ?>">بازگشت به WooGit</a>
+      <?php $app_url=woogit_theme_option('app_download_url',''); ?><?php if($app_url): ?><a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url($app_url); ?>" target="_blank" rel="noopener noreferrer">نصب اپ WooGit</a><?php else: ?><span class="wg-btn wg-btn--primary wg-btn--large" aria-disabled="true">لینک نصب به‌زودی</span><?php endif; ?>
     </article>
     <article class="wg-card">
       <span class="wg-eyebrow">برای مدیران فروشگاه</span>
@@ -39,7 +39,7 @@ get_header();
     <span class="wg-eyebrow">WooGit</span>
     <h2>مدیریت فروشگاه را از موبایل شروع کنید</h2>
     <p>اپلیکیشن WooGit را نصب کنید، سپس فروشگاهتان را متصل کنید و مدیریت روزمره را شروع کنید.</p>
-    <a class="wg-btn wg-btn--primary" href="<?php echo esc_url(home_url('/')); ?>">نصب اپ WooGit</a>
+    <?php if($app_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($app_url); ?>" target="_blank" rel="noopener noreferrer">نصب اپ WooGit</a><?php else: ?><span class="wg-btn wg-btn--primary" aria-disabled="true">لینک نصب به‌زودی</span><?php endif; ?>
   </div>
 </section>
 <?php get_footer(); ?>
