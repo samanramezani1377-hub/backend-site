@@ -7,7 +7,7 @@ function woogit_register_theme_settings() {
 
 function woogit_theme_json_keys() { return ['faq_json','features_json','steps_json','social_links_json']; }
 function woogit_theme_image_keys() { return ['logo_id','alternate_logo_id','favicon_id','og_image_id','hero_image_id','hero_mobile_image_id','enamad_image_id']; }
-function woogit_theme_url_keys() { return ['hero_cta_url','hero_secondary_url','enamad_verification_url']; }
+function woogit_theme_url_keys() { return ['hero_cta_url','hero_secondary_url','app_download_url','enamad_verification_url']; }
 function woogit_theme_bool_keys() { return ['enamad_enabled','section_features_enabled','section_how_enabled','section_pricing_enabled','section_faq_enabled','section_app_enabled']; }
 
 function woogit_theme_clean_items($key, $items) {
