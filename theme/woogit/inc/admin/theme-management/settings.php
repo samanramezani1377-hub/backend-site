@@ -90,4 +90,53 @@ function woogit_theme_migrate_content_collections() {
 }
 add_action('after_setup_theme', 'woogit_theme_migrate_content_collections', 20);
 
+function woogit_theme_normalize_capability_content() {
+    $version = '2026-09-19-v3-capability-content';
+    if (get_option('woogit_theme_capability_migration') === $version) return;
+
+    $options = get_option('woogit_theme_options', []);
+    if (!is_array($options)) $options = [];
+
+    $features = isset($options['features_json']) ? json_decode((string)$options['features_json'], true) : [];
+    if (is_array($features)) {
+        $features = array_values(array_filter($features, function($item) {
+            if (!is_array($item)) return false;
+            $title = (string)($item['title'] ?? '');
+            return $title !== 'عملیات گروهی مشتریان' && $title !== 'عملیات گروهی کوپن‌ها';
+        }));
+        $has_ai = false;
+        foreach ($features as $item) {
+            if ((string)($item['title'] ?? '') === 'مدیریت هوشمند با AI') { $has_ai = true; break; }
+        }
+        if (!$has_ai) {
+            $features[] = ['title'=>'مدیریت هوشمند با AI','description'=>'از قابلیت‌های هوش مصنوعی WooGit برای تعامل هوشمند با فروشگاه و استفاده از ابزارهای مدیریتی اپلیکیشن بهره بگیرید.','icon'=>'✧','image_id'=>0,'enabled'=>true];
+        }
+        $options['features_json'] = wp_json_encode($features, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+    }
+
+    $faq = isset($options['faq_json']) ? json_decode((string)$options['faq_json'], true) : [];
+    if (is_array($faq)) {
+        foreach ($faq as &$item) {
+            if (!is_array($item)) continue;
+            $q = (string)($item['question'] ?? '');
+            if ($q === 'آیا مدیریت مشتریان هم وجود دارد؟') {
+                $item['answer'] = 'بله. می‌توانید اطلاعات مشتریان را مشاهده، ایجاد، ویرایش و حذف کنید و جزئیات و سفارش‌های مرتبط با هر مشتری را بررسی کنید.';
+            } elseif ($q === 'آیا می‌توانم کوپن‌ها را مدیریت کنم؟') {
+                $item['answer'] = 'بله. می‌توانید کوپن‌ها را مشاهده، ایجاد، ویرایش و حذف کنید و نوع، مبلغ، محدودیت‌ها، تاریخ انقضا، محصولات و دسته‌بندی‌های مرتبط و میزان استفاده را بررسی کنید.';
+            } elseif ($q === 'با WooGit چه کارهایی می‌توانم انجام دهم؟') {
+                $item['answer'] = 'می‌توانید سفارش‌ها و محصولات را مدیریت کنید، موجودی را بررسی کنید، مشتریان و کوپن‌ها را مدیریت کنید، وضعیت چند سفارش را به‌صورت گروهی تغییر دهید، فاکتور PDF داشته باشید، محصولات را انتقال دهید و تحلیل فروش و استفاده از کوپن‌ها را ببینید.';
+            }
+        }
+        unset($item);
+        $has_ai_faq = false;
+        foreach ($faq as $item) if (is_array($item) && (string)($item['question'] ?? '') === 'آیا WooGit قابلیت هوش مصنوعی دارد؟') { $has_ai_faq = true; break; }
+        if (!$has_ai_faq) $faq[] = ['question'=>'آیا WooGit قابلیت هوش مصنوعی دارد؟','answer'=>'بله. قابلیت AI تکمیل شده است و برای تعامل هوشمند با فروشگاه و استفاده از ابزارهای مدیریتی WooGit در اپلیکیشن ارائه می‌شود.','enabled'=>true];
+        $options['faq_json'] = wp_json_encode($faq, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+    }
+
+    update_option('woogit_theme_options', $options);
+    update_option('woogit_theme_capability_migration', $version, false);
+}
+add_action('after_setup_theme', 'woogit_theme_normalize_capability_content', 25);
+
 function woogit_theme_media_data($id, $size='medium') { $id=absint($id); return ['id'=>$id,'url'=>$id?woogit_theme_image($id,$size):'']; }
