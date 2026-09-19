@@ -38,7 +38,7 @@ function woogit_migrate_documentation_content(){
 add_action('after_setup_theme','woogit_migrate_documentation_content',35);
 
 function woogit_migrate_privacy_content(){
-  $version='2026-09-19-v2-final-privacy-policy';
+  $version='2026-09-19-v3-final-privacy-policy';
   if(get_option('woogit_privacy_migration')===$version)return;
   $page=get_page_by_path('privacy');
   if($page && is_a($page,'WP_Post')){
