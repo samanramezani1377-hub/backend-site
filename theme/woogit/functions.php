@@ -50,6 +50,18 @@ function woogit_private_page_slugs() {
   ];
 }
 
+/**
+ * WooGit must never expose a WooCommerce Cart page in the site purchase flow.
+ * Keep the redirect scoped to the Cart page so normal WooCommerce internals and
+ * the WooGit Billing purchase page remain untouched.
+ */
+function woogit_redirect_cart_to_billing() {
+  if (!is_page('cart')) return;
+  wp_safe_redirect(woogit_page_url('billing'), 302);
+  exit;
+}
+add_action('template_redirect', 'woogit_redirect_cart_to_billing', 1);
+
 function woogit_is_private_page_for_seo() {
   if (!is_page()) return false;
   $slug = (string) get_post_field('post_name', get_queried_object_id());
