@@ -62,19 +62,23 @@ add_filter('wpseo_robots', 'woogit_private_page_robots', 20);
 
 /**
  * Keep the same private pages out of Yoast's XML sitemap.
- * This is intentionally limited to the operational pages above; public
- * WooGit pages remain fully indexable and sitemap-eligible.
+ * Yoast's supported page/post exclusion filter works with post IDs, so
+ * resolve the operational pages by slug at runtime and merge their IDs
+ * with any IDs already excluded by Yoast or another integration.
  */
-function woogit_exclude_private_pages_from_sitemap($excluded, $post) {
-  if ($post instanceof WP_Post && $post->post_type === 'page') {
-    $slug = (string) $post->post_name;
-    if (in_array($slug, woogit_private_page_slugs(), true)) {
-      return true;
+function woogit_exclude_private_pages_from_sitemap($excluded_ids) {
+  if (!is_array($excluded_ids)) $excluded_ids = [];
+
+  foreach (woogit_private_page_slugs() as $slug) {
+    $page = get_page_by_path($slug, OBJECT, 'page');
+    if ($page instanceof WP_Post) {
+      $excluded_ids[] = (int) $page->ID;
     }
   }
-  return $excluded;
+
+  return array_values(array_unique(array_map('intval', $excluded_ids)));
 }
-add_filter('wpseo_sitemap_exclude_post', 'woogit_exclude_private_pages_from_sitemap', 20, 2);
+add_filter('wpseo_exclude_from_sitemap_by_post_ids', 'woogit_exclude_private_pages_from_sitemap', 20);
 
 function woogit_ajax_web_auth() {
   if (!check_ajax_referer('woogit_web_auth', 'nonce', false)) wp_send_json_error(['code'=>'invalid_nonce'], 403);
