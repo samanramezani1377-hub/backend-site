@@ -62,6 +62,17 @@ function woogit_redirect_cart_to_billing() {
 }
 add_action('template_redirect', 'woogit_redirect_cart_to_billing', 1);
 
+/**
+ * WooGit must not expose the WooCommerce Checkout page in the site purchase flow.
+ * Billing is the WooGit purchase UI; keep the redirect scoped to the Checkout page.
+ */
+function woogit_redirect_checkout_to_billing() {
+  if (!is_page('checkout')) return;
+  wp_safe_redirect(woogit_page_url('billing'), 302);
+  exit;
+}
+add_action('template_redirect', 'woogit_redirect_checkout_to_billing', 1);
+
 function woogit_is_private_page_for_seo() {
   if (!is_page()) return false;
   $slug = (string) get_post_field('post_name', get_queried_object_id());
