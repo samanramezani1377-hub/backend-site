@@ -25,6 +25,57 @@ add_action('wp_ajax_woogit_web_auth', 'woogit_ajax_web_auth');
 add_action('wp_ajax_nopriv_woogit_portal_action', 'woogit_ajax_portal_action');
 add_action('wp_ajax_woogit_portal_action', 'woogit_ajax_portal_action');
 
+/**
+ * Pages that are operational/private and should not appear in search results.
+ *
+ * Keep these as noindex instead of hard-blocking them in robots.txt so
+ * search engines can see the noindex directive and remove any previously
+ * indexed URLs from their results.
+ */
+function woogit_private_page_slugs() {
+  return [
+    'login',
+    'register',
+    'portal',
+    'subscription',
+    'billing',
+    'payments',
+    'connected-site',
+    'account-security',
+    'payment-result',
+  ];
+}
+
+function woogit_is_private_page_for_seo() {
+  if (!is_page()) return false;
+  $slug = (string) get_post_field('post_name', get_queried_object_id());
+  return in_array($slug, woogit_private_page_slugs(), true);
+}
+
+function woogit_private_page_robots($robots) {
+  if (woogit_is_private_page_for_seo()) {
+    return 'noindex, follow';
+  }
+  return $robots;
+}
+add_filter('wpseo_robots', 'woogit_private_page_robots', 20);
+
+/**
+ * Keep the same private pages out of Yoast's XML sitemap.
+ * This is intentionally limited to the operational pages above; public
+ * WooGit pages remain fully indexable and sitemap-eligible.
+ */
+function woogit_exclude_private_pages_from_sitemap($excluded, $post) {
+  if ($post instanceof WP_Post && $post->post_type === 'page') {
+    $slug = (string) $post->post_name;
+    if (in_array($slug, woogit_private_page_slugs(), true)) {
+      return true;
+    }
+  }
+  return $excluded;
+}
+add_filter('wpseo_sitemap_exclude_post', 'woogit_exclude_private_pages_from_sitemap', 20, 2);
+
 function woogit_ajax_web_auth() {
   if (!check_ajax_referer('woogit_web_auth', 'nonce', false)) wp_send_json_error(['code'=>'invalid_nonce'], 403);
   $type=sanitize_key($_POST['type']??'');
