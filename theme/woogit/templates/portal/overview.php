@@ -17,6 +17,11 @@ $webPassword=!empty($u['web_password_configured']);
 ?>
 <section class="wg-section wg-portal wg-account-dashboard">
 <div class="wg-container">
+  <nav class="wg-account-menu" aria-label="بخش‌های حساب کاربری">
+    <?php foreach(woogit_account_nav() as $item): ?>
+      <a class="<?php echo get_query_var('pagename')===$item[0]?'is-active':''; ?>" href="<?php echo esc_url(woogit_page_url($item[0])); ?>"><?php echo esc_html($item[1]); ?></a>
+    <?php endforeach; ?>
+  </nav>
   <div class="wg-account-hero">
     <div>
       <span class="wg-eyebrow">حساب WooGit</span>
