@@ -6,7 +6,7 @@ function woogit_enqueue_assets(){wp_enqueue_style('woogit-foundation',WOOGIT_THE
 function woogit_provision_page($slug,$title,$content=''){$page=get_page_by_path($slug);if($page)return (int)$page->ID;$id=wp_insert_post(['post_type'=>'page','post_status'=>'publish','post_title'=>$title,'post_name'=>$slug,'post_content'=>$content,'comment_status'=>'closed','ping_status'=>'closed'],true);return is_wp_error($id)?0:(int)$id;}
 function woogit_provision_pages(){
   $pages=[
-    'home'=>['خانه',''],'features'=>['قابلیت‌ها',''],'how-it-works'=>['نحوه کار',''],'pricing'=>['قیمت‌گذاری',''],'faq'=>['سؤالات متداول',''],'download'=>['دریافت WooGit',''],
+    'features'=>['قابلیت‌ها',''],'how-it-works'=>['نحوه کار',''],'pricing'=>['قیمت‌گذاری',''],'faq'=>['سؤالات متداول',''],'download'=>['دریافت WooGit',''],
     'documentation'=>['راهنمای WooGit','<p>راهنمای قابلیت‌ها و شروع استفاده از WooGit؛ اپلیکیشن مدیریت فروشگاه WooCommerce از موبایل.</p><h2>شروع کار</h2><ol><li>اپلیکیشن WooGit را نصب کنید.</li><li>فروشگاه WooCommerce خود را متصل کنید.</li><li>سفارش‌ها، محصولات، موجودی، مشتریان و کوپن‌ها را مدیریت کنید.</li><li>برای تحلیل فروش و استفاده از کوپن‌ها، بخش تحلیل را بررسی کنید.</li></ol><h2>قابلیت‌های اصلی</h2><ul><li>مدیریت سفارش‌ها، جزئیات سفارش، Live Update و تغییر گروهی وضعیت سفارش‌ها.</li><li>مدیریت محصولات، Variationها، SKU، بارکد، ویژگی‌ها، تصاویر و موجودی.</li><li>مدیریت مشتریان و کوپن‌ها و مشاهده اطلاعات مرتبط با آن‌ها.</li><li>تحلیل فروش و تحلیل استفاده از کوپن‌ها در بازه‌های مختلف.</li><li>فاکتور و خروجی PDF و انتقال محصولات با درون‌ریزی و برون‌ریزی.</li><li>قابلیت هوش مصنوعی برای تعامل هوشمند با فروشگاه و ابزارهای مدیریتی WooGit.</li></ul>'],
     'support'=>['پشتیبانی','<p>برای اتصال فروشگاه، استفاده از امکانات اپلیکیشن، اشتراک یا پرداخت، ابتدا سؤال‌های متداول و راهنمای WooGit را بررسی کنید.</p><div class="wg-grid wg-grid--2"><div class="wg-card"><h2>اتصال فروشگاه</h2><p>آدرس فروشگاه و وضعیت اتصال را بررسی کنید و در صورت ادامه مشکل از پشتیبانی کمک بگیرید.</p></div><div class="wg-card"><h2>اشتراک و پرداخت</h2><p>وضعیت اشتراک و پرداخت را از حساب WooGit بررسی و در صورت نیاز پیگیری کنید.</p></div></div>'],
     'service-status'=>['وضعیت سرویس','<p>در این صفحه می‌توانید وضعیت سرویس‌های WooGit را بررسی کنید.</p><p>اگر وضعیت خاصی اعلام نشده باشد، از اطلاعات نمایش‌داده‌شده در حساب خود برای پیگیری وضعیت استفاده کنید.</p>'],
@@ -16,6 +16,26 @@ function woogit_provision_pages(){
   ];foreach($pages as $slug=>$page)woogit_provision_page($slug,$page[0],$page[1]);
 }
 add_action('after_switch_theme','woogit_provision_pages');
+add_action('after_setup_theme','woogit_migrate_homepage_page',20);
+function woogit_migrate_homepage_page(){
+  $version='2026-09-19-v1-real-homepage-page';
+  if(get_option('woogit_homepage_migration')===$version)return;
+
+  // The homepage remains rendered by the existing front-page.php/template,
+  // so this migration changes WordPress's page ownership without changing
+  // the existing homepage markup or visual output.
+  $page=get_page_by_path('home');
+  if(!$page){
+    $id=woogit_provision_page('home','خانه','');
+    $page=$id?get_post($id):null;
+  }
+  if(!$page || !is_a($page,'WP_Post'))return;
+
+  update_option('show_on_front','page');
+  update_option('page_on_front',(int)$page->ID);
+  update_option('page_for_posts',0);
+  update_option('woogit_homepage_migration',$version,false);
+}
 function woogit_ensure_download_page(){
   $version='2026-09-19-v2-download-page';
   if(get_option('woogit_download_page_migration')===$version)return;
