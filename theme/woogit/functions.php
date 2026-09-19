@@ -43,6 +43,10 @@ function woogit_private_page_slugs() {
     'connected-site',
     'account-security',
     'payment-result',
+    'shop',
+    'cart',
+    'checkout',
+    'my-account',
   ];
 }
 
