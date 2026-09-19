@@ -29,3 +29,10 @@
 .wg-account-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1.5rem;padding:1rem 0;color:var(--muted)}
 @media(max-width:900px){.wg-account-nav{flex-direction:column;align-items:stretch;gap:.15rem;width:100%}.wg-account-nav a{padding:.65rem .75rem;border-bottom:0;border-inline-start:2px solid transparent}.wg-account-nav a.is-active{border-inline-start-color:var(--accent)}.wg-account-hero{align-items:stretch;flex-direction:column}.wg-account-grid{grid-template-columns:1fr}}
 @media(max-width:620px){.wg-account-dashboard{padding-top:2rem}.wg-account-hero{padding:1.1rem;border-radius:18px}.wg-account-hero__actions{display:grid;grid-template-columns:1fr}.wg-account-footer{align-items:stretch;flex-direction:column}.wg-account-footer .wg-btn{width:100%}}
+
+/* Account navigation belongs inside the account area, not the global header. */
+.wg-account-menu{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1.25rem;padding:.45rem;border:1px solid var(--line);border-radius:16px;background:var(--glass-bg)}
+.wg-account-menu a{padding:.6rem .8rem;border-radius:11px;color:var(--muted);font-weight:700}
+.wg-account-menu a:hover,.wg-account-menu a:focus-visible,.wg-account-menu a.is-active{color:var(--text);background:var(--surface)}
+.wg-account-menu a.is-active{color:var(--accent)}
+@media(max-width:620px){.wg-account-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.wg-account-menu a{text-align:center}}
