@@ -14,6 +14,8 @@ final class PaymentReturnRedirect
     {
         add_action('woocommerce_new_order', [$this, 'markAppOrder'], 20, 2);
         add_filter('woocommerce_get_return_url', [$this, 'filterReturnUrl'], 20, 2);
+        add_filter('woocommerce_get_cancel_order_url_raw', [$this, 'filterCancelUrl'], 20, 3);
+        add_filter('woocommerce_get_cancel_order_url', [$this, 'filterCancelUrl'], 20, 3);
     }
 
     public function markAppOrder($orderId, $order = null): void
@@ -48,4 +50,34 @@ final class PaymentReturnRedirect
         }
         return add_query_arg($args, $pageUrl);
     }
+
+    public function filterCancelUrl(string $cancelUrl, $order, string $redirect = ''): string
+    {
+        if (!is_object($order) || !method_exists($order, 'get_created_via')) return $cancelUrl;
+        if ((string)$order->get_created_via() !== 'woogit') return $cancelUrl;
+        if (!method_exists($order, 'get_meta')) return $cancelUrl;
+
+        $accountId = (int)$order->get_meta(self::ACCOUNT_META);
+        $siteId = (int)$order->get_meta(self::SITE_META);
+        if ($accountId <= 0 || $siteId <= 0) return $cancelUrl;
+
+        if ((string)$order->get_meta(self::CONTEXT_META) === self::APP_CONTEXT) {
+            $page = get_page_by_path('payment-result', OBJECT, 'page');
+            if (!$page instanceof \WP_Post || $page->post_status !== 'publish') return $cancelUrl;
+
+            $pageUrl = get_permalink($page);
+            if (!$pageUrl) return $cancelUrl;
+
+            return add_query_arg([
+                'app' => '1',
+                'order_id' => (int)$order->get_id(),
+                'return_to' => 'woogit',
+                'close_app' => '1',
+                'cancelled' => '1',
+            ], $pageUrl);
+        }
+
+        return woogit_page_url('pricing');
+    }
+
 }
