@@ -157,6 +157,16 @@ final class SettingsAdmin
                 </div>
 
                 <div class="wg-card">
+                    <h2>اتصال به حساب Developer</h2>
+                    <p class="description">بعد از ذخیره Package Name، Client ID و Client Secret، با این دکمه وارد فرایند رسمی OAuth کافه‌بازار شوید. پس از تأیید، Refresh Token به‌صورت خودکار در Backend ذخیره می‌شود.</p>
+                    <?php if ($settings['client_id'] !== '' && $settings['client_secret_set']): ?>
+                        <p><a class="button button-secondary" href="<?php echo esc_url(rest_url('woogit/v1/billing/bazaar/oauth/authorize')); ?>">اتصال به کافه‌بازار</a></p>
+                    <?php else: ?>
+                        <p class="description">ابتدا Client ID و Client Secret را ذخیره کنید.</p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="wg-card">
                     <h2>وضعیت پیکربندی</h2>
                     <ul>
                         <li>Package Name: <strong><?php echo $settings['package_name'] !== '' ? 'تنظیم شده' : 'تنظیم نشده'; ?></strong></li>
@@ -226,8 +236,8 @@ final class SettingsAdmin
         if ($secret !== '') $current['client_secret'] = $secret;
         if ($refresh !== '') $current['refresh_token'] = $refresh;
 
-        if (empty($current['client_secret']) || empty($current['refresh_token'])) {
-            return [false, $current, 'Client Secret و Refresh Token باید حداقل یک‌بار تنظیم شوند.'];
+        if (empty($current['client_secret'])) {
+            return [false, $current, 'Client Secret را وارد کنید.'];
         }
 
         update_option(self::BAZAAR_OPTION, $current, false);
