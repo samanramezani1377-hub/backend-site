@@ -34,6 +34,8 @@ final class MiloBillingAdminCompatibility
         $bazaarSku = (string)get_post_meta($productId, self::BAZAAR_PRODUCT_META, true);
 
         echo '<div class="options_group woogit-plan-fields">';
+        echo '<p style="margin:12px 0 4px;font-size:14px;font-weight:600;">WooGit</p>';
+        echo '<p style="margin:0 0 12px;color:#646970;">تنظیمات این محصول برای فروش اشتراک WooGit در App و Backend.</p>';
         woocommerce_wp_checkbox([
             'id' => self::PLAN_ENABLED_META,
             'value' => $enabled,
@@ -48,11 +50,13 @@ final class MiloBillingAdminCompatibility
             'description' => 'شناسه پایدار پلن که App می‌تواند برای نمایش/ردیابی استفاده کند.',
             'desc_tip' => true,
         ]);
+        echo '<hr style="margin:16px 0;border:0;border-top:1px solid #dcdcde;">';
+        echo '<p style="margin:0 0 8px;font-size:13px;font-weight:600;">کافه‌بازار</p>';
         woocommerce_wp_text_input([
             'id' => self::BAZAAR_PRODUCT_META,
             'value' => $bazaarSku,
             'label' => 'Cafe Bazaar SKU',
-            'description' => 'شناسه Subscription محصول در کافه‌بازار؛ برای نسخه Bazaar لازم است.',
+            'description' => 'شناسه Subscription این پلن در کافه‌بازار. برای محصول Variable، SKU هر Variation را در همان Variation وارد کنید.',
             'desc_tip' => true,
         ]);
         echo '</div>';
