@@ -6,6 +6,8 @@ defined('ABSPATH') || exit;
 final class BazaarBillingService
 {
     private const ACCESS_TRANSIENT = 'woogit_bazaar_access_token';
+    private const OAUTH_STATE_PREFIX = 'woogit_bazaar_oauth_state_';
+    private const OAUTH_STATE_TTL = 600;
     private const DEFAULT_BASE_URL = 'https://pardakht.cafebazaar.ir';
 
     private function config(string $key): string
@@ -19,6 +21,100 @@ final class BazaarBillingService
         $settings = get_option('woogit_bazaar_settings', []);
         if (!is_array($settings)) $settings = [];
         return trim((string)($settings[$key] ?? ''));
+    }
+
+
+    public function oauthRedirectUri(): string
+    {
+        return rest_url('woogit/v1/billing/bazaar/oauth/callback');
+    }
+
+    public function beginOAuth(int $userId): array
+    {
+        $clientId = $this->config('client_id');
+        if ($clientId === '') return ['ok' => false, 'code' => 'bazaar_client_id_missing'];
+        if ($this->config('client_secret') === '') return ['ok' => false, 'code' => 'bazaar_client_secret_missing'];
+
+        $state = wp_generate_password(48, false, false);
+        $redirectUri = $this->oauthRedirectUri();
+        set_transient(self::OAUTH_STATE_PREFIX . hash('sha256', $state), [
+            'user_id' => $userId,
+            'redirect_uri' => $redirectUri,
+        ], self::OAUTH_STATE_TTL);
+
+        $base = $this->config('api_base_url');
+        if ($base === '') $base = self::DEFAULT_BASE_URL;
+        $authorize = rtrim($base, '/') . '/devapi/v2/auth/authorize/';
+        $url = add_query_arg([
+            'response_type' => 'code',
+            'access_type' => 'offline',
+            'redirect_uri' => $redirectUri,
+            'client_id' => $clientId,
+        ], $authorize);
+
+        return ['ok' => true, 'url' => $url];
+    }
+
+    public function completeOAuth(string $code, string $state): array
+    {
+        $code = trim($code);
+        $state = trim($state);
+        if ($code === '' || $state === '') return ['ok' => false, 'code' => 'bazaar_oauth_invalid_callback'];
+
+        $key = self::OAUTH_STATE_PREFIX . hash('sha256', $state);
+        $stateData = get_transient($key);
+        delete_transient($key);
+        if (!is_array($stateData) || (int)($stateData['user_id'] ?? 0) <= 0) {
+            return ['ok' => false, 'code' => 'bazaar_oauth_invalid_state'];
+        }
+
+        $userId = (int)$stateData['user_id'];
+        $user = get_user_by('id', $userId);
+        if (!$user || !user_can($user, 'manage_options')) {
+            return ['ok' => false, 'code' => 'bazaar_oauth_admin_required'];
+        }
+
+        $clientId = $this->config('client_id');
+        $clientSecret = $this->config('client_secret');
+        if ($clientId === '' || $clientSecret === '') {
+            return ['ok' => false, 'code' => 'bazaar_oauth_credentials_missing'];
+        }
+
+        $redirectUri = trim((string)($stateData['redirect_uri'] ?? ''));
+        if ($redirectUri === '' || !hash_equals($this->oauthRedirectUri(), $redirectUri)) {
+            return ['ok' => false, 'code' => 'bazaar_oauth_redirect_mismatch'];
+        }
+
+        $base = $this->config('api_base_url');
+        if ($base === '') $base = self::DEFAULT_BASE_URL;
+        $response = wp_remote_post(rtrim($base, '/') . '/devapi/v2/auth/token/', [
+            'timeout' => 15,
+            'body' => [
+                'code' => $code,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'redirect_uri' => $redirectUri,
+                'grant_type' => 'authorization_code',
+            ],
+        ]);
+        if (is_wp_error($response)) return ['ok' => false, 'code' => 'bazaar_oauth_token_request_failed'];
+
+        $status = (int)wp_remote_retrieve_response_code($response);
+        $json = json_decode((string)wp_remote_retrieve_body($response), true);
+        if ($status < 200 || $status >= 300 || !is_array($json)) {
+            return ['ok' => false, 'code' => 'bazaar_oauth_token_exchange_failed', 'status' => $status];
+        }
+
+        $refreshToken = trim((string)($json['refresh_token'] ?? ''));
+        if ($refreshToken === '') return ['ok' => false, 'code' => 'bazaar_oauth_refresh_token_missing'];
+
+        $settings = get_option('woogit_bazaar_settings', []);
+        if (!is_array($settings)) $settings = [];
+        $settings['refresh_token'] = $refreshToken;
+        update_option('woogit_bazaar_settings', $settings, false);
+        delete_transient(self::ACCESS_TRANSIENT);
+
+        return ['ok' => true, 'refresh_token' => $refreshToken];
     }
 
     public function verify(int $accountId, int $siteId, string $productId, string $purchaseToken, string $packageName): array
