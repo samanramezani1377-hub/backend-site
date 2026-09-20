@@ -15,7 +15,6 @@ final class BazaarBillingService
             $value = trim((string)constant($constant));
             if ($value !== '') return $value;
         }
-        if (class_exists(BazaarBillingAdmin::class)) return BazaarBillingAdmin::value($key);
         return '';
     }
 
