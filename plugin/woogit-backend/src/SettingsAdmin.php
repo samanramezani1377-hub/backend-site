@@ -160,7 +160,7 @@ final class SettingsAdmin
                     <h2>اتصال به حساب Developer</h2>
                     <p class="description">بعد از ذخیره Package Name، Client ID و Client Secret، با این دکمه وارد فرایند رسمی OAuth کافه‌بازار شوید. پس از تأیید، Refresh Token به‌صورت خودکار در Backend ذخیره می‌شود.</p>
                     <?php if ($settings['client_id'] !== '' && $settings['client_secret_set']): ?>
-                        <p><a class="button button-secondary" href="<?php echo esc_url(rest_url('woogit/v1/billing/bazaar/oauth/authorize')); ?>">اتصال به کافه‌بازار</a></p>
+                        <p><a class="button button-secondary" href="<?php echo esc_url(add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), rest_url('woogit/v1/billing/bazaar/oauth/authorize'))); ?>">اتصال به کافه‌بازار</a></p>
                     <?php else: ?>
                         <p class="description">ابتدا Client ID و Client Secret را ذخیره کنید.</p>
                     <?php endif; ?>
