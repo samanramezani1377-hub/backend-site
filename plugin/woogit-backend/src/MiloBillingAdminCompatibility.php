@@ -7,12 +7,13 @@ final class MiloBillingAdminCompatibility
 {
     private const PLAN_ENABLED_META = '_woogit_plan_enabled';
     private const PLAN_KEY_META = '_woogit_plan_key';
+    private const BAZAAR_PRODUCT_META = '_woogit_bazaar_product_id';
 
     public function registerHooks(): void
     {
         // Milo exposes this hook inside the Subscription product-data panel.
-        // Render the WooGit fields directly here so they are present even when
-        // WooCommerce's legacy subscription visibility classes are not applied.
+        // WooGit-specific plan metadata, including the Cafe Bazaar SKU, belongs
+        // on the Milo subscription product instead of a separate settings page.
         add_action('milo_subscriptions_product_data_panel', [$this, 'renderPlanFields'], 30, 1);
         add_action('woocommerce_process_product_meta', [$this, 'savePlanFields'], 30, 1);
         add_action('admin_footer-post.php', [$this, 'unhideWooGitPlanFields']);
@@ -30,6 +31,7 @@ final class MiloBillingAdminCompatibility
         if ($enabled === '') $enabled = 'yes';
         $key = (string)get_post_meta($productId, self::PLAN_KEY_META, true);
         if ($key === '') $key = sanitize_title((string)$product->get_name());
+        $bazaarSku = (string)get_post_meta($productId, self::BAZAAR_PRODUCT_META, true);
 
         echo '<div class="options_group woogit-plan-fields">';
         woocommerce_wp_checkbox([
@@ -46,13 +48,20 @@ final class MiloBillingAdminCompatibility
             'description' => 'شناسه پایدار پلن که App می‌تواند برای نمایش/ردیابی استفاده کند.',
             'desc_tip' => true,
         ]);
+        woocommerce_wp_text_input([
+            'id' => self::BAZAAR_PRODUCT_META,
+            'value' => $bazaarSku,
+            'label' => 'Cafe Bazaar SKU',
+            'description' => 'شناسه Subscription محصول در کافه‌بازار؛ برای نسخه Bazaar لازم است.',
+            'desc_tip' => true,
+        ]);
         echo '</div>';
     }
 
     public function savePlanFields(int $productId): void
     {
         if (!current_user_can('edit_post', $productId)) return;
-        if (!isset($_POST[self::PLAN_ENABLED_META]) && !isset($_POST[self::PLAN_KEY_META])) return;
+        if (!isset($_POST[self::PLAN_ENABLED_META]) && !isset($_POST[self::PLAN_KEY_META]) && !isset($_POST[self::BAZAAR_PRODUCT_META])) return;
 
         $product = function_exists('wc_get_product') ? wc_get_product($productId) : null;
         if (!$product) return;
@@ -65,6 +74,11 @@ final class MiloBillingAdminCompatibility
 
         update_post_meta($productId, self::PLAN_ENABLED_META, $enabled);
         update_post_meta($productId, self::PLAN_KEY_META, $key);
+
+        $bazaarSku = isset($_POST[self::BAZAAR_PRODUCT_META])
+            ? sanitize_text_field(wp_unslash((string)$_POST[self::BAZAAR_PRODUCT_META]))
+            : '';
+        update_post_meta($productId, self::BAZAAR_PRODUCT_META, $bazaarSku);
     }
 
     public function unhideWooGitPlanFields(): void
