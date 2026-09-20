@@ -10,7 +10,8 @@ final class VersionAdmin
 
     public function register(): void
     {
-        add_submenu_page('woogit','WooGit App Versions','App Versions','manage_options','woogit-app-versions',[$this,'render']);
+        // Kept as a direct compatibility route; the visible entry lives under WooGit → Settings.
+        add_submenu_page(null,'WooGit App Versions','App Versions','manage_options','woogit-app-versions',[$this,'render']);
     }
 
     public function render(): void
