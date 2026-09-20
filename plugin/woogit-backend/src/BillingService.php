@@ -24,45 +24,12 @@ final class BillingService
         add_action('milo_subscriptions_subscription_status_updated', [$this, 'onMiloSubscriptionStatusUpdated'], 20, 3);
         add_action('milo_subscriptions_renewal_order_created', [$this, 'onMiloRenewalOrderCreated'], 20, 2);
         add_action('milo_subscriptions_renewal_payment_complete', [$this, 'onMiloRenewalPaymentComplete'], 20, 2);
-        add_action('woocommerce_product_options_general_product_data', [$this, 'renderPlanFields'], 20, 0);
-        add_action('woocommerce_process_product_meta', [$this, 'savePlanFields'], 20, 1);
         add_action('woocommerce_product_after_variable_attributes', [$this, 'renderBazaarVariationField'], 20, 3);
         add_action('woocommerce_save_product_variation', [$this, 'saveBazaarVariationField'], 20, 2);
         if (function_exists('wcs_get_subscription')) {
             add_action('woocommerce_subscription_status_active', [$this, 'onSubscriptionActive'], 20, 1);
             add_action('woocommerce_subscription_payment_complete', [$this, 'onSubscriptionPaymentComplete'], 20, 1);
         }
-    }
-
-    public function renderPlanFields($hookProduct = null): void
-    {
-        global $product_object;
-        $product = is_object($hookProduct) ? $hookProduct : $product_object;
-        if (!$product || !$this->isSubscriptionProduct($product)) return;
-        $enabled = get_post_meta((int)$product->get_id(), self::PLAN_ENABLED_META, true);
-        if ($enabled === '') $enabled = 'yes';
-        $key = (string)get_post_meta((int)$product->get_id(), self::PLAN_KEY_META, true);
-        if ($key === '') $key = sanitize_title((string)$product->get_name());
-        echo '<div class="options_group show_if_subscription show_if_variable-subscription">';
-        woocommerce_wp_checkbox(['id' => self::PLAN_ENABLED_META, 'value' => $enabled, 'label' => 'WooGit Plan', 'description' => 'این محصول به‌عنوان پلن قابل خرید WooGit در API Billing نمایش داده شود.', 'desc_tip' => true]);
-        woocommerce_wp_text_input(['id' => self::PLAN_KEY_META, 'value' => $key, 'label' => 'WooGit Plan Key', 'description' => 'شناسه پایدار پلن که App می‌تواند برای نمایش/ردیابی استفاده کند.', 'desc_tip' => true]);
-        $bazaarSku = (string)get_post_meta((int)$product->get_id(), self::BAZAAR_PRODUCT_META, true);
-        woocommerce_wp_text_input(['id' => self::BAZAAR_PRODUCT_META, 'value' => $bazaarSku, 'label' => 'Cafe Bazaar SKU', 'description' => 'شناسه Subscription محصول در کافه‌بازار. برای نسخه Bazaar الزامی است.', 'desc_tip' => true]);
-        echo '</div>';
-    }
-
-    public function savePlanFields(int $productId): void
-    {
-        if (!current_user_can('edit_post', $productId)) return;
-        $product = function_exists('wc_get_product') ? wc_get_product($productId) : null;
-        if (!$product || !$this->isSubscriptionProduct($product)) return;
-        $enabled = isset($_POST[self::PLAN_ENABLED_META]) ? 'yes' : 'no';
-        $key = isset($_POST[self::PLAN_KEY_META]) ? sanitize_title(wp_unslash((string)$_POST[self::PLAN_KEY_META])) : '';
-        if ($key === '') $key = sanitize_title((string)$product->get_name());
-        update_post_meta($productId, self::PLAN_ENABLED_META, $enabled);
-        update_post_meta($productId, self::PLAN_KEY_META, $key);
-        $bazaarSku = isset($_POST[self::BAZAAR_PRODUCT_META]) ? sanitize_text_field(wp_unslash((string)$_POST[self::BAZAAR_PRODUCT_META])) : '';
-        update_post_meta($productId, self::BAZAAR_PRODUCT_META, $bazaarSku);
     }
 
     public function getPlans(): array
