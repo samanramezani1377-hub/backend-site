@@ -54,6 +54,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: bash tests/plugin/security_invariants.sh
+      - name: Bazaar OAuth security contract
+        id: bazaar_oauth
+        continue-on-error: true
+        shell: bash
+        run: bash tests/plugin/bazaar_oauth_security.sh
       - name: Proxy security invariants
         id: proxy_security
         continue-on-error: true
@@ -116,6 +121,7 @@ jobs:
           check_step 'Web login Site URL identity test' '${{ steps.web_login.outcome }}'
           check_step 'Web Bootstrap security contract test' '${{ steps.web_bootstrap.outcome }}'
           check_step 'Backend security invariants' '${{ steps.backend_security.outcome }}'
+          check_step 'Bazaar OAuth security contract' '${{ steps.bazaar_oauth.outcome }}'
           check_step 'Proxy security invariants' '${{ steps.proxy_security.outcome }}'
           check_step 'Build installable WordPress plugin ZIP' '${{ steps.build_zip.outcome }}'
           if [ '${{ steps.build_zip.outcome }}' = 'success' ]; then check_step 'Upload installable WordPress plugin ZIP' '${{ steps.upload_zip.outcome }}'; else echo 'SKIP: Upload installable plugin ZIP (build failed)'; fi
