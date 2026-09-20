@@ -15,7 +15,10 @@ final class BazaarBillingService
             $value = trim((string)constant($constant));
             if ($value !== '') return $value;
         }
-        return '';
+
+        $settings = get_option('woogit_bazaar_settings', []);
+        if (!is_array($settings)) $settings = [];
+        return trim((string)($settings[$key] ?? ''));
     }
 
     public function verify(int $accountId, int $siteId, string $productId, string $purchaseToken, string $packageName): array
