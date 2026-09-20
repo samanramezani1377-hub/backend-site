@@ -50,6 +50,7 @@ final class BazaarBillingService
             'access_type' => 'offline',
             'redirect_uri' => $redirectUri,
             'client_id' => $clientId,
+            'state' => $state,
         ], $authorize);
 
         return ['ok' => true, 'url' => $url];
