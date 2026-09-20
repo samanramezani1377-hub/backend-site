@@ -26,6 +26,8 @@ add_action('admin_menu',static function():void{
     add_submenu_page('woogit','WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$lifecycle,'renderSessions']);
     add_submenu_page('woogit','WooGit Trials','Trialها','manage_options','woogit-trials',[$lifecycle,'renderTrials']);
     $settings->register();
+    $version->register();
+    $announcement->register();
 },10);
 add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-accounts')return;?>
 <style>
