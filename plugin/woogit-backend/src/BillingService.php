@@ -24,7 +24,6 @@ final class BillingService
         add_action('milo_subscriptions_subscription_status_updated', [$this, 'onMiloSubscriptionStatusUpdated'], 20, 3);
         add_action('milo_subscriptions_renewal_order_created', [$this, 'onMiloRenewalOrderCreated'], 20, 2);
         add_action('milo_subscriptions_renewal_payment_complete', [$this, 'onMiloRenewalPaymentComplete'], 20, 2);
-        add_action('milo_subscriptions_product_data_panel', [$this, 'renderPlanFields'], 20, 1);
         add_action('woocommerce_product_options_general_product_data', [$this, 'renderPlanFields'], 20, 0);
         add_action('woocommerce_process_product_meta', [$this, 'savePlanFields'], 20, 1);
         add_action('woocommerce_product_after_variable_attributes', [$this, 'renderBazaarVariationField'], 20, 3);
