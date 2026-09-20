@@ -15,12 +15,14 @@ final class BillingController
     private RateLimitService $rateLimits;
     private IdempotencyService $idempotency;
     private OperationService $operations;
+    private BazaarBillingService $bazaar;
 
     private const PLANS_LIMIT = 60;
     private const STATUS_LIMIT = 30;
     private const CHECKOUT_LIMIT = 5;
     private const ACTIVATE_SESSION_LIMIT = 5;
     private const WINDOW_SECONDS = 60;
+    private const BAZAAR_VERIFY_LIMIT = 5;
 
     public function __construct()
     {
@@ -34,6 +36,7 @@ final class BillingController
         $this->rateLimits = new RateLimitService();
         $this->idempotency = new IdempotencyService();
         $this->operations = new OperationService();
+        $this->bazaar = new BazaarBillingService();
     }
 
     public function register(): void
@@ -43,6 +46,7 @@ final class BillingController
         register_rest_route('woogit/v1', '/billing/status', ['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'status']]);
         register_rest_route('woogit/v1', '/billing/checkout', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'checkout']]);
         register_rest_route('woogit/v1', '/billing/activate-session', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'activateSession']]);
+        register_rest_route('woogit/v1', '/billing/bazaar/verify', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'verifyBazaar']]);
     }
 
     public function plans(\WP_REST_Request $request): \WP_REST_Response
@@ -154,6 +158,30 @@ final class BillingController
         return new \WP_REST_Response($body,201);
     }
 
+    public function verifyBazaar(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
+        $ipLimit=$this->rateLimits->check('billing_bazaar_verify_ip',$this->clientIp(),self::BAZAAR_VERIFY_LIMIT,self::WINDOW_SECONDS);
+        if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
+        $context=$this->authenticateAppContext($request);if($context instanceof \WP_REST_Response)return $context;
+        $accountId=(int)$context['account_id'];$siteId=(int)$context['site_id'];
+        $accountSiteLimit=$this->billingLimit('billing_bazaar_verify_account_site',(string)$accountId.':'.$siteId,self::BAZAAR_VERIFY_LIMIT);
+        if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
+        if(($context['scope']??'')!==SessionService::SCOPE_BILLING)return new \WP_REST_Response(['code'=>'session_already_operational'],409);
+        $input=$request->get_json_params();
+        if(!is_array($input))return new \WP_REST_Response(['code'=>'invalid_request'],400);
+        $productId=trim((string)($input['product_id']??''));
+        $purchaseToken=trim((string)($input['purchase_token']??''));
+        $packageName=trim((string)($input['package_name']??''));
+        if($productId===''||$purchaseToken===''||$packageName==='')return new \WP_REST_Response(['code'=>'invalid_bazaar_purchase'],400);
+        $result=$this->bazaar->verify($accountId,$siteId,$productId,$purchaseToken,$packageName);
+        if(!$result['ok'])return new \WP_REST_Response(['code'=>$result['code']],in_array($result['code'],['bazaar_purchase_invalid','bazaar_purchase_expired','bazaar_purchase_not_active','bazaar_package_mismatch','bazaar_purchase_already_claimed'],true)?409:400);
+        $expires=isset($result['expires_at'])?strtotime((string)$result['expires_at']):false;
+        if(!$expires || $expires<=time()+300)return new \WP_REST_Response(['code'=>'entitlement_expiring'],403);
+        $token=$this->sessions->activateOperationalFromBilling($accountId,$siteId,$expires);
+        if(!$token)return new \WP_REST_Response(['code'=>'session_creation_failed'],500);
+        return new \WP_REST_Response(['session'=>$token,'scope'=>SessionService::SCOPE_OPERATIONAL,'expires_at'=>gmdate('Y-m-d H:i:s',$expires),'purchase_verified'=>true,'already_processed'=>(bool)($result['already_processed']??false)],200);
+    }
     public function activateSession(\WP_REST_Request $request): \WP_REST_Response
     {
         $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
