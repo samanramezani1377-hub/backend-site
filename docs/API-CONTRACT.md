@@ -208,6 +208,34 @@ forward becomes authorized
 
 در حالت Plan منقضی یا Trial تمام‌شده، App همچنان می‌تواند وارد Account و Billing شود، اما `/forward` باید قبل از هر outbound request با Scope و `Entitlement` رد شود.
 
+## ۹.۱ Cafe Bazaar Billing
+
+نسخه Bazaar اپ به‌جای `billing/checkout` از Billing داخل Cafe Bazaar استفاده می‌کند.
+
+`POST /wp-json/woogit/v1/billing/bazaar/verify`
+
+Request شامل SKU، `purchase_token` و package name است. Backend package را با مقدار پیکربندی‌شده مقایسه می‌کند و خرید Subscription را با Cafe Bazaar Developer API بررسی می‌کند. موفقیت callback اپ یا Poolakey به‌تنهایی Entitlement ایجاد نمی‌کند.
+
+پس از Verification موفق:
+
+```
+Cafe Bazaar
+   ↓
+purchaseToken
+   ↓
+WooGit Backend
+   ↓
+Cafe Bazaar Developer API
+   ↓
+SKU → WooGit Plan / Variation
+   ↓
+Entitlement
+   ↓
+Operational Session
+```
+
+Purchase Token در جدول اختصاصی Backend به‌صورت unique ثبت می‌شود تا retry همان خرید دوباره entitlement صادر نکند. Developer API credentials فقط سمت Backend نگهداری می‌شوند.
+
 ## ۱۰. Currency / Collections / Errors
 
 Backend مقدار response و query semantics Customer WooCommerce را حفظ می‌کند و currency را hard-code یا بی‌دلیل تبدیل نمی‌کند.
