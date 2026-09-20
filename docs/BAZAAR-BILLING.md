@@ -29,7 +29,7 @@ Developer API credentialها نباید داخل APK قرار بگیرند.
 
 ## Server configuration
 
-در `wp-config.php` یا محیط deployment، مقادیر زیر باید قبل از فعال‌سازی production تنظیم شوند:
+در WordPress Admin از مسیر `WooGit → Settings → کافه‌بازار` می‌توان این مقادیر را تنظیم کرد. برای deploymentهای امن، تعریف Constantهای متناظر در `wp-config.php` نیز پشتیبانی می‌شود و Constant بر مقدار ذخیره‌شده در Settings اولویت دارد.
 
 - `WOOGIT_BAZAAR_PACKAGE_NAME`
 - `WOOGIT_BAZAAR_CLIENT_ID`
