@@ -104,6 +104,12 @@ final class BillingService
         return ['ok' => false, 'code' => 'bazaar_product_not_found'];
     }
 
+    public function durationDaysForBazaar($product, int $variationId = 0): int
+    {
+        $target = ($variationId > 0 && function_exists('wc_get_product')) ? wc_get_product($variationId) : $product;
+        return $this->durationDays($target);
+    }
+
     public function activateBazaarEntitlement(int $accountId, int $siteId, $product, int $variationId, ?int $expiresTimestamp): bool
     {
         if (!is_object($product) || !method_exists($product, 'get_id')) return false;
