@@ -47,6 +47,8 @@ final class BillingController
         register_rest_route('woogit/v1', '/billing/checkout', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'checkout']]);
         register_rest_route('woogit/v1', '/billing/activate-session', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'activateSession']]);
         register_rest_route('woogit/v1', '/billing/bazaar/verify', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'verifyBazaar']]);
+        register_rest_route('woogit/v1', '/billing/bazaar/oauth/authorize', ['methods'=>'GET','permission_callback'=>static function(): bool { return current_user_can('manage_options'); },'callback'=>[$this,'bazaarOAuthAuthorize']]);
+        register_rest_route('woogit/v1', '/billing/bazaar/oauth/callback', ['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'bazaarOAuthCallback']]);
     }
 
     public function plans(\WP_REST_Request $request): \WP_REST_Response
@@ -156,6 +158,46 @@ final class BillingController
             return $this->unknownResponse($operationId);
         }
         return new \WP_REST_Response($body,201);
+    }
+
+
+    public function bazaarOAuthAuthorize(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $result = $this->bazaar->beginOAuth(get_current_user_id());
+        if (!$result['ok']) return new \WP_REST_Response(['code' => $result['code']], 400);
+        wp_safe_redirect($result['url']);
+        exit;
+    }
+
+    public function bazaarOAuthCallback(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $error = trim((string)$request->get_param('error'));
+        if ($error !== '') {
+            $description = sanitize_text_field((string)$request->get_param('error_description'));
+            wp_die(
+                '<h1>اتصال کافه‌بازار انجام نشد</h1><p>' . esc_html($description !== '' ? $description : $error) . '</p>',
+                'WooGit — Cafe Bazaar',
+                ['response' => 400]
+            );
+        }
+
+        $result = $this->bazaar->completeOAuth(
+            (string)$request->get_param('code'),
+            (string)$request->get_param('state')
+        );
+        if (!$result['ok']) {
+            wp_die(
+                '<h1>اتصال کافه‌بازار ناموفق بود</h1><p>خطا: ' . esc_html((string)$result['code']) . '</p><p>به WooGit → Settings → کافه‌بازار برگردید و دوباره اتصال را شروع کنید.</p>',
+                'WooGit — Cafe Bazaar',
+                ['response' => 400]
+            );
+        }
+
+        wp_die(
+            '<h1>کافه‌بازار با موفقیت متصل شد</h1><p>Refresh Token با موفقیت در تنظیمات امن Backend ذخیره شد.</p><p><a href="' . esc_url(admin_url('admin.php?page=woogit-settings&tab=bazaar')) . '">بازگشت به تنظیمات کافه‌بازار</a></p>',
+            'WooGit — Cafe Bazaar',
+            ['response' => 200]
+        );
     }
 
     public function verifyBazaar(\WP_REST_Request $request): \WP_REST_Response
