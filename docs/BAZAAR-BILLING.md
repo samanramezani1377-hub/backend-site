@@ -56,3 +56,23 @@ RSA Public Key کافه‌بازار secret محسوب نمی‌شود، اما 
 ## مهم
 
 فعلاً تا زمانی که SKUهای واقعی محصولات و credentialهای Developer API تنظیم نشده‌اند، build Bazaar از نظر کد و CI قابل build است ولی خرید production قابل تکمیل نیست.
+
+
+## Developer API OAuth setup
+
+The Backend now includes a one-time OAuth authorization flow for obtaining the Cafe Bazaar Developer API refresh token.
+
+Redirect URI to register in the Cafe Bazaar Developer API client:
+
+`https://woogit.ir/wp-json/woogit/v1/billing/bazaar/oauth/callback`
+
+Flow:
+
+1. In `WooGit → Settings → کافه‌بازار`, save Package Name, Client ID and Client Secret.
+2. Click `اتصال به کافه‌بازار`.
+3. WooGit creates a short-lived, single-use state bound to the WordPress administrator and redirects to Cafe Bazaar authorization.
+4. Cafe Bazaar returns an authorization code to the callback.
+5. Backend exchanges the code server-side at `/devapi/v2/auth/token/`.
+6. The returned Refresh Token is stored in the existing `woogit_bazaar_settings` option. Client Secret and Refresh Token are never placed in the Android app.
+
+The callback URL is generated from WordPress' registered REST route rather than being hard-coded in the runtime flow, and the OAuth state is deleted before token exchange so it cannot be replayed.
