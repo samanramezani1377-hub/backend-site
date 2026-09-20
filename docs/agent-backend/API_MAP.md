@@ -17,6 +17,9 @@
 | API-004 | GET | `/wp-json/woogit/v1/billing/status` | `BillingController` | BILLING/account context | billing state | App, Theme |
 | API-005 | POST | `/wp-json/woogit/v1/billing/checkout` | `BillingController` | BILLING/account context | billing state | App, Theme |
 | API-006 | POST | `/wp-json/woogit/v1/billing/activate-session` | `BillingController` | BILLING | entitlement/payment must allow activation | App |
+| API-007 | POST | `/wp-json/woogit/v1/billing/bazaar/verify` | `BillingController` / `BazaarBillingService` | BILLING | Bazaar purchase must verify | Bazaar App |
+| API-008 | GET | `/wp-json/woogit/v1/billing/bazaar/oauth/authorize` | `BillingController` / `BazaarBillingService` | WordPress admin | no | Admin |
+| API-009 | GET | `/wp-json/woogit/v1/billing/bazaar/oauth/callback` | `BillingController` / `BazaarBillingService` | single-use OAuth state bound to admin | no | Cafe Bazaar OAuth |
 
 ## API-001 — sites/verify
 
@@ -58,6 +61,24 @@ Source: `BillingController.php::checkout`, `BillingService::createCheckout`.
 Consumes Billing Session, validates its `billing` scope and entitlement/payment state, then creates an Operational Session.
 
 Source: `BillingController.php::activateSession`, `SessionService::activateOperationalFromBilling()`.
+
+## API-007 — billing/bazaar/verify
+
+App-facing Bazaar purchase verification. The app submits the Bazaar purchase token; Backend revalidates it against the Developer API before activating entitlement.
+
+Source: `BillingController.php::verifyBazaar`, `BazaarBillingService.php::verify`.
+
+## API-008 — billing/bazaar/oauth/authorize
+
+Starts the one-time Developer API authorization flow. The route requires a WordPress administrator and a REST cookie nonce. The Backend creates a short-lived, single-use state before redirecting to Cafe Bazaar.
+
+Source: `BillingController.php::bazaarOAuthAuthorize`, `BazaarBillingService.php::beginOAuth`.
+
+## API-009 — billing/bazaar/oauth/callback
+
+Receives the Cafe Bazaar authorization code, consumes the single-use state, exchanges the code server-side, and stores the returned Refresh Token in Backend settings.
+
+Source: `BillingController.php::bazaarOAuthCallback`, `BazaarBillingService.php::completeOAuth`.
 
 ## Rate limiting / idempotency
 
