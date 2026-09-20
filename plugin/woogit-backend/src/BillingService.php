@@ -12,6 +12,7 @@ final class BillingService
     private const PLAN_KEY_META = '_woogit_plan_key';
     private const CHECKOUT_IDEMPOTENCY_META = '_woogit_checkout_idempotency_key';
     private const PLAN_ENABLED_META = '_woogit_plan_enabled';
+    private const BAZAAR_PRODUCT_META = '_woogit_bazaar_product_id';
 
     public function registerHooks(): void
     {
@@ -26,6 +27,8 @@ final class BillingService
         add_action('milo_subscriptions_product_data_panel', [$this, 'renderPlanFields'], 20, 1);
         add_action('woocommerce_product_options_general_product_data', [$this, 'renderPlanFields'], 20, 0);
         add_action('woocommerce_process_product_meta', [$this, 'savePlanFields'], 20, 1);
+        add_action('woocommerce_product_after_variable_attributes', [$this, 'renderBazaarVariationField'], 20, 3);
+        add_action('woocommerce_save_product_variation', [$this, 'saveBazaarVariationField'], 20, 2);
         if (function_exists('wcs_get_subscription')) {
             add_action('woocommerce_subscription_status_active', [$this, 'onSubscriptionActive'], 20, 1);
             add_action('woocommerce_subscription_payment_complete', [$this, 'onSubscriptionPaymentComplete'], 20, 1);
@@ -44,6 +47,8 @@ final class BillingService
         echo '<div class="options_group show_if_subscription show_if_variable-subscription">';
         woocommerce_wp_checkbox(['id' => self::PLAN_ENABLED_META, 'value' => $enabled, 'label' => 'WooGit Plan', 'description' => 'این محصول به‌عنوان پلن قابل خرید WooGit در API Billing نمایش داده شود.', 'desc_tip' => true]);
         woocommerce_wp_text_input(['id' => self::PLAN_KEY_META, 'value' => $key, 'label' => 'WooGit Plan Key', 'description' => 'شناسه پایدار پلن که App می‌تواند برای نمایش/ردیابی استفاده کند.', 'desc_tip' => true]);
+        $bazaarSku = (string)get_post_meta((int)$product->get_id(), self::BAZAAR_PRODUCT_META, true);
+        woocommerce_wp_text_input(['id' => self::BAZAAR_PRODUCT_META, 'value' => $bazaarSku, 'label' => 'Cafe Bazaar SKU', 'description' => 'شناسه Subscription محصول در کافه‌بازار. برای نسخه Bazaar الزامی است.', 'desc_tip' => true]);
         echo '</div>';
     }
 
@@ -57,6 +62,8 @@ final class BillingService
         if ($key === '') $key = sanitize_title((string)$product->get_name());
         update_post_meta($productId, self::PLAN_ENABLED_META, $enabled);
         update_post_meta($productId, self::PLAN_KEY_META, $key);
+        $bazaarSku = isset($_POST[self::BAZAAR_PRODUCT_META]) ? sanitize_text_field(wp_unslash((string)$_POST[self::BAZAAR_PRODUCT_META])) : '';
+        update_post_meta($productId, self::BAZAAR_PRODUCT_META, $bazaarSku);
     }
 
     public function getPlans(): array
@@ -81,6 +88,49 @@ final class BillingService
         return $plans;
     }
 
+    public function findBazaarPlanBySku(string $sku): array
+    {
+        $sku = trim($sku);
+        if ($sku === '' || !function_exists('wc_get_products')) return ['ok' => false, 'code' => 'bazaar_product_not_found'];
+        $products = wc_get_products(['status' => 'publish', 'limit' => 100, 'paginate' => false]);
+        foreach ((array)$products as $product) {
+            if (!$product || !$this->isSubscriptionProduct($product) || !$this->isPlanEnabled($product)) continue;
+            if ($this->bazaarSku($product) === $sku) return ['ok' => true, 'product' => $product, 'variation_id' => 0];
+            foreach ((array)$product->get_children() as $variationId) {
+                $variation = function_exists('wc_get_product') ? wc_get_product((int)$variationId) : null;
+                if ($variation && $this->isSubscriptionProduct($variation) && $this->bazaarSku($variation) === $sku) return ['ok' => true, 'product' => $product, 'variation_id' => (int)$variationId, 'variation' => $variation];
+            }
+        }
+        return ['ok' => false, 'code' => 'bazaar_product_not_found'];
+    }
+
+    public function activateBazaarEntitlement(int $accountId, int $siteId, $product, int $variationId, ?int $expiresTimestamp): bool
+    {
+        if (!is_object($product) || !method_exists($product, 'get_id')) return false;
+        $target = ($variationId > 0 && function_exists('wc_get_product')) ? wc_get_product($variationId) : $product;
+        $duration = $this->durationDays($target) * DAY_IN_SECONDS;
+        if ($expiresTimestamp === null && $duration <= 0) return false;
+        $this->activate($accountId, $siteId, 0, $expiresTimestamp ?: (time() + $duration), $duration > 0 ? $duration : null);
+        return true;
+    }
+
+    public function bazaarSku($product): string
+    {
+        return is_object($product) ? trim((string)get_post_meta((int)$product->get_id(), self::BAZAAR_PRODUCT_META, true)) : '';
+    }
+
+    public function renderBazaarVariationField($loop, $variationData, $variation): void
+    {
+        woocommerce_wp_text_input(['id' => self::BAZAAR_PRODUCT_META . '[' . (int)$loop . ']', 'name' => self::BAZAAR_PRODUCT_META . '[' . (int)$loop . ']', 'value' => $this->bazaarSku($variation), 'label' => 'Cafe Bazaar SKU', 'description' => 'شناسه Subscription در کافه‌بازار برای این Variation.', 'desc_tip' => true, 'wrapper_class' => 'form-row form-row-full']);
+    }
+
+    public function saveBazaarVariationField(int $variationId, int $i): void
+    {
+        if (!current_user_can('edit_post', $variationId)) return;
+        $values = isset($_POST[self::BAZAAR_PRODUCT_META]) && is_array($_POST[self::BAZAAR_PRODUCT_META]) ? $_POST[self::BAZAAR_PRODUCT_META] : [];
+        $value = isset($values[$i]) ? sanitize_text_field(wp_unslash((string)$values[$i])) : '';
+        update_post_meta($variationId, self::BAZAAR_PRODUCT_META, $value);
+    }
     public function createCheckout(int $accountId, int $siteId, int $productId, int $variationId = 0, string $idempotencyKey = ''): array
     {
         if (!function_exists('wc_get_product') || !function_exists('wc_create_order')) return ['ok' => false, 'code' => 'billing_unavailable'];
@@ -376,7 +426,7 @@ final class BillingService
         foreach ((array)$product->get_children() as $variationId) {
             $variation = function_exists('wc_get_product') ? wc_get_product((int)$variationId) : null;
             if (!$variation || !$this->isSubscriptionProduct($variation) || $variation->get_status() !== 'publish' || !$variation->is_purchasable()) continue;
-            $items[] = ['id' => (int)$variation->get_id(), 'attributes' => array_map('strval', (array)$variation->get_attributes()), 'price' => (string)$variation->get_price(), 'regular_price' => (string)$variation->get_regular_price()];
+            $items[] = ['id' => (int)$variation->get_id(), 'attributes' => array_map('strval', (array)$variation->get_attributes()), 'price' => (string)$variation->get_price(), 'regular_price' => (string)$variation->get_regular_price(), 'bazaar_product_id' => $this->bazaarSku($variation)];
         }
         return $items;
     }
