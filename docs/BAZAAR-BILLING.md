@@ -41,7 +41,7 @@ Access token فقط به‌صورت transient سمت Backend cache می‌شود
 
 ## Plan SKU mapping
 
-هر WooGit Subscription Product یک فیلد `Cafe Bazaar SKU` دارد. برای Variable Subscription، هر Variation نیز SKU جداگانه دارد.
+هر WooGit Subscription Product یک فیلد `Cafe Bazaar SKU` دارد که داخل همان Product Data پنل Milo نمایش داده می‌شود. برای Variable Subscription، هر Variation نیز SKU جداگانه دارد. برای تنظیمات محصول از صفحه جداگانه WooGit/Bazaar استفاده نمی‌شود؛ Milo مرجع محصول و دوره Subscription است.
 
 App فقط SKU برگشتی از Backend را مصرف می‌کند؛ قیمت یا مدت را از Client قبول نمی‌کند.
 
