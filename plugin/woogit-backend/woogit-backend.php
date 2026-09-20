@@ -13,7 +13,7 @@ define('WOOGIT_BACKEND_VERSION','0.4.0');
 define('WOOGIT_BACKEND_FILE',__FILE__);
 define('WOOGIT_BACKEND_DIR',plugin_dir_path(__FILE__));
 // CI trigger: no runtime behavior change.
-foreach(['Database','IdentityService','AccountService','SiteService','EntitlementService','SessionService','SessionPlanAdmin','WebSessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','VersionAdmin','AnnouncementService','AnnouncementAdmin','AnnouncementController','RequirementService','BillingService','BazaarBillingService','TrialService','AutomaticTrialMiloBridge','MiloBillingAdminCompatibility','MiloEntitlementReconciler','ZarinPalPaymentBridge','PaymentReturnRedirect','WebSessionRestBridge','RestController','BillingController','WebAuthController','AccountsAdmin','LifecycleAdmin'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
+foreach(['Database','IdentityService','AccountService','SiteService','EntitlementService','SessionService','SessionPlanAdmin','WebSessionService','IdempotencyService','OperationService','ProxyPolicy','WooCommerceProxy','RateLimitService','VersionGate','VersionAdmin','AnnouncementService','AnnouncementAdmin','AnnouncementController','RequirementService','BillingService','BazaarBillingService','SettingsAdmin','TrialService','AutomaticTrialMiloBridge','MiloBillingAdminCompatibility','MiloEntitlementReconciler','ZarinPalPaymentBridge','PaymentReturnRedirect','WebSessionRestBridge','RestController','BillingController','WebAuthController','AccountsAdmin','LifecycleAdmin'] as $file) require_once WOOGIT_BACKEND_DIR.'src/'.$file.'.php';
 register_activation_hook(__FILE__,['WooGit\\Backend\\Database','install']);
 add_action('plugins_loaded',static function():void{$from=(string)get_option('woogit_backend_db_version','');if($from !== WOOGIT_BACKEND_VERSION) \WooGit\Backend\Database::install($from);$trial=new \WooGit\Backend\TrialService();$trial->registerHooks();$billing=new \WooGit\Backend\BillingService();$billing->registerHooks();(new \WooGit\Backend\SessionPlanAdmin())->registerHooks();(new \WooGit\Backend\AutomaticTrialMiloBridge())->registerHooks();(new \WooGit\Backend\MiloEntitlementReconciler())->registerHooks();(new \WooGit\Backend\MiloBillingAdminCompatibility())->registerHooks();(new \WooGit\Backend\ZarinPalPaymentBridge())->register();(new \WooGit\Backend\PaymentReturnRedirect())->register();(new \WooGit\Backend\WebSessionRestBridge())->register();});
 add_action('admin_menu',static function():void{
@@ -25,8 +25,7 @@ add_action('admin_menu',static function():void{
     add_submenu_page('woogit','مدیریت Accounts','Accounts','manage_options','woogit-accounts',[$accounts,'render']);
     add_submenu_page('woogit','WooGit Sessions','Sessionها','manage_options','woogit-sessions',[$lifecycle,'renderSessions']);
     add_submenu_page('woogit','WooGit Trials','Trialها','manage_options','woogit-trials',[$lifecycle,'renderTrials']);
-    add_submenu_page('woogit','WooGit App Versions','App Versions','manage_options','woogit-app-versions',[$version,'render']);
-    add_submenu_page('woogit','WooGit Announcements','Announcements','manage_options','woogit-announcements',[$announcement,'render']);
+    $settings->register();
 },10);
 add_action('admin_head',static function():void{if(($_GET['page']??'')!=='woogit-accounts')return;?>
 <style>
