@@ -165,7 +165,7 @@ final class BillingController
     {
         $result = $this->bazaar->beginOAuth(get_current_user_id());
         if (!$result['ok']) return new \WP_REST_Response(['code' => $result['code']], 400);
-        wp_safe_redirect($result['url']);
+        wp_redirect($result['url']);
         exit;
     }
 
