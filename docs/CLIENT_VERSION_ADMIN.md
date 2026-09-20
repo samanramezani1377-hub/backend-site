@@ -6,7 +6,7 @@ WooGit Backend enforces client compatibility through the `woogit_backend_version
 
 WordPress administrators with the `manage_options` capability can open:
 
-`Settings → WooGit App Versions`
+`WooGit → Settings → تنظیمات عمومی → App Versions` (صفحه قدیمی نیز برای سازگاری مستقیم قابل دسترسی است).
 
 The page manages:
 
