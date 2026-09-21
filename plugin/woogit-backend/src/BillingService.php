@@ -218,7 +218,16 @@ final class BillingService
         $existing = $wpdb->get_row($wpdb->prepare("SELECT account_id,site_id,product_id,expires_at,status FROM {$table} WHERE purchase_token_hash=%s LIMIT 1", $tokenHash), ARRAY_A);
         if ($existing) {
             if ((int)$existing['account_id'] !== $accountId || (int)$existing['site_id'] !== $siteId) return ['ok' => false, 'code' => 'purchase_already_claimed'];
-            return ['ok' => true, 'status' => 'already_activated', 'expires_at' => $existing['expires_at']];
+            $verifiedExpiry = isset($verification['expires_at']) ? (int)$verification['expires_at'] : 0;
+            $storedExpiry = !empty($existing['expires_at']) ? (strtotime((string)$existing['expires_at'] . ' UTC') ?: 0) : 0;
+            if ($verifiedExpiry > $storedExpiry && $verifiedExpiry > time()) {
+                $now = gmdate('Y-m-d H:i:s');
+                $expires = gmdate('Y-m-d H:i:s', $verifiedExpiry);
+                $wpdb->update($wpdb->prefix . 'woogit_entitlements', ['status'=>'active','expires_at'=>$expires,'capabilities'=>wp_json_encode(['commerce']),'updated_at'=>$now], ['account_id'=>$accountId,'site_id'=>$siteId], ['%s','%s','%s','%s'], ['%d','%d']);
+                $wpdb->update($table, ['expires_at'=>$expires,'auto_renewing'=>isset($verification['auto_renewing']) && $verification['auto_renewing'] !== null ? ((bool)$verification['auto_renewing'] ? 1 : 0) : null,'raw_response'=>wp_json_encode($verification['raw'] ?? []),'updated_at'=>$now], ['purchase_token_hash'=>$tokenHash], ['%s','%d','%s','%s'], ['%s']);
+                return ['ok' => true, 'status' => 'renewed', 'expires_at' => $expires, 'plan_key' => (string)$plan['plan_key']];
+            }
+            return ['ok' => true, 'status' => 'already_activated', 'expires_at' => $existing['expires_at'], 'plan_key' => (string)$plan['plan_key']];
         }
 
         $expiresTimestamp = isset($verification['expires_at']) ? (int)$verification['expires_at'] : 0;
