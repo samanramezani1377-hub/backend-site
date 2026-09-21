@@ -16,6 +16,12 @@
 
 `payment confirmed -> /billing/activate-session -> Billing Session authentication -> entitlement/payment validation -> transactional operational-session creation -> response -> App replaces session state`
 
+## Bazaar subscription verification
+
+`Bazaar App -> Poolakey -> CafeBazaar purchaseToken -> /billing/bazaar/verify -> App session/account/site validation -> Bazaar SKU/plan resolution -> CafeBazaar Developer API verification -> Bazaar purchase audit + entitlement activation/renewal -> App`
+
+The backend never trusts the client purchase state alone. CafeBazaar verification is server-side and Bazaar credentials remain server configuration.
+
 ## Theme portal
 
 `Browser -> Theme page/controller -> Web session/account context -> Backend web contract -> server-rendered/JSON response -> Theme UI`
