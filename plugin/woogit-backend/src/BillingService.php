@@ -176,6 +176,131 @@ final class BillingService
         return ['orders' => $items, 'page' => $page, 'per_page' => $perPage, 'total' => (int)($orders->total ?? count($items)), 'total_pages' => (int)($orders->max_num_pages ?? ($items === [] ? 0 : 1))];
     }
 
+    public function getBazaarPlan(string $bazaarProductId): ?array
+    {
+        $bazaarProductId = trim($bazaarProductId);
+        if ($bazaarProductId === '' || !function_exists('wc_get_products')) return null;
+
+        $posts = get_posts([
+            'post_type' => ['product', 'product_variation'],
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            'fields' => 'ids',
+            'meta_query' => [[
+                'key' => self::BAZAAR_PRODUCT_META,
+                'value' => $bazaarProductId,
+                'compare' => '=',
+            ]],
+        ]);
+        if (empty($posts)) return null;
+
+        $product = wc_get_product((int)$posts[0]);
+        if (!$product || !$this->isSubscriptionProduct($product) || !$this->isPlanEnabled($product)) return null;
+
+        $parent = method_exists($product, 'get_parent_id') && (int)$product->get_parent_id() > 0
+            ? wc_get_product((int)$product->get_parent_id())
+            : $product;
+
+        return [
+            'product_id' => (int)$parent->get_id(),
+            'variation_id' => $parent->get_id() !== $product->get_id() ? (int)$product->get_id() : 0,
+            'plan_key' => $this->planKey($parent),
+            'duration_seconds' => $this->durationSeconds($product),
+            'product' => $product,
+        ];
+    }
+
+    public function activateBazaarPurchase(int $accountId, int $siteId, string $purchaseToken, array $verification, array $plan): array
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'woogit_bazaar_purchases';
+        $tokenHash = hash('sha256', $purchaseToken);
+        $existing = $wpdb->get_row($wpdb->prepare("SELECT account_id,site_id,product_id,expires_at,status FROM {$table} WHERE purchase_token_hash=%s LIMIT 1", $tokenHash), ARRAY_A);
+        if ($existing) {
+            if ((int)$existing['account_id'] !== $accountId || (int)$existing['site_id'] !== $siteId) return ['ok' => false, 'code' => 'purchase_already_claimed'];
+            return ['ok' => true, 'status' => 'already_activated', 'expires_at' => $existing['expires_at']];
+        }
+
+        $expiresTimestamp = isset($verification['expires_at']) ? (int)$verification['expires_at'] : 0;
+        if ($expiresTimestamp <= time()) return ['ok' => false, 'code' => 'bazaar_subscription_expired'];
+
+        $productId = (string)$plan['product_id'];
+        $startsTimestamp = isset($verification['purchase_time']) && (int)$verification['purchase_time'] > 0
+            ? min((int)$verification['purchase_time'], time())
+            : time();
+
+        $existingEntitlement = $wpdb->get_row($wpdb->prepare(
+            "SELECT starts_at,expires_at FROM {$wpdb->prefix}woogit_entitlements WHERE account_id=%d AND site_id=%d LIMIT 1",
+            $accountId, $siteId
+        ), ARRAY_A);
+        $oldExpiry = $existingEntitlement && !empty($existingEntitlement['expires_at']) ? (strtotime((string)$existingEntitlement['expires_at'] . ' UTC') ?: 0) : 0;
+        if ($oldExpiry > $expiresTimestamp) $expiresTimestamp = $oldExpiry;
+
+        $now = gmdate('Y-m-d H:i:s');
+        $expires = gmdate('Y-m-d H:i:s', $expiresTimestamp);
+        $starts = gmdate('Y-m-d H:i:s', $startsTimestamp);
+
+        $data = [
+            'status' => 'active',
+            'starts_at' => $starts,
+            'expires_at' => $expires,
+            'capabilities' => wp_json_encode(['commerce']),
+            'updated_at' => $now,
+        ];
+        if ($existingEntitlement) {
+            $updated = $wpdb->update(
+                $wpdb->prefix . 'woogit_entitlements',
+                $data,
+                ['account_id' => $accountId, 'site_id' => $siteId],
+                ['%s','%s','%s','%s','%s'],
+                ['%d','%d']
+            );
+        } else {
+            $updated = $wpdb->insert(
+                $wpdb->prefix . 'woogit_entitlements',
+                array_merge($data, ['account_id' => $accountId, 'site_id' => $siteId, 'created_at' => $now]),
+                ['%s','%s','%s','%s','%s','%d','%d','%s']
+            );
+        }
+        if ($updated === false) return ['ok' => false, 'code' => 'entitlement_activation_failed'];
+
+        $inserted = $wpdb->insert($table, [
+            'account_id' => $accountId,
+            'site_id' => $siteId,
+            'product_id' => $productId,
+            'purchase_token_hash' => $tokenHash,
+            'order_id' => (string)($verification['order_id'] ?? ''),
+            'purchase_time' => !empty($verification['purchase_time']) ? gmdate('Y-m-d H:i:s', (int)$verification['purchase_time']) : null,
+            'expires_at' => $expires,
+            'auto_renewing' => isset($verification['auto_renewing']) && $verification['auto_renewing'] !== null ? ((bool)$verification['auto_renewing'] ? 1 : 0) : null,
+            'status' => 'active',
+            'raw_response' => wp_json_encode($verification['raw'] ?? []),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], ['%d','%d','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s']);
+        if ($inserted === false) {
+            // Do not leave a subscription activated if its unique purchase record could not be stored.
+            if ($existingEntitlement) {
+                $wpdb->update($wpdb->prefix . 'woogit_entitlements', [
+                    'expires_at' => $existingEntitlement['expires_at'],
+                    'starts_at' => $existingEntitlement['starts_at'],
+                    'updated_at' => $now,
+                ], ['account_id' => $accountId, 'site_id' => $siteId], ['%s','%s','%s'], ['%d','%d']);
+            } else {
+                $wpdb->delete($wpdb->prefix . 'woogit_entitlements', ['account_id' => $accountId, 'site_id' => $siteId], ['%d','%d']);
+            }
+            return ['ok' => false, 'code' => 'purchase_record_failed'];
+        }
+
+        return ['ok' => true, 'status' => 'activated', 'expires_at' => $expires, 'plan_key' => (string)$plan['plan_key']];
+    }
+
+    private function durationSeconds($product): int
+    {
+        $days = $this->durationDays($product);
+        return $days > 0 ? $days * DAY_IN_SECONDS : 0;
+    }
+
     public function getStatus(int $accountId, int $siteId): array
     {
         global $wpdb;
