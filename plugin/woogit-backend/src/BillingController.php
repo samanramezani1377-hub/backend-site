@@ -15,11 +15,13 @@ final class BillingController
     private RateLimitService $rateLimits;
     private IdempotencyService $idempotency;
     private OperationService $operations;
+    private BazaarService $bazaar;
 
     private const PLANS_LIMIT = 60;
     private const STATUS_LIMIT = 30;
     private const CHECKOUT_LIMIT = 5;
     private const ACTIVATE_SESSION_LIMIT = 5;
+    private const BAZAAR_VERIFY_LIMIT = 10;
     private const WINDOW_SECONDS = 60;
 
     public function __construct()
@@ -34,6 +36,7 @@ final class BillingController
         $this->rateLimits = new RateLimitService();
         $this->idempotency = new IdempotencyService();
         $this->operations = new OperationService();
+        $this->bazaar = new BazaarService();
     }
 
     public function register(): void
@@ -43,6 +46,7 @@ final class BillingController
         register_rest_route('woogit/v1', '/billing/status', ['methods'=>'GET','permission_callback'=>'__return_true','callback'=>[$this,'status']]);
         register_rest_route('woogit/v1', '/billing/checkout', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'checkout']]);
         register_rest_route('woogit/v1', '/billing/activate-session', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'activateSession']]);
+        register_rest_route('woogit/v1', '/billing/bazaar/verify', ['methods'=>'POST','permission_callback'=>'__return_true','callback'=>[$this,'bazaarVerify']]);
     }
 
     public function plans(\WP_REST_Request $request): \WP_REST_Response
