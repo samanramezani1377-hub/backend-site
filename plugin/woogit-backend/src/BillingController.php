@@ -158,6 +158,49 @@ final class BillingController
         return new \WP_REST_Response($body,201);
     }
 
+    public function bazaarVerify(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
+        $ipLimit=$this->rateLimits->check('billing_bazaar_verify_ip',$this->clientIp(),self::BAZAAR_VERIFY_LIMIT,self::WINDOW_SECONDS);
+        if(!$ipLimit['allowed'])return $this->rateLimited($ipLimit['retry_after']);
+        $context=$this->authenticateAppContext($request);if($context instanceof \WP_REST_Response)return $context;
+        $accountId=(int)$context['account_id'];$siteId=(int)$context['site_id'];
+        $accountSiteLimit=$this->billingLimit('billing_bazaar_verify_account_site',$accountId.':'.$siteId,self::BAZAAR_VERIFY_LIMIT);
+        if(!$accountSiteLimit['allowed'])return $this->rateLimited($accountSiteLimit['retry_after']);
+
+        $input=$request->get_json_params();
+        if(!is_array($input))return new \WP_REST_Response(['code'=>'invalid_request'],400);
+        $productId=trim((string)($input['product_id']??''));
+        $purchaseToken=trim((string)($input['purchase_token']??''));
+        $packageName=trim((string)($input['package_name']??''));
+        if($productId===''||$purchaseToken==='')return new \WP_REST_Response(['code'=>'missing_purchase_data'],400);
+        if($packageName!==''&&$packageName!==$this->bazaar->packageName())return new \WP_REST_Response(['code'=>'invalid_package_name'],400);
+
+        $plan=$this->billing->getBazaarPlan($productId);
+        if(!$plan)return new \WP_REST_Response(['code'=>'bazaar_plan_not_configured'],409);
+
+        $verification=$this->bazaar->verifySubscription($productId,$purchaseToken,$this->bazaar->packageName());
+        if(!$verification['ok']){
+            $transientCodes=['bazaar_unreachable','bazaar_auth_failed','bazaar_verify_failed'];
+            $status=$verification['code']==='bazaar_not_configured'?503:(in_array($verification['code'],$transientCodes,true)?502:400);
+            return new \WP_REST_Response(['code'=>$verification['code'],'retryable'=>in_array($verification['code'],$transientCodes,true)],$status);
+        }
+
+        $activation=$this->billing->activateBazaarPurchase($accountId,$siteId,$purchaseToken,$verification,$plan);
+        if(!$activation['ok']){
+            $status=$activation['code']==='purchase_already_claimed'?409:400;
+            return new \WP_REST_Response(['code'=>$activation['code']],$status);
+        }
+
+        return new \WP_REST_Response([
+            'status'=>$activation['status'],
+            'plan_key'=>$activation['plan_key']??(string)$plan['plan_key'],
+            'expires_at'=>$activation['expires_at']??null,
+            'account_id'=>$accountId,
+            'site_id'=>$siteId,
+        ],200);
+    }
+
     public function activateSession(\WP_REST_Request $request): \WP_REST_Response
     {
         $gate=$this->versionResponse($request);if($gate instanceof \WP_REST_Response)return $gate;
