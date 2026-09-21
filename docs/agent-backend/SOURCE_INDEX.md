@@ -7,14 +7,15 @@ The executable backend is the WordPress plugin under `plugin/woogit-backend/`.
 1. `plugin/woogit-backend/woogit-backend.php` — plugin bootstrap.
 2. `plugin/woogit-backend/src/RestController.php` — REST routing/controller boundary and request dispatch.
 3. `plugin/woogit-backend/src/BillingController.php` — billing REST boundary.
-4. `plugin/woogit-backend/src/BillingService.php` — billing orchestration/persistence boundary.
-5. `plugin/woogit-backend/src/MiloEntitlementReconciler.php` — paid-order entitlement stacking/reconciliation boundary for Milo billing.
-6. `plugin/woogit-backend/src/SessionService.php` — Billing/Operational session lifecycle.
-7. `plugin/woogit-backend/src/AccountService.php` / site/account services — identity and ownership.
-8. `plugin/woogit-backend/src/EntitlementService.php` and related entitlement logic — plan access.
-9. `plugin/woogit-backend/src/WooCommerceProxy.php` / `ProxyPolicy.php` — customer API forwarding/security boundary.
-10. `plugin/woogit-backend/src/IdempotencyService.php` / `OperationService.php` — checkout/operation safety.
-11. `plugin/woogit-backend/src/` remaining services/repositories/models — runtime implementation.
+4. `plugin/woogit-backend/src/BillingService.php` — billing orchestration/persistence boundary, including Bazaar SKU mapping and purchase entitlement activation/renewal.
+5. `plugin/woogit-backend/src/BazaarService.php` — CafeBazaar Developer API authentication, subscription verification and access-token caching.
+6. `plugin/woogit-backend/src/MiloEntitlementReconciler.php` — paid-order entitlement stacking/reconciliation boundary for Milo billing.
+7. `plugin/woogit-backend/src/SessionService.php` — Billing/Operational session lifecycle.
+8. `plugin/woogit-backend/src/AccountService.php` / site/account services — identity and ownership.
+9. `plugin/woogit-backend/src/EntitlementService.php` and related entitlement logic — plan access.
+10. `plugin/woogit-backend/src/WooCommerceProxy.php` / `ProxyPolicy.php` — customer API forwarding/security boundary.
+11. `plugin/woogit-backend/src/IdempotencyService.php` / `OperationService.php` — checkout/operation safety.
+12. `plugin/woogit-backend/src/` remaining services/repositories/models — runtime implementation.
 
 ## Contract anchors
 | Area | Source |
@@ -22,6 +23,7 @@ The executable backend is the WordPress plugin under `plugin/woogit-backend/`.
 | Verify site | `src/RestController.php` (`/sites/verify` flow) |
 | Forward customer API | `src/RestController.php` + `src/WooCommerceProxy.php` |
 | Billing plans/status/checkout | `src/BillingController.php` + `src/BillingService.php` |
+| Bazaar purchase verification | `src/BillingController.php:161-191` + `src/BazaarService.php:1-202` + `src/BillingService.php:179-234` |
 | Paid subscription entitlement stacking/reconciliation | `src/MiloEntitlementReconciler.php` |
 | Billing → Operational session exchange | `src/BillingController.php` + `src/SessionService.php` |
 | Session scope/TTL | `src/SessionService.php` |
@@ -37,7 +39,7 @@ Backend contract/security tests live under `tests/plugin/`. They validate behavi
 For every source-level claim, agents must locate the exact file and line range on the current `main` tree. When a runtime source file changes, update the affected map and its line references in the same change.
 
 ## Completeness rule
-Every newly added runtime source file must be added here in the same change. Generated/vendor/build output is excluded only when explicitly identified as such.
+Every newly added runtime source file must be added here in the same change. `BazaarService.php` is a runtime source file and is indexed above. Generated/vendor/build output is excluded only when explicitly identified as such.
 
 ## Authority
 `plugin source code -> agent map`. The map documents executable truth; changing a map alone never authorizes or requires code changes.
