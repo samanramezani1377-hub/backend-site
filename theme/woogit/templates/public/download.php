@@ -13,8 +13,8 @@ get_header();
       <span class="wg-eyebrow">Android</span>
       <h2>مدیریت فروشگاه از موبایل</h2>
       <p>سفارش‌ها و محصولات فروشگاهتان را بررسی کنید، وضعیت فروشگاه را دنبال کنید و کارهای روزمره را بدون وابستگی به کامپیوتر انجام دهید.</p>
-      <?php $apk_id=absint(woogit_theme_option('app_apk_id',0)); $apk_url=$apk_id?wp_get_attachment_url($apk_id):''; $play_url=woogit_theme_option('app_google_play_url',''); $bazaar_url=woogit_theme_option('app_bazaar_url',''); $version=woogit_theme_option('app_version',''); ?>
-      <?php if($apk_url): ?><a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url($apk_url); ?>" download>دانلود مستقیم APK</a><?php else: ?><span class="wg-btn wg-btn--primary wg-btn--large" aria-disabled="true">دانلود مستقیم به‌زودی</span><?php endif; ?>
+      <?php $apk_id=absint(woogit_theme_option('app_apk_id',0)); $apk_url=$apk_id?woogit_apk_download_url($apk_id):''; $play_url=woogit_theme_option('app_google_play_url',''); $bazaar_url=woogit_theme_option('app_bazaar_url',''); $version=woogit_theme_option('app_version',''); ?>
+      <?php if($apk_url): ?><a class="wg-btn wg-btn--primary wg-btn--large" href="<?php echo esc_url($apk_url); ?>">دانلود مستقیم APK</a><?php else: ?><span class="wg-btn wg-btn--primary wg-btn--large" aria-disabled="true">دانلود مستقیم به‌زودی</span><?php endif; ?>
       <?php if($version): ?><div style="margin-top:10px">نسخه <?php echo esc_html($version); ?></div><?php endif; ?>
     </article>
     <article class="wg-card">
@@ -29,7 +29,7 @@ get_header();
   <div class="wg-grid wg-grid--3">
     <?php if($play_url): ?><article class="wg-card"><span class="wg-eyebrow">Google Play</span><h2>نصب از Google Play</h2><p>نسخه منتشرشده را از Google Play نصب کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url($play_url); ?>" target="_blank" rel="noopener noreferrer">نصب از Google Play</a></article><?php endif; ?>
     <?php if($bazaar_url): ?><article class="wg-card"><span class="wg-eyebrow">بازار</span><h2>نصب از بازار</h2><p>نسخه منتشرشده را از بازار دریافت کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url($bazaar_url); ?>" target="_blank" rel="noopener noreferrer">نصب از بازار</a></article><?php endif; ?>
-    <?php if($apk_url): ?><article class="wg-card"><span class="wg-eyebrow">APK</span><h2>دانلود مستقیم</h2><p>آخرین APK قرارگرفته در سایت را مستقیماً دانلود کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url($apk_url); ?>" download>دانلود APK</a></article><?php endif; ?>
+    <?php if($apk_url): ?><article class="wg-card"><span class="wg-eyebrow">APK</span><h2>دانلود مستقیم</h2><p>آخرین APK قرارگرفته در سایت را مستقیماً دانلود کنید.</p><a class="wg-btn wg-btn--ghost" href="<?php echo esc_url($apk_url); ?>">دانلود APK</a></article><?php endif; ?>
   </div>
 </section>
 <section class="wg-section wg-container">
@@ -48,7 +48,7 @@ get_header();
     <span class="wg-eyebrow">WooGit</span>
     <h2>مدیریت فروشگاه را از موبایل شروع کنید</h2>
     <p>اپلیکیشن WooGit را نصب کنید، سپس فروشگاهتان را متصل کنید و مدیریت روزمره را شروع کنید.</p>
-    <?php if($apk_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($apk_url); ?>" download>دانلود APK</a><?php elseif($play_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($play_url); ?>" target="_blank" rel="noopener noreferrer">نصب از Google Play</a><?php elseif($bazaar_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($bazaar_url); ?>" target="_blank" rel="noopener noreferrer">نصب از بازار</a><?php else: ?><span class="wg-btn wg-btn--primary" aria-disabled="true">لینک نصب به‌زودی</span><?php endif; ?>
+    <?php if($apk_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($apk_url); ?>">دانلود APK</a><?php elseif($play_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($play_url); ?>" target="_blank" rel="noopener noreferrer">نصب از Google Play</a><?php elseif($bazaar_url): ?><a class="wg-btn wg-btn--primary" href="<?php echo esc_url($bazaar_url); ?>" target="_blank" rel="noopener noreferrer">نصب از بازار</a><?php else: ?><span class="wg-btn wg-btn--primary" aria-disabled="true">لینک نصب به‌زودی</span><?php endif; ?>
   </div>
 </section>
 <?php get_footer(); ?>
