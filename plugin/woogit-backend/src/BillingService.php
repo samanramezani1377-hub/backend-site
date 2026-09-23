@@ -58,15 +58,34 @@ final class BillingService
     {
         $sku = trim($sku);
         if ($sku === '' || !function_exists('wc_get_products')) return ['ok' => false, 'code' => 'bazaar_product_not_found'];
-        $products = wc_get_products(['status' => 'publish', 'limit' => 100, 'paginate' => false]);
-        foreach ((array)$products as $product) {
-            if (!$product || !$this->isSubscriptionProduct($product) || !$this->isPlanEnabled($product)) continue;
-            if ($this->bazaarSku($product) === $sku) return ['ok' => true, 'product' => $product, 'variation_id' => 0];
-            foreach ((array)$product->get_children() as $variationId) {
-                $variation = function_exists('wc_get_product') ? wc_get_product((int)$variationId) : null;
-                if ($variation && $this->isSubscriptionProduct($variation) && $this->bazaarSku($variation) === $sku) return ['ok' => true, 'product' => $product, 'variation_id' => (int)$variationId, 'variation' => $variation];
+        $page = 1;
+        $perPage = 100;
+        do {
+            $result = wc_get_products([
+                'status' => 'publish',
+                'limit' => $perPage,
+                'page' => $page,
+                'paginate' => true,
+            ]);
+            $products = is_object($result) && isset($result->products)
+                ? (array) $result->products
+                : (array) $result;
+            foreach ($products as $product) {
+                if (!$product || !$this->isSubscriptionProduct($product) || !$this->isPlanEnabled($product)) continue;
+                if ($this->bazaarSku($product) === $sku) {
+                    return ['ok' => true, 'product' => $product, 'variation_id' => 0];
+                }
+                foreach ((array) $product->get_children() as $variationId) {
+                    $variation = function_exists('wc_get_product') ? wc_get_product((int) $variationId) : null;
+                    if ($variation && $this->isSubscriptionProduct($variation) && $this->bazaarSku($variation) === $sku) {
+                        return ['ok' => true, 'product' => $product, 'variation_id' => (int) $variationId, 'variation' => $variation];
+                    }
+                }
             }
-        }
+            $maxPages = is_object($result) && isset($result->max_num_pages) ? (int) $result->max_num_pages : 1;
+            $page++;
+        } while ($products !== [] && $page <= $maxPages);
+
         return ['ok' => false, 'code' => 'bazaar_product_not_found'];
     }
 
