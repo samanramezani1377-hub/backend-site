@@ -20,7 +20,17 @@ function woogit_handle_apk_download() {
     if (!$attachment_id) return;
 
     $configured_id = absint(woogit_theme_option('app_apk_id', 0));
-    if (!$configured_id || $attachment_id !== $configured_id) {
+    if (!$configured_id) {
+        status_header(404);
+        exit;
+    }
+
+    // Keep the previously published download URL alive.
+    if ($attachment_id !== $configured_id) {
+        if ($attachment_id === 263) {
+            wp_safe_redirect(woogit_apk_download_url($configured_id), 301);
+            exit;
+        }
         status_header(404);
         exit;
     }
