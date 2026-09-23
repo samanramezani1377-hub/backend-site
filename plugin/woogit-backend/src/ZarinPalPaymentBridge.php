@@ -24,11 +24,32 @@ final class ZarinPalPaymentBridge
         $data = $response->get_data();
         if (!is_array($data) || empty($data['order_id'])) return $response;
 
-        $paymentUrl = $this->resolvePaymentUrl((int)$data['order_id']);
+        $orderId = (int)$data['order_id'];
+        $isApp = trim((string)$request->get_header('X-WooGit-Web-Session')) === ''
+            && trim((string)$request->get_header('X-WooGit-Session')) !== '';
+
+        if ($isApp) {
+            $startUrl = (new ZarinPalPaymentStartBridge())->createStartUrl($orderId);
+            if ($startUrl === '') {
+                return new \WP_REST_Response([
+                    'code' => 'payment_gateway_unavailable',
+                    'order_id' => $orderId,
+                    'message' => 'درگاه پرداخت زرین‌پال در دسترس نیست یا نتوانست صفحه شروع پرداخت را ایجاد کند.',
+                    'retryable' => true,
+                ], 503);
+            }
+
+            $data['payment_url'] = $startUrl;
+            $data['payment_method'] = 'zarinpal';
+            $response->set_data($data);
+            return $response;
+        }
+
+        $paymentUrl = $this->resolvePaymentUrl($orderId);
         if ($paymentUrl === '') {
             return new \WP_REST_Response([
                 'code' => 'payment_gateway_unavailable',
-                'order_id' => (int)$data['order_id'],
+                'order_id' => $orderId,
                 'message' => 'درگاه پرداخت زرین‌پال در دسترس نیست یا نتوانست آدرس پرداخت را ایجاد کند.',
                 'retryable' => true,
             ], 503);
@@ -40,7 +61,7 @@ final class ZarinPalPaymentBridge
         return $response;
     }
 
-    private function resolvePaymentUrl(int $orderId): string
+    public function resolvePaymentUrl(int $orderId): string
     {
         if ($orderId <= 0 || !function_exists('wc_get_order') || !function_exists('WC')) return '';
         if (!WC()->payment_gateways()) return '';
