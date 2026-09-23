@@ -34,7 +34,7 @@ grep -Fq "entitlement_activation_failed" "$SERVICE" || fail "entitlement failure
 grep -Fq "UNIQUE KEY purchase_token (purchase_token)" "$DATABASE" || fail "purchase token uniqueness missing"
 grep -Fq "purchase_token=%s" "$SERVICE" || fail "purchase token lookup missing"
 grep -Fq "bazaar_purchase_already_claimed" "$SERVICE" || fail "cross-account token protection missing"
-grep -Fq "winner = $this->getPurchase" "$SERVICE" || fail "concurrent insert recovery missing"
+grep -Fq "winner = \$this->getPurchase" "$SERVICE" || fail "concurrent insert recovery missing"
 
 # SKU lookup must cover more than the first 100 products.
 grep -Fq "'paginate' => true" "$BILLING" || fail "Bazaar SKU lookup must paginate"
