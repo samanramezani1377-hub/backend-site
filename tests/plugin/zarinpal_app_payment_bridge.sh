@@ -15,7 +15,7 @@ grep -Fq "createStartUrl" "$BRIDGE" || fail "App checkout bridge token creation 
 grep -Fq "public function resolvePaymentUrl" "$BRIDGE" || fail "Gateway URL resolver must remain reusable by the bridge"
 grep -Fq "payment-start" "$START" || fail "Payment-start path missing"
 grep -Fq "bin2hex(random_bytes(32))" "$START" || fail "Payment-start token must be cryptographically random"
-grep -Fq "hash('sha256', $token)" "$START" || fail "Transient key must hash the token"
+grep -Fq 'hash(\'sha256\', $token)' "$START" || fail "Transient key must hash the token"
 grep -Fq "set_transient" "$START" || fail "Payment-start state must be short-lived"
 grep -Fq "get_transient" "$START" || fail "Payment-start token validation missing"
 grep -Fq "get_meta(self::ACCOUNT_META)" "$START" || fail "Order/account binding missing"
