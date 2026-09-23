@@ -163,6 +163,13 @@ final class BillingController
 
     public function bazaarOAuthAuthorize(\WP_REST_Request $request): \WP_REST_Response
     {
+        $nonce = (string) $request->get_param('_wpnonce');
+        if ($nonce === '' || !wp_verify_nonce($nonce, 'wp_rest')) {
+            return new \WP_REST_Response(['code' => 'invalid_oauth_nonce'], 403);
+        }
+        if (!current_user_can('manage_options')) {
+            return new \WP_REST_Response(['code' => 'bazaar_oauth_admin_required'], 403);
+        }
         $result = $this->bazaar->beginOAuth(get_current_user_id());
         if (!$result['ok']) return new \WP_REST_Response(['code' => $result['code']], 400);
         wp_redirect($result['url']);
