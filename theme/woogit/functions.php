@@ -13,6 +13,7 @@ require_once WOOGIT_THEME_DIR . '/inc/commerce/adapter.php';
 require_once WOOGIT_THEME_DIR . '/inc/admin/theme-management/settings.php';
 require_once WOOGIT_THEME_DIR . '/inc/admin/theme-management/meta.php';
 require_once WOOGIT_THEME_DIR . '/inc/admin/theme-management/admin.php';
+require_once WOOGIT_THEME_DIR . '/inc/downloads/apk-counter.php';
 
 add_action('after_setup_theme', 'woogit_theme_setup');
 add_action('wp_enqueue_scripts', 'woogit_enqueue_assets');
