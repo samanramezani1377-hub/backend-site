@@ -21,7 +21,7 @@ test -s "$SETTINGS" || fail "Bazaar settings missing"
 grep -Fq 'if ($existing && (' "$SERVICE" || fail "existing-token ownership check missing"
 grep -Fq '$validated = $this->validateSubscription' "$SERVICE" || fail "repeat verification must call Bazaar"
 grep -Fq '$wpdb->update(' "$SERVICE" || fail "existing purchase must be refreshable"
-grep -Fq "'expires_at' => $record['expires_at']" "$SERVICE" || fail "renewed expiry must be persisted"
+grep -Fq "'expires_at' => \$record['expires_at']" "$SERVICE" || fail "renewed expiry must be persisted"
 grep -Fq "'already_processed' => $existing !== null" "$SERVICE" || fail "idempotent response flag missing"
 
 # Invalid/inactive/expired purchases must not activate entitlements.
