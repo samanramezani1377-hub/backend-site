@@ -1,7 +1,7 @@
 name: Theme CI
 on:
   push:
-    branches: [main, theme-v1-implementation]
+    branches: [main, bazar]
     paths: ['theme/woogit/**', 'tests/theme/**', 'tools/preview/**', '.github/workflows/theme-ci.yml']
   pull_request:
     paths: ['theme/woogit/**', 'tests/theme/**', 'tools/preview/**', '.github/workflows/theme-ci.yml']
