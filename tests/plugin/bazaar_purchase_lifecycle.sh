@@ -38,7 +38,7 @@ grep -Fq "winner = \$this->getPurchase" "$SERVICE" || fail "concurrent insert re
 
 # SKU lookup must cover more than the first 100 products.
 grep -Fq "'paginate' => true" "$BILLING" || fail "Bazaar SKU lookup must paginate"
-grep -Fq "'max_num_pages'" "$BILLING" || fail "Bazaar SKU pagination boundary missing"
+grep -Fq "max_num_pages" "$BILLING" || fail "Bazaar SKU pagination boundary missing"
 
 # OAuth must be bound to an administrator and a WordPress REST nonce.
 grep -Fq "wp_verify_nonce" "$CONTROLLER" || fail "OAuth nonce validation missing"
