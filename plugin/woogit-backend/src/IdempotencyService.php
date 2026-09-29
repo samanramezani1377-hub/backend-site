@@ -44,6 +44,10 @@ final class IdempotencyService
     {
         global $wpdb;$row=$wpdb->get_row($wpdb->prepare("SELECT request_fingerprint,operation_id,state,status_code,response_body FROM {$wpdb->prefix}woogit_idempotency WHERE account_id=%d AND site_id=%d AND idempotency_key=%s LIMIT 1",$accountId,$siteId,$key),ARRAY_A);if(!$row)return ['state'=>'absent'];if(!hash_equals((string)$row['request_fingerprint'],$fingerprint))return ['state'=>'conflict'];$state=(string)$row['state'];
         if($state==='pending')return ['state'=>'pending','operation_id'=>(string)$row['operation_id']];if($state==='unknown')return ['state'=>'unknown','operation_id'=>(string)$row['operation_id']];
+        if($verify && $state==='failed'){
+            $wpdb->delete($wpdb->prefix.'woogit_idempotency',['account_id'=>$accountId,'site_id'=>$siteId,'idempotency_key'=>$key],['%d','%d','%s']);
+            return ['state'=>'absent'];
+        }
         $body=$verify?$this->decryptVerifyResponse((string)$row['response_body']):json_decode((string)$row['response_body'],true);if($body===null)return ['state'=>'unknown','operation_id'=>(string)$row['operation_id']];return ['state'=>'completed','operation_id'=>(string)$row['operation_id'],'status'=>(int)$row['status_code'],'body'=>is_array($body)?$body:[]];
     }
 
