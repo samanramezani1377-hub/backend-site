@@ -32,7 +32,7 @@ grep -Fq '$site.$path' "$PROXY" || fail "REST mode cache must include the site p
 
 verify_line=$(grep -n "public function verify(" "$PROXY" | head -1 | cut -d: -f1)
 verify_probe_line=$(tail -n +"$verify_line" "$PROXY" | grep -nF 'detectRestMode($baseUrl)' | head -1 | cut -d: -f1)
-verify_users_line=$(tail -n +"$verify_line" "$PROXY" | grep -nF 'requestRest($baseUrl,'"'"'/wp/v2/users/me'"'"'' | head -1 | cut -d: -f1)
+verify_users_line=$(tail -n +"$verify_line" "$PROXY" | grep -nF "requestRest(\$baseUrl,'/wp/v2/users/me'" | head -1 | cut -d: -f1)
 [[ -n "$verify_probe_line" && -n "$verify_users_line" && "$verify_probe_line" -lt "$verify_users_line" ]] || fail "verify must re-probe REST mode before using users/me; cached mode must not bypass fallback detection"
 
 probe_fn_line=$(grep -n "private function detectRestMode(" "$PROXY" | head -1 | cut -d: -f1)
