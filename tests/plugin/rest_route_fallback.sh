@@ -31,6 +31,11 @@ probe_line=$(grep -n "requestRestPublic($baseUrl,'/wp/v2/','pretty')" "$PROXY" |
 users_line=$(grep -n "requestRest($baseUrl,'/wp/v2/users/me'" "$PROXY" | head -1 | cut -d: -f1)
 [[ -n "$probe_line" && -n "$users_line" && "$probe_line" -lt "$users_line" ]] || fail "public REST mode detection must happen before users/me authentication"
 
+verify_line=$(grep -n "public function verify(" "$PROXY" | head -1 | cut -d: -f1)
+verify_probe_line=$(tail -n +"$verify_line" "$PROXY" | grep -n "detectRestMode($baseUrl)" | head -1 | cut -d: -f1)
+verify_users_line=$(tail -n +"$verify_line" "$PROXY" | grep -n "requestRest($baseUrl,'/wp/v2/users/me'" | head -1 | cut -d: -f1)
+[[ -n "$verify_probe_line" && -n "$verify_users_line" && "$verify_probe_line" -lt "$verify_users_line" ]] || fail "verify must re-probe REST mode before using users/me; cached mode must not bypass fallback detection"
+
 if grep -Fq "if($wpStatus===404){$alternate" "$PROXY"; then
   fail "users/me must not blindly retry another REST URL style"
 fi
