@@ -26,14 +26,17 @@ grep -Fq "woocommerce_rest_unavailable" "$PROXY" || fail "WooCommerce route fail
 grep -Fq "woocommerce_http_error" "$PROXY" || fail "WooCommerce non-auth HTTP errors must be distinguishable"
 grep -Fq "redirection'=>0" "$PROXY" || fail "REST probing must not enable redirects"
 grep -Fq "wp_safe_remote_request" "$PROXY" || fail "REST probing must preserve safe pinned transport"
+grep -Fq "requestWooCommerce(\$baseUrl," "$PROXY" || fail "WooCommerce verification must preserve the configured site base URL"
+grep -Fq "restModeKey" "$PROXY" || fail "REST mode cache key must be site-specific"
+grep -Fq '$site.$path' "$PROXY" || fail "REST mode cache must include the site path, not only the host"
 
 verify_line=$(grep -n "public function verify(" "$PROXY" | head -1 | cut -d: -f1)
 verify_probe_line=$(tail -n +"$verify_line" "$PROXY" | grep -nF 'detectRestMode($baseUrl)' | head -1 | cut -d: -f1)
-verify_users_line=$(tail -n +"$verify_line" "$PROXY" | grep -nF "requestRest($baseUrl,'/wp/v2/users/me'" | head -1 | cut -d: -f1)
+verify_users_line=$(tail -n +"$verify_line" "$PROXY" | grep -nF 'requestRest($baseUrl,'"'"'/wp/v2/users/me'"'"'' | head -1 | cut -d: -f1)
 [[ -n "$verify_probe_line" && -n "$verify_users_line" && "$verify_probe_line" -lt "$verify_users_line" ]] || fail "verify must re-probe REST mode before using users/me; cached mode must not bypass fallback detection"
 
 probe_fn_line=$(grep -n "private function detectRestMode(" "$PROXY" | head -1 | cut -d: -f1)
-public_probe_line=$(tail -n +"$probe_fn_line" "$PROXY" | grep -nF "requestRestPublic($baseUrl" | head -1 | cut -d: -f1)
+public_probe_line=$(tail -n +"$probe_fn_line" "$PROXY" | grep -nF 'requestRestPublic($baseUrl' | head -1 | cut -d: -f1)
 [[ -n "$public_probe_line" ]] || fail "detectRestMode must perform a credential-free public REST probe"
 
 if grep -Fq "if($wpStatus===404){$alternate" "$PROXY"; then
