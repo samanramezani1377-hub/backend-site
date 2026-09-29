@@ -7,6 +7,7 @@ final class WooCommerceProxy
 {
     private ?string $pinnedHost = null;
     private array $pinnedIps = [];
+    private ?string $pinnedBasicAuth = null;
 
     /**
      * Verify both WordPress application-password credentials and WooCommerce API credentials.
@@ -103,13 +104,13 @@ final class WooCommerceProxy
 
     private function requestRest(string $baseUrl,string $route,string $username,string $applicationPassword,string $mode='pretty')
     {
-        return $this->safePinnedRequest($this->restUrl($baseUrl,$route,$mode),['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($username.':'.$applicationPassword),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
+        return $this->safePinnedRequest($this->restUrl($baseUrl,$route,$mode),['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($username.':'.$applicationPassword),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]],$username.':'.$applicationPassword);
     }
 
     private function requestWooCommerce(string $baseUrl,string $route,string $consumerKey,string $consumerSecret,string $mode='pretty')
     {
         $target=$this->restUrl($baseUrl,$route,$mode);
-        return $this->safePinnedRequest($target,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
+        return $this->safePinnedRequest($target,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]],$consumerKey.':'.$consumerSecret);
     }
 
     private function restUrl(string $baseUrl,string $path,string $mode): string
@@ -152,16 +153,16 @@ final class WooCommerceProxy
     }
 
     /** Resolve and validate the destination immediately before the HTTP call, then pin every validated public IP. */
-    private function safePinnedRequest(string $url,array $args)
+    private function safePinnedRequest(string $url,array $args,?string $basicAuth=null)
     {
         $destination=$this->resolvePublicDestination($url);
         if($destination===null)return new \WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
         if(!function_exists('curl_init'))return new \WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
-        $this->pinnedHost=$destination['host'];$this->pinnedIps=$destination['ips'];add_action('http_api_curl',[$this,'pinCurl'],10,3);
-        try{return wp_safe_remote_request($url,$args);}finally{remove_action('http_api_curl',[$this,'pinCurl'],10);$this->pinnedHost=null;$this->pinnedIps=[];}
+        $this->pinnedHost=$destination['host'];$this->pinnedIps=$destination['ips'];$this->pinnedBasicAuth=$basicAuth;add_action('http_api_curl',[$this,'pinCurl'],10,3);
+        try{return wp_safe_remote_request($url,$args);}finally{remove_action('http_api_curl',[$this,'pinCurl'],10);$this->pinnedHost=null;$this->pinnedIps=[];$this->pinnedBasicAuth=null;}
     }
 
-    public function pinCurl($handle,array $parsedArgs,string $url): void{if($this->pinnedHost===null||$this->pinnedIps===[]||!defined('CURLOPT_RESOLVE'))return;$entries=[];foreach($this->pinnedIps as $ip)$entries[]=$this->pinnedHost.':443:'.$ip;curl_setopt($handle,CURLOPT_RESOLVE,$entries);}
+    public function pinCurl($handle,array $parsedArgs,string $url): void{if($this->pinnedHost!==null&&$this->pinnedIps!==[]&&defined('CURLOPT_RESOLVE')){$entries=[];foreach($this->pinnedIps as $ip)$entries[]=$this->pinnedHost.':443:'.$ip;curl_setopt($handle,CURLOPT_RESOLVE,$entries);}if($this->pinnedBasicAuth!==null&&defined('CURLOPT_USERPWD')&&defined('CURLOPT_HTTPAUTH')){curl_setopt($handle,CURLOPT_HTTPAUTH,CURLAUTH_BASIC);curl_setopt($handle,CURLOPT_USERPWD,$this->pinnedBasicAuth);}}
     private function resolvePublicDestination(string $url): ?array
     {
         $parts=wp_parse_url($url);if(!$parts||strtolower((string)($parts['scheme']??''))!=='https')return null;$host=strtolower(rtrim((string)($parts['host']??''),'.'));if($host==='')return null;if(!empty($parts['user'])||!empty($parts['pass'])||(!empty($parts['port'])&&(int)$parts['port']!==443))return null;
