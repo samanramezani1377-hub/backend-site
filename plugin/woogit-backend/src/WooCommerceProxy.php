@@ -153,6 +153,7 @@ final class WooCommerceProxy
     }
 
     /** Resolve and validate the destination immediately before the HTTP call, then use a pinned cURL transport. */
+    // The former wp_safe_remote_request transport is intentionally bypassed here so Authorization is not rewritten by the WP HTTP layer.
     private function safePinnedRequest(string $url,array $args,?string $basicAuth=null)
     {
         $destination=$this->resolvePublicDestination($url);
