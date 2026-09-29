@@ -9,38 +9,51 @@ final class WooCommerceProxy
     private array $pinnedIps = [];
 
     /**
-     * Detect the REST URL style once per connected site. WooGit identity is site-based,
-     * so the host is the stable cache key; no credentials are ever stored.
+     * Verify both WordPress application-password credentials and WooCommerce API credentials.
+     * REST URL style is detected once per connected site; no credentials are stored.
      */
     public function verify(string $baseUrl,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret): array
     {
         $mode=$this->getRestMode($baseUrl);
-        $wp=$this->requestRest($baseUrl,'/',$username,$applicationPassword,$mode);
+
+        // The REST index can return 200 with invalid credentials, so verify against the
+        // authenticated users/me endpoint instead.
+        $wp=$this->requestRest($baseUrl,'/wp/v2/users/me',$username,$applicationPassword,$mode);
         if(is_wp_error($wp))return ['ok'=>false,'reason'=>'wordpress_unreachable'];
 
         $wpStatus=wp_remote_retrieve_response_code($wp);
         if($wpStatus===404){
             $alternate=$mode==='query'?'pretty':'query';
-            $wp=$this->requestRest($baseUrl,'/',$username,$applicationPassword,$alternate);
+            $wp=$this->requestRest($baseUrl,'/wp/v2/users/me',$username,$applicationPassword,$alternate);
             if(is_wp_error($wp))return ['ok'=>false,'reason'=>'wordpress_unreachable'];
             $wpStatus=wp_remote_retrieve_response_code($wp);
-            if($wpStatus>=200&&$wpStatus<300){$mode=$alternate;$this->rememberRestMode($baseUrl,$mode);}
-            elseif($wpStatus===404)return ['ok'=>false,'reason'=>'wordpress_rest_unavailable'];
+            if($wpStatus>=200&&$wpStatus<300){
+                $mode=$alternate;
+                $this->rememberRestMode($baseUrl,$mode);
+            }elseif($wpStatus===404){
+                return ['ok'=>false,'reason'=>'wordpress_rest_unavailable'];
+            }
         }
         if($wpStatus<200||$wpStatus>=300)return ['ok'=>false,'reason'=>'wordpress_auth_failed'];
 
         $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$mode);
         if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
+
         $wcStatus=wp_remote_retrieve_response_code($wc);
         if($wcStatus===404){
             $alternate=$mode==='query'?'pretty':'query';
             $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$alternate);
             if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
             $wcStatus=wp_remote_retrieve_response_code($wc);
-            if($wcStatus>=200&&$wcStatus<300){$mode=$alternate;$this->rememberRestMode($baseUrl,$mode);}
-            elseif($wcStatus===404)return ['ok'=>false,'reason'=>'woocommerce_rest_unavailable'];
+            if($wcStatus>=200&&$wcStatus<300){
+                $mode=$alternate;
+                $this->rememberRestMode($baseUrl,$mode);
+            }elseif($wcStatus===404){
+                return ['ok'=>false,'reason'=>'woocommerce_rest_unavailable'];
+            }
         }
         if($wcStatus<200||$wcStatus>=300)return ['ok'=>false,'reason'=>'woocommerce_auth_failed'];
+
         $this->rememberRestMode($baseUrl,$mode);
         return ['ok'=>true];
     }
