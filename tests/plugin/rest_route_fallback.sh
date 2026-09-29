@@ -39,7 +39,7 @@ probe_fn_line=$(grep -n "private function detectRestMode(" "$PROXY" | head -1 | 
 public_probe_line=$(tail -n +"$probe_fn_line" "$PROXY" | grep -nF 'requestRestPublic($baseUrl' | head -1 | cut -d: -f1)
 [[ -n "$public_probe_line" ]] || fail "detectRestMode must perform a credential-free public REST probe"
 
-if grep -Fq "if($wpStatus===404){$alternate" "$PROXY"; then
+if grep -Fq 'if($wpStatus===404){$alternate' "$PROXY"; then
   fail "users/me must not blindly retry another REST URL style"
 fi
 
