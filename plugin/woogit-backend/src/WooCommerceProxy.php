@@ -219,7 +219,7 @@ final class WooCommerceProxy
             CURLOPT_CUSTOMREQUEST=>$method,
             CURLOPT_RESOLVE=>$resolve,
         ];
-        if($method==='GET'||$method==='HEAD')$options[CURLOPT_NOBODY]=$method==='HEAD';
+        if($method==='HEAD')$options[CURLOPT_NOBODY]=true;
         if(isset($args['body'])&&$args['body']!=='')$options[CURLOPT_POSTFIELDS]=(string)$args['body'];
         if($basicAuth!==null){
             $options[CURLOPT_HTTPAUTH]=CURLAUTH_BASIC;
