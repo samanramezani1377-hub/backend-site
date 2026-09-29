@@ -167,6 +167,11 @@ final class WooCommerceProxy
     {
         $destination=$this->resolvePublicDestination($url);
         if($destination===null)return new \WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
+        // Pin every validated public address for this exact request. The destination is
+        // resolved immediately before connecting, and the same pinned set is used by cURL.
+        $this->pinnedHost=$destination['host'];
+        $this->pinnedIps=$destination['ips'];
+        $this->pinnedBasicAuth=$basicAuth;
         if(!function_exists('curl_init'))return new \WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
 
         $handle=curl_init();
@@ -184,8 +189,8 @@ final class WooCommerceProxy
         }
 
         $resolve=[];
-        foreach($destination['ips'] as $ip){
-            $resolve[]=$destination['host'].':443:'.$ip;
+        foreach($this->pinnedIps as $ip){
+            $resolve[]=$this->pinnedHost.':443:'.$ip;
         }
 
         $responseHeaders=[];
