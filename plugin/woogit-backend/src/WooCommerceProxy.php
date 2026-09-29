@@ -68,11 +68,11 @@ final class WooCommerceProxy
         $authorization=$isWordPressMedia?'Basic '.base64_encode($username.':'.$applicationPassword):'Basic '.base64_encode($consumerKey.':'.$consumerSecret);
         $headers=['Authorization'=>$authorization,'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION];if($contentType!=='')$headers['Content-Type']=$contentType;if($isWordPressMedia&&$contentDisposition!=='')$headers['Content-Disposition']=$contentDisposition;
         $args=['method'=>strtoupper($method),'timeout'=>20,'redirection'=>0,'headers'=>$headers,'data_format'=>'body'];if($rawBody!==''&&in_array(strtoupper($method),['POST','PUT','PATCH'],true))$args['body']=$rawBody;
-        $response=$this->safePinnedRequest($url,$args,$authorization===null?null:($isWordPressMedia?$username.':'.$applicationPassword:$consumerKey.':'.$consumerSecret));
+        $response=$this->safePinnedRequest($url,$args,$isWordPressMedia?$username.':'.$applicationPassword:$consumerKey.':'.$consumerSecret);
         if(!is_wp_error($response)&&wp_remote_retrieve_response_code($response)===404){
             $alternate=$mode==='query'?'pretty':'query';
             $retryUrl=$this->restUrl($baseUrl,$path,$alternate);if($query!==[])$retryUrl=add_query_arg($query,$retryUrl);
-            $response=$this->safePinnedRequest($retryUrl,$args,$authorization===null?null:($isWordPressMedia?$username.':'.$applicationPassword:$consumerKey.':'.$consumerSecret));
+            $response=$this->safePinnedRequest($retryUrl,$args,$isWordPressMedia?$username.':'.$applicationPassword:$consumerKey.':'.$consumerSecret);
             $retryStatus=is_wp_error($response)?0:wp_remote_retrieve_response_code($response);
             if($retryStatus>=200&&$retryStatus<300)$this->rememberRestMode($baseUrl,$alternate);
         }
