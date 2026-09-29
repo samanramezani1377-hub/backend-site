@@ -14,33 +14,33 @@ final class WooCommerceProxy
      */
     public function verify(string $baseUrl,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret): array
     {
-        $mode=$this->getRestMode($baseUrl);
+        $storedMode=$this->getStoredRestMode($baseUrl);
+        if($storedMode===null){
+            $detected=$this->detectRestMode($baseUrl);
+            if(!$detected['ok'])return $detected;
+            $mode=$detected['mode'];
+            $this->rememberRestMode($baseUrl,$mode);
+        }else{
+            $mode=$storedMode;
+        }
 
-        // The REST index can return 200 with invalid credentials, so verify against the
-        // authenticated users/me endpoint instead.
+        // The public REST route is already known to work in this mode. A 401 here
+        // is therefore a real WordPress Application Password authentication failure;
+        // do not retry it through another URL style.
         $wp=$this->requestRest($baseUrl,'/wp/v2/users/me',$username,$applicationPassword,$mode);
         if(is_wp_error($wp))return ['ok'=>false,'reason'=>'wordpress_unreachable'];
-
         $wpStatus=wp_remote_retrieve_response_code($wp);
-        if($wpStatus===404){
-            $alternate=$mode==='query'?'pretty':'query';
-            $wp=$this->requestRest($baseUrl,'/wp/v2/users/me',$username,$applicationPassword,$alternate);
-            if(is_wp_error($wp))return ['ok'=>false,'reason'=>'wordpress_unreachable'];
-            $wpStatus=wp_remote_retrieve_response_code($wp);
-            if($wpStatus>=200&&$wpStatus<300){
-                $mode=$alternate;
-                $this->rememberRestMode($baseUrl,$mode);
-            }elseif($wpStatus===404){
-                return ['ok'=>false,'reason'=>'wordpress_rest_unavailable'];
-            }
-        }
-        if($wpStatus<200||$wpStatus>=300)return ['ok'=>false,'reason'=>'wordpress_auth_failed'];
+        if($wpStatus===401)return ['ok'=>false,'reason'=>'wordpress_auth_failed'];
+        if($wpStatus===403)return ['ok'=>false,'reason'=>'wordpress_auth_forbidden'];
+        if($wpStatus===404)return ['ok'=>false,'reason'=>'wordpress_users_endpoint_unavailable'];
+        if($wpStatus<200||$wpStatus>=300)return ['ok'=>false,'reason'=>'wordpress_http_error','status'=>$wpStatus];
 
         $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$mode);
         if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
-
         $wcStatus=wp_remote_retrieve_response_code($wc);
         if($wcStatus===404){
+            // A WooCommerce route can fail independently of the WordPress users route.
+            // Only a route-level 404 is eligible for the alternate REST URL style.
             $alternate=$mode==='query'?'pretty':'query';
             $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$alternate);
             if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
@@ -52,7 +52,9 @@ final class WooCommerceProxy
                 return ['ok'=>false,'reason'=>'woocommerce_rest_unavailable'];
             }
         }
-        if($wcStatus<200||$wcStatus>=300)return ['ok'=>false,'reason'=>'woocommerce_auth_failed'];
+        if($wcStatus===401)return ['ok'=>false,'reason'=>'woocommerce_auth_failed'];
+        if($wcStatus===403)return ['ok'=>false,'reason'=>'woocommerce_auth_forbidden'];
+        if($wcStatus<200||$wcStatus>=300)return ['ok'=>false,'reason'=>'woocommerce_http_error','status'=>$wcStatus];
 
         $this->rememberRestMode($baseUrl,$mode);
         return ['ok'=>true];
@@ -78,6 +80,27 @@ final class WooCommerceProxy
         if(is_wp_error($response)){$message=strtolower((string)$response->get_error_message());$timeout=str_contains($message,'timed out')||str_contains($message,'timeout')||str_contains($message,'operation timed out');return ['status'=>$timeout?504:502,'body'=>'','headers'=>[],'timeout'=>$timeout];}
         $responseHeaders=[];foreach(['content-type','x-wp-total','x-wp-totalpages'] as $name){$value=wp_remote_retrieve_header($response,$name);if($value!=='')$responseHeaders[$name]=$value;}
         return ['status'=>wp_remote_retrieve_response_code($response),'body'=>wp_remote_retrieve_body($response),'headers'=>$responseHeaders,'timeout'=>false];
+    }
+
+    private function detectRestMode(string $baseUrl): array
+    {
+        $response=$this->requestRestPublic($baseUrl,'/wp/v2/','pretty');
+        if(is_wp_error($response))return ['ok'=>false,'reason'=>'wordpress_rest_unreachable'];
+        $status=wp_remote_retrieve_response_code($response);
+        if($status>=200&&$status<300)return ['ok'=>true,'mode'=>'pretty'];
+        if($status!==404)return ['ok'=>false,'reason'=>'wordpress_rest_probe_failed','status'=>$status];
+
+        $response=$this->requestRestPublic($baseUrl,'/wp/v2/','query');
+        if(is_wp_error($response))return ['ok'=>false,'reason'=>'wordpress_rest_unreachable'];
+        $status=wp_remote_retrieve_response_code($response);
+        if($status>=200&&$status<300)return ['ok'=>true,'mode'=>'query'];
+        if($status===404)return ['ok'=>false,'reason'=>'wordpress_rest_unavailable'];
+        return ['ok'=>false,'reason'=>'wordpress_rest_probe_failed','status'=>$status];
+    }
+
+    private function requestRestPublic(string $baseUrl,string $route,string $mode='pretty')
+    {
+        return $this->safePinnedRequest($this->restUrl($baseUrl,$route,$mode),['timeout'=>10,'redirection'=>0,'headers'=>['Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
     }
 
     private function requestRest(string $baseUrl,string $route,string $username,string $applicationPassword,string $mode='pretty')
@@ -112,9 +135,15 @@ final class WooCommerceProxy
         $host=strtolower(rtrim((string)wp_parse_url($baseUrl,PHP_URL_HOST),'.'));return 'woogit_rest_mode_'.substr(hash('sha256',$host),0,32);
     }
 
+    private function getStoredRestMode(string $baseUrl): ?string
+    {
+        $mode=get_transient($this->restModeKey($baseUrl));
+        return $mode==='query'||$mode==='pretty'?$mode:null;
+    }
+
     private function getRestMode(string $baseUrl): string
     {
-        $mode=get_transient($this->restModeKey($baseUrl));return $mode==='query'?'query':'pretty';
+        return $this->getStoredRestMode($baseUrl)??'pretty';
     }
 
     private function rememberRestMode(string $baseUrl,string $mode): void
