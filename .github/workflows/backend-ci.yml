@@ -69,6 +69,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: bash tests/plugin/zarinpal_app_payment_bridge.sh
+      - name: REST route fallback contract
+        id: rest_route_fallback
+        continue-on-error: true
+        shell: bash
+        run: bash tests/plugin/rest_route_fallback.sh
       - name: Proxy security invariants
         id: proxy_security
         continue-on-error: true
@@ -134,6 +139,7 @@ jobs:
           check_step 'Bazaar OAuth security contract' '${{ steps.bazaar_oauth.outcome }}'
           check_step 'Bazaar purchase lifecycle/security contract' '${{ steps.bazaar_purchase.outcome }}'
           check_step 'ZarinPal app payment bridge security contract' '${{ steps.zarinpal_bridge.outcome }}'
+          check_step 'REST route fallback contract' '${{ steps.rest_route_fallback.outcome }}'
           check_step 'Proxy security invariants' '${{ steps.proxy_security.outcome }}'
           check_step 'Build installable WordPress plugin ZIP' '${{ steps.build_zip.outcome }}'
           if [ '${{ steps.build_zip.outcome }}' = 'success' ]; then check_step 'Upload installable WordPress plugin ZIP' '${{ steps.upload_zip.outcome }}'; else echo 'SKIP: Upload installable plugin ZIP (build failed)'; fi
