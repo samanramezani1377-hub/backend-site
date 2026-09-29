@@ -152,17 +152,91 @@ final class WooCommerceProxy
         set_transient($this->restModeKey($baseUrl),$mode,30*DAY_IN_SECONDS);
     }
 
-    /** Resolve and validate the destination immediately before the HTTP call, then pin every validated public IP. */
+    /** Resolve and validate the destination immediately before the HTTP call, then use a pinned cURL transport. */
     private function safePinnedRequest(string $url,array $args,?string $basicAuth=null)
     {
         $destination=$this->resolvePublicDestination($url);
-        if($destination===null)return new \WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
-        if(!function_exists('curl_init'))return new \WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
-        $this->pinnedHost=$destination['host'];$this->pinnedIps=$destination['ips'];$this->pinnedBasicAuth=$basicAuth;add_action('http_api_curl',[$this,'pinCurl'],10,3);
-        try{return wp_safe_remote_request($url,$args);}finally{remove_action('http_api_curl',[$this,'pinCurl'],10);$this->pinnedHost=null;$this->pinnedIps=[];$this->pinnedBasicAuth=null;}
+        if($destination===null)return new \\WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
+        if(!function_exists('curl_init'))return new \\WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
+
+        $handle=curl_init();
+        if($handle===false)return new \\WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
+
+        $method=strtoupper((string)($args['method']??'GET'));
+        $timeout=max(1,(int)($args['timeout']??20));
+        $headers=[];
+        foreach((array)($args['headers']??[]) as $name=>$value){
+            if(is_array($value))$value=implode(', ',$value);
+            $headers[]=(string)$name.': '.(string)$value;
+        }
+        if($basicAuth!==null){
+            $headers[]='Authorization: Basic '.base64_encode($basicAuth);
+        }
+
+        $resolve=[];
+        foreach($destination['ips'] as $ip){
+            $resolve[]=$destination['host'].':443:'.$ip;
+        }
+
+        $responseHeaders=[];
+        $headerFunction=function($handle,string $line)use(&$responseHeaders): int{
+            $length=strlen($line);
+            $line=trim($line);
+            if($line===''||!str_contains($line,':'))return $length;
+            [$name,$value]=explode(':',$line,2);
+            $name=strtolower(trim($name));
+            $value=trim($value);
+            if($name!=='')$responseHeaders[$name]=$value;
+            return $length;
+        };
+
+        $options=[
+            CURLOPT_URL=>$url,
+            CURLOPT_RETURNTRANSFER=>true,
+            CURLOPT_FOLLOWLOCATION=>false,
+            CURLOPT_HEADER=>false,
+            CURLOPT_HEADERFUNCTION=>$headerFunction,
+            CURLOPT_CONNECTTIMEOUT=>$timeout,
+            CURLOPT_TIMEOUT=>$timeout,
+            CURLOPT_SSL_VERIFYPEER=>true,
+            CURLOPT_SSL_VERIFYHOST=>2,
+            CURLOPT_HTTPHEADER=>$headers,
+            CURLOPT_CUSTOMREQUEST=>$method,
+            CURLOPT_RESOLVE=>$resolve,
+        ];
+        if($method==='GET'||$method==='HEAD')$options[CURLOPT_NOBODY]=$method==='HEAD';
+        if(isset($args['body'])&&$args['body']!=='')$options[CURLOPT_POSTFIELDS]=(string)$args['body'];
+        if($basicAuth!==null){
+            $options[CURLOPT_HTTPAUTH]=CURLAUTH_BASIC;
+            $options[CURLOPT_USERPWD]=$basicAuth;
+        }
+
+        curl_setopt_array($handle,$options);
+        $body=curl_exec($handle);
+        if($body===false){
+            $error=curl_error($handle);
+            $errno=curl_errno($handle);
+            curl_close($handle);
+            return new \\WP_Error('upstream_transport','Upstream request failed.',[
+                'curl_errno'=>$errno,
+                'curl_error'=>$error,
+            ]);
+        }
+        $status=(int)curl_getinfo($handle,CURLINFO_RESPONSE_CODE);
+        curl_close($handle);
+
+        return [
+            'headers'=>$responseHeaders,
+            'body'=>(string)$body,
+            'response'=>[
+                'code'=>$status,
+                'message'=>'',
+            ],
+            'cookies'=>[],
+            'filename'=>null,
+        ];
     }
 
-    public function pinCurl($handle,array $parsedArgs,string $url): void{if($this->pinnedHost!==null&&$this->pinnedIps!==[]&&defined('CURLOPT_RESOLVE')){$entries=[];foreach($this->pinnedIps as $ip)$entries[]=$this->pinnedHost.':443:'.$ip;curl_setopt($handle,CURLOPT_RESOLVE,$entries);}if(defined('CURLOPT_SSL_VERIFYPEER'))curl_setopt($handle,CURLOPT_SSL_VERIFYPEER,true);if(defined('CURLOPT_SSL_VERIFYHOST'))curl_setopt($handle,CURLOPT_SSL_VERIFYHOST,2);if($this->pinnedBasicAuth!==null&&defined('CURLOPT_USERPWD')&&defined('CURLOPT_HTTPAUTH')){curl_setopt($handle,CURLOPT_HTTPAUTH,CURLAUTH_BASIC);curl_setopt($handle,CURLOPT_USERPWD,$this->pinnedBasicAuth);if(defined('CURLOPT_HTTPHEADER'))curl_setopt($handle,CURLOPT_HTTPHEADER,['Authorization: Basic '.base64_encode($this->pinnedBasicAuth),'Accept: application/json','User-Agent: WooGit-Backend/'.WOOGIT_BACKEND_VERSION]);}}
     private function resolvePublicDestination(string $url): ?array
     {
         $parts=wp_parse_url($url);if(!$parts||strtolower((string)($parts['scheme']??''))!=='https')return null;$host=strtolower(rtrim((string)($parts['host']??''),'.'));if($host==='')return null;if(!empty($parts['user'])||!empty($parts['pass'])||(!empty($parts['port'])&&(int)$parts['port']!==443))return null;
