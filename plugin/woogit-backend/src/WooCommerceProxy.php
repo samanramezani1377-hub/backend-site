@@ -14,17 +14,15 @@ final class WooCommerceProxy
      */
     public function verify(string $baseUrl,string $username,string $applicationPassword,string $consumerKey,string $consumerSecret): array
     {
-        $storedMode=$this->getStoredRestMode($baseUrl);
-        if($storedMode===null){
-            $detected=$this->detectRestMode($baseUrl);
-            if(!$detected['ok'])return $detected;
-            $mode=$detected['mode'];
-            $this->rememberRestMode($baseUrl,$mode);
-        }else{
-            $mode=$storedMode;
-        }
+        // Verification must always probe the public REST endpoint first. A cached
+        // mode is only an optimization for normal forwarding; it must never prevent
+        // fallback detection after a site changes its REST URL style.
+        $detected=$this->detectRestMode($baseUrl);
+        if(!$detected['ok'])return $detected;
+        $mode=$detected['mode'];
+        $this->rememberRestMode($baseUrl,$mode);
 
-        // The public REST route is already known to work in this mode. A 401 here
+        // The public REST route is known to work in this mode. A 401 here
         // is therefore a real WordPress Application Password authentication failure;
         // do not retry it through another URL style.
         $wp=$this->requestRest($baseUrl,'/wp/v2/users/me',$username,$applicationPassword,$mode);
