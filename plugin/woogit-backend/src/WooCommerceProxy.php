@@ -185,7 +185,9 @@ final class WooCommerceProxy
             $headers[]=(string)$name.': '.(string)$value;
         }
         if($basicAuth!==null){
-            $headers[]='Authorization: Basic '.base64_encode($basicAuth);
+            foreach($headers as $i=>$header){
+                if(str_starts_with(strtolower($header),'authorization:'))unset($headers[$i]);
+            }
         }
 
         $resolve=[];
