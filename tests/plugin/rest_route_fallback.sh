@@ -26,6 +26,8 @@ grep -Fq "woocommerce_rest_unavailable" "$PROXY" || fail "WooCommerce route fail
 grep -Fq "woocommerce_http_error" "$PROXY" || fail "WooCommerce non-auth HTTP errors must be distinguishable"
 grep -Fq "redirection'=>0" "$PROXY" || fail "REST probing must not enable redirects"
 grep -Fq "wp_safe_remote_request" "$PROXY" || fail "REST probing must preserve safe pinned transport"
+grep -Fq "CURLOPT_USERPWD" "$PROXY" || fail "authenticated upstream requests must configure cURL Basic Auth directly"
+grep -Fq "CURLAUTH_BASIC" "$PROXY" || fail "authenticated upstream requests must force Basic Auth"
 grep -Fq "requestWooCommerce(\$baseUrl," "$PROXY" || fail "WooCommerce verification must preserve the configured site base URL"
 grep -Fq "restModeKey" "$PROXY" || fail "REST mode cache key must be site-specific"
 grep -Fq '$site.$path' "$PROXY" || fail "REST mode cache must include the site path, not only the host"
