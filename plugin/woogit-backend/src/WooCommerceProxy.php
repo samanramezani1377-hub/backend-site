@@ -115,9 +115,18 @@ final class WooCommerceProxy
 
     private function restUrl(string $baseUrl,string $path,string $mode): string
     {
-        $route=preg_replace('#^/wp-json#','',$path);$route=$route===''?'/':('/'.ltrim($route,'/'));
-        if($mode==='query')return add_query_arg('rest_route',$route,rtrim($baseUrl,'/').'/');
-        return rtrim($baseUrl,'/').'/wp-json'.($route==='/'?'/':$route);
+        $parts=wp_parse_url($path);
+        $route=(string)($parts['path']??$path);
+        $route=preg_replace('#^/wp-json#','',$route);
+        $route=$route===''?'/':('/'.ltrim($route,'/'));
+        $query=(string)($parts['query']??'');
+        if($mode==='query'){
+            $url=add_query_arg('rest_route',$route,rtrim($baseUrl,'/').'/');
+            if($query!=='')$url.='&'.$query;
+            return $url;
+        }
+        $url=rtrim($baseUrl,'/').'/wp-json'.($route==='/'?'/':$route);
+        return $query===''?$url:$url.'?'.$query;
     }
 
     private function baseFromUrl(string $url): string
