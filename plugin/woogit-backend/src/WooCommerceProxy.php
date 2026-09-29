@@ -72,7 +72,8 @@ final class WooCommerceProxy
             $alternate=$mode==='query'?'pretty':'query';
             $retryUrl=$this->restUrl($baseUrl,$path,$alternate);if($query!==[])$retryUrl=add_query_arg($query,$retryUrl);
             $response=$this->safePinnedRequest($retryUrl,$args);
-            if(!is_wp_error($response)&&wp_remote_retrieve_response_code($response)!==404)$this->rememberRestMode($baseUrl,$alternate);
+            $retryStatus=is_wp_error($response)?0:wp_remote_retrieve_response_code($response);
+            if($retryStatus>=200&&$retryStatus<300)$this->rememberRestMode($baseUrl,$alternate);
         }
         if(is_wp_error($response)){$message=strtolower((string)$response->get_error_message());$timeout=str_contains($message,'timed out')||str_contains($message,'timeout')||str_contains($message,'operation timed out');return ['status'=>$timeout?504:502,'body'=>'','headers'=>[],'timeout'=>$timeout];}
         $responseHeaders=[];foreach(['content-type','x-wp-total','x-wp-totalpages'] as $name){$value=wp_remote_retrieve_header($response,$name);if($value!=='')$responseHeaders[$name]=$value;}
