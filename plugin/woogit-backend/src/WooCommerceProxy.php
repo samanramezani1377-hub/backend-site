@@ -33,14 +33,14 @@ final class WooCommerceProxy
         if($wpStatus===404)return ['ok'=>false,'reason'=>'wordpress_users_endpoint_unavailable'];
         if($wpStatus<200||$wpStatus>=300)return ['ok'=>false,'reason'=>'wordpress_http_error','status'=>$wpStatus];
 
-        $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$mode);
+        $wc=$this->requestWooCommerce($baseUrl,'/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$mode);
         if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
         $wcStatus=wp_remote_retrieve_response_code($wc);
         if($wcStatus===404){
             // A WooCommerce route can fail independently of the WordPress users route.
             // Only a route-level 404 is eligible for the alternate REST URL style.
             $alternate=$mode==='query'?'pretty':'query';
-            $wc=$this->requestWooCommerce($baseUrl.'/wp-json/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$alternate);
+            $wc=$this->requestWooCommerce($baseUrl,'/wc/v3/products?per_page=1',$consumerKey,$consumerSecret,$alternate);
             if(is_wp_error($wc))return ['ok'=>false,'reason'=>'woocommerce_unreachable'];
             $wcStatus=wp_remote_retrieve_response_code($wc);
             if($wcStatus>=200&&$wcStatus<300){
@@ -106,13 +106,9 @@ final class WooCommerceProxy
         return $this->safePinnedRequest($this->restUrl($baseUrl,$route,$mode),['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($username.':'.$applicationPassword),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
     }
 
-    private function requestWooCommerce(string $url,string $consumerKey,string $consumerSecret,string $mode='pretty')
+    private function requestWooCommerce(string $baseUrl,string $route,string $consumerKey,string $consumerSecret,string $mode='pretty')
     {
-        $path=(string)wp_parse_url($url,PHP_URL_PATH);$route=preg_replace('#^/wp-json#','',$path);$route=$route===''?'/':$route;
-        $query=(string)wp_parse_url($url,PHP_URL_QUERY);
-        $target=$this->restUrl($this->baseFromUrl($url),$route,$mode);
-        if($query!=='')parse_str($query,$params);else $params=[];
-        if($params!==[])$target=add_query_arg($params,$target);
+        $target=$this->restUrl($baseUrl,$route,$mode);
         return $this->safePinnedRequest($target,['timeout'=>10,'redirection'=>0,'headers'=>['Authorization'=>'Basic '.base64_encode($consumerKey.':'.$consumerSecret),'Accept'=>'application/json','User-Agent'=>'WooGit-Backend/'.WOOGIT_BACKEND_VERSION]]);
     }
 
@@ -130,7 +126,12 @@ final class WooCommerceProxy
 
     private function restModeKey(string $baseUrl): string
     {
-        $host=strtolower(rtrim((string)wp_parse_url($baseUrl,PHP_URL_HOST),'.'));return 'woogit_rest_mode_'.substr(hash('sha256',$host),0,32);
+        $parts=wp_parse_url($baseUrl);
+        $site=(string)($parts['scheme']??'https').'://'.strtolower(rtrim((string)($parts['host']??''),'.'));
+        $path=(string)($parts['path']??'');
+        $path='/'.trim($path,'/');
+        if($path==='/')$path='';
+        return 'woogit_rest_mode_'.substr(hash('sha256',$site.$path),0,32);
     }
 
     private function getStoredRestMode(string $baseUrl): ?string
