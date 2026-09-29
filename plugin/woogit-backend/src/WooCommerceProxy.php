@@ -166,11 +166,11 @@ final class WooCommerceProxy
     private function safePinnedRequest(string $url,array $args,?string $basicAuth=null)
     {
         $destination=$this->resolvePublicDestination($url);
-        if($destination===null)return new \\WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
-        if(!function_exists('curl_init'))return new \\WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
+        if($destination===null)return new \WP_Error('unsafe_destination','Unsafe or unresolvable upstream destination.');
+        if(!function_exists('curl_init'))return new \WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
 
         $handle=curl_init();
-        if($handle===false)return new \\WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
+        if($handle===false)return new \WP_Error('secure_transport_unavailable','Secure pinned proxy transport is unavailable.');
 
         $method=strtoupper((string)($args['method']??'GET'));
         $timeout=max(1,(int)($args['timeout']??20));
@@ -227,7 +227,7 @@ final class WooCommerceProxy
             $error=curl_error($handle);
             $errno=curl_errno($handle);
             curl_close($handle);
-            return new \\WP_Error('upstream_transport','Upstream request failed.',[
+            return new \WP_Error('upstream_transport','Upstream request failed.',[
                 'curl_errno'=>$errno,
                 'curl_error'=>$error,
             ]);
